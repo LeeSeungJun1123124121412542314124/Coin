@@ -7,6 +7,7 @@ import { Market } from './components/screens/Market'
 import { Liquidity } from './components/screens/Liquidity'
 import { Alt } from './components/screens/Alt'
 import { Whale } from './components/screens/Whale'
+import { Research } from './components/screens/Research'
 
 // 탭 정의
 const TABS = [
@@ -81,14 +82,6 @@ function PinScreen({ onSuccess }: { onSuccess: () => void }) {
   )
 }
 
-// 탭별 화면 플레이스홀더 (Phase 1~4에서 순차 구현)
-function PlaceholderScreen({ title }: { title: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '16rem', color: '#64748b' }}>
-      <p>{title} — 준비 중</p>
-    </div>
-  )
-}
 
 export default function App() {
   const [authenticated, setAuthenticated] = useState(false)
@@ -129,7 +122,7 @@ export default function App() {
         {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'volume' && <Volume />}
         {activeTab === 'spf' && <SPF />}
-        {activeTab === 'research' && <PlaceholderScreen title="리서치" />}
+        {activeTab === 'research' && <Research />}
         {activeTab === 'market' && <Market />}
         {activeTab === 'liquidity' && <Liquidity />}
         {activeTab === 'cvd' && <Alt />}
