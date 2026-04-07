@@ -91,7 +91,7 @@ export function Alt() {
   )
 
   const { data: detail } = useApi<CvdDetail>(
-    selectedSymbol ? `/api/cvd?symbol=${encodeURIComponent(selectedSymbol as string)}&timeframe=${timeframe}` : null,
+    selectedSymbol ? `/api/cvd?symbol=${encodeURIComponent(selectedSymbol)}&timeframe=${timeframe}` : null,
     300_000,
   )
 
