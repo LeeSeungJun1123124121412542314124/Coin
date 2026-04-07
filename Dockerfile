@@ -4,7 +4,7 @@ FROM node:22-slim AS frontend-build
 
 WORKDIR /build/frontend
 COPY dashboard/frontend/package*.json ./
-RUN npm ci --prefer-offline
+RUN npm install --prefer-offline
 
 COPY dashboard/frontend/ .
 RUN npm run build
