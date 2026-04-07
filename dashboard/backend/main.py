@@ -63,6 +63,13 @@ def _build_app() -> FastAPI:
     app = create_app(pipeline_fn=pipeline_fn, report_fn=report_fn)
     _mount_dashboard_routers(app)
 
+    # ── 헬스체크 전용 엔드포인트 ───────────────────────────────
+    from fastapi.responses import JSONResponse
+
+    @app.get("/api/health")
+    async def health():
+        return JSONResponse({"status": "ok"})
+
     # ── apscheduler 설정 ────────────────────────────────────────
     scheduler = AsyncIOScheduler(timezone="UTC")
     _register_jobs(scheduler, config, dispatcher)
