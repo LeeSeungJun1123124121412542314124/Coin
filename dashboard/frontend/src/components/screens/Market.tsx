@@ -1,8 +1,7 @@
 import { useApi } from '../../hooks/useApi'
 import { Card } from '../shared/Card'
-import { StatRow } from '../shared/StatRow'
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   Legend, ComposedChart, Bar,
 } from 'recharts'
 
@@ -196,9 +195,10 @@ export function Market() {
               <Tooltip
                 contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
                 labelStyle={{ color: '#94a3b8' }}
-                formatter={(v: number, name: string) =>
-                  name === 'VIX' ? [v?.toFixed(2), 'VIX'] : [`$${v}K`, 'BTC']
-                }
+                formatter={(v, name) => {
+                  const n = v as number
+                  return name === 'VIX' ? [n?.toFixed(2), 'VIX'] : [`$${n}K`, 'BTC']
+                }}
               />
               <Legend wrapperStyle={{ fontSize: '0.75rem', color: '#94a3b8' }} />
               <Bar yAxisId="vix" dataKey="vix" fill="rgba(248,113,113,0.3)" name="VIX" barSize={6} />

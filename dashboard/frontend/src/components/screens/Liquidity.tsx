@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useApi } from '../../hooks/useApi'
 import { Card } from '../shared/Card'
-import { StatRow } from '../shared/StatRow'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   ReferenceLine, Legend, ComposedChart, Bar,
@@ -196,9 +195,10 @@ export function Liquidity() {
               <Tooltip
                 contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
                 labelStyle={{ color: '#94a3b8' }}
-                formatter={(v: number, name: string) =>
-                  name === 'TGA YoY' ? [`${v?.toFixed(1)}%`, name] : [`$${v}K`, name]
-                }
+                formatter={(v, name) => {
+                  const n = v as number
+                  return name === 'TGA YoY' ? [`${n?.toFixed(1)}%`, name] : [`$${n}K`, name]
+                }}
               />
               <Legend wrapperStyle={{ fontSize: '0.75rem', color: '#94a3b8' }} />
               <ReferenceLine yAxisId="yoy" y={0} stroke="#334155" />
@@ -219,7 +219,7 @@ export function Liquidity() {
               <YAxis tick={{ fill: '#64748b', fontSize: 10 }} width={30} />
               <Tooltip
                 contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
-                formatter={(v: number) => [`${v.toFixed(2)}%`, 'M2 YoY']}
+                formatter={(v) => [`${(v as number).toFixed(2)}%`, 'M2 YoY']}
               />
               <ReferenceLine y={3} stroke="#4ade80" strokeDasharray="3 3" label={{ value: '3%', fill: '#4ade80', fontSize: 10 }} />
               <ReferenceLine y={1} stroke="#f87171" strokeDasharray="3 3" label={{ value: '1%', fill: '#f87171', fontSize: 10 }} />

@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useApi } from '../../hooks/useApi'
 import { Card } from '../shared/Card'
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  ReferenceLine, Legend, ComposedChart, Bar,
+  Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  Legend, ComposedChart, Bar,
 } from 'recharts'
 
 interface ScreenerResult {
@@ -91,7 +91,7 @@ export function Alt() {
   )
 
   const { data: detail } = useApi<CvdDetail>(
-    selectedSymbol ? `/api/cvd?symbol=${encodeURIComponent(selectedSymbol)}&timeframe=${timeframe}` : null,
+    selectedSymbol ? `/api/cvd?symbol=${encodeURIComponent(selectedSymbol as string)}&timeframe=${timeframe}` : null,
     300_000,
   )
 

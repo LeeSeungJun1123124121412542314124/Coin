@@ -1,6 +1,5 @@
 import { useApi } from '../../hooks/useApi'
 import { Card } from '../shared/Card'
-import { StatRow } from '../shared/StatRow'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, ReferenceLine, Legend,
@@ -189,7 +188,7 @@ export function Volume() {
               <Tooltip
                 contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
                 labelStyle={{ color: '#94a3b8' }}
-                formatter={(v: number) => [`${v.toFixed(2)}조`, '']}
+                formatter={(v) => [`${(v as number).toFixed(2)}조`, '']}
               />
               <Bar dataKey="upbit" stackId="a" fill="#f97316" name="업비트" />
               <Bar dataKey="bithumb" stackId="a" fill="#60a5fa" name="빗썸" />
@@ -208,7 +207,7 @@ export function Volume() {
               <YAxis tick={{ fill: '#64748b', fontSize: 10 }} width={35} />
               <Tooltip
                 contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
-                formatter={(v: number) => [`${v.toFixed(2)}조`, '']}
+                formatter={(v) => [`${(v as number).toFixed(2)}조`, '']}
               />
               <Legend wrapperStyle={{ fontSize: '0.75rem', color: '#94a3b8' }} />
               <Bar dataKey="upbit" stackId="a" fill="#f97316" name="업비트" />

@@ -46,11 +46,6 @@ function fmt(v: number | null, decimals = 2): string {
   return `$${v.toFixed(decimals)}`
 }
 
-function fmtPct(v: number | null): string {
-  if (v == null) return '—'
-  return `${v >= 0 ? '+' : ''}${(v * 100).toFixed(2)}%`
-}
-
 function BtcBadge({ pos }: { pos: Position | null }) {
   if (!pos) return <span style={{ color: '#64748b', fontSize: '0.75rem' }}>—</span>
   const color = pos.side === 'long' ? '#4ade80' : '#f87171'
