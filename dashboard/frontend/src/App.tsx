@@ -2,6 +2,8 @@ import { useState } from 'react'
 import './index.css'
 import { Dashboard } from './components/screens/Dashboard'
 import { SPF } from './components/screens/SPF'
+import { Volume } from './components/screens/Volume'
+import { Market } from './components/screens/Market'
 
 // 탭 정의
 const TABS = [
@@ -122,10 +124,10 @@ export default function App() {
       {/* 탭 콘텐츠 */}
       <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px 16px' }}>
         {activeTab === 'dashboard' && <Dashboard />}
-        {activeTab === 'volume' && <PlaceholderScreen title="볼륨 트래커" />}
+        {activeTab === 'volume' && <Volume />}
         {activeTab === 'spf' && <SPF />}
         {activeTab === 'research' && <PlaceholderScreen title="리서치" />}
-        {activeTab === 'market' && <PlaceholderScreen title="시장 분석" />}
+        {activeTab === 'market' && <Market />}
         {activeTab === 'liquidity' && <PlaceholderScreen title="유동성" />}
         {activeTab === 'cvd' && <PlaceholderScreen title="CVD 스크리너" />}
         {activeTab === 'whale' && <PlaceholderScreen title="고래 추적" />}

@@ -112,9 +112,13 @@ def _mount_dashboard_routers(app: FastAPI) -> None:
     """대시보드 API 라우터를 앱에 등록."""
     from dashboard.backend.api.dashboard_routes import router as dashboard_router
     from dashboard.backend.api.spf_routes import router as spf_router
+    from dashboard.backend.api.volume_routes import router as volume_router
+    from dashboard.backend.api.market_routes import router as market_router
     app.include_router(dashboard_router, prefix="/api")
     app.include_router(spf_router, prefix="/api")
-    # Phase 3~4에서 추가 예정
+    app.include_router(volume_router, prefix="/api")
+    app.include_router(market_router, prefix="/api")
+    # Phase 4에서 추가 예정 (유동성, CVD, 고래)
 
 
 def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
