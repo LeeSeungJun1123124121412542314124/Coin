@@ -37,12 +37,12 @@ COPY dashboard/backend/ ./dashboard/backend/
 # 프론트엔드 빌드 결과물 복사
 COPY --from=frontend-build /build/frontend/dist/ ./dashboard/frontend/dist/
 
-# 비루트 사용자
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-USER appuser
-
-# SQLite 데이터 디렉토리 (Railway Volume 마운트 포인트)
+# SQLite 데이터 디렉토리 (Railway Volume 마운트 포인트) — root로 생성 후 소유권 이전
 RUN mkdir -p /data
+
+# 비루트 사용자
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app && chown appuser:appuser /data
+USER appuser
 
 EXPOSE 8080
 
