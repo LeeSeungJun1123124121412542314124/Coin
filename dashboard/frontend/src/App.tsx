@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './index.css'
 import { Dashboard } from './components/screens/Dashboard'
+import { SPF } from './components/screens/SPF'
 
 // 탭 정의
 const TABS = [
@@ -122,7 +123,7 @@ export default function App() {
       <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px 16px' }}>
         {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'volume' && <PlaceholderScreen title="볼륨 트래커" />}
-        {activeTab === 'spf' && <PlaceholderScreen title="SPF" />}
+        {activeTab === 'spf' && <SPF />}
         {activeTab === 'research' && <PlaceholderScreen title="리서치" />}
         {activeTab === 'market' && <PlaceholderScreen title="시장 분석" />}
         {activeTab === 'liquidity' && <PlaceholderScreen title="유동성" />}

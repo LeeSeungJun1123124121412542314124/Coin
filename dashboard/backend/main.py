@@ -111,10 +111,10 @@ def _save_analysis_history(results) -> None:
 def _mount_dashboard_routers(app: FastAPI) -> None:
     """대시보드 API 라우터를 앱에 등록."""
     from dashboard.backend.api.dashboard_routes import router as dashboard_router
+    from dashboard.backend.api.spf_routes import router as spf_router
     app.include_router(dashboard_router, prefix="/api")
-    # Phase 2~4에서 추가:
-    # from dashboard.backend.api.spf_routes import router as spf_router
-    # app.include_router(spf_router, prefix="/api")
+    app.include_router(spf_router, prefix="/api")
+    # Phase 3~4에서 추가 예정
 
 
 def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
