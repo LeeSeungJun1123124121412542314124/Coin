@@ -37,11 +37,6 @@ COPY dashboard/backend/ ./dashboard/backend/
 # 프론트엔드 빌드 결과물 복사
 COPY --from=frontend-build /build/frontend/dist/ ./dashboard/frontend/dist/
 
-# 비루트 사용자 (Railway Volume은 /app/data에 마운트 — appuser 소유 경로라 권한 문제 없음)
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-RUN mkdir -p /app/data
-USER appuser
-
 EXPOSE 8080
 
 CMD exec python -m uvicorn dashboard.backend.main:create_application --factory --host 0.0.0.0 --port "${PORT:-8080}"
