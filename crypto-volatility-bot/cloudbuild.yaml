@@ -1,0 +1,18 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--target'
+      - 'production'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/crypto-volatility-bot:$SHORT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/crypto-volatility-bot:latest'
+      - '.'
+
+images:
+  - 'gcr.io/$PROJECT_ID/crypto-volatility-bot:$SHORT_SHA'
+  - 'gcr.io/$PROJECT_ID/crypto-volatility-bot:latest'
+
+options:
+  machineType: 'E2_HIGHCPU_8'

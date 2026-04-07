@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>크립토 인사이트 대시보드 — 기획서</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0c0c0e;
+    --bg2: #111113;
+    --bg3: #18181c;
+    --card: rgba(255,255,255,0.025);
+    --card-border: rgba(255,255,255,0.07);
+    --card-hover: rgba(255,255,255,0.04);
+    --text: #f0f0f2;
+    --text-sub: rgba(255,255,255,0.45);
+    --text-muted: rgba(255,255,255,0.25);
+    --indigo: #6366f1;
+    --indigo-light: #818cf8;
+    --emerald: #10b981;
+    --emerald-light: #34d399;
+    --red: #ef4444;
+    --amber: #f59e0b;
+    --cyan: #22d3ee;
+    --blue: #3b82f6;
+    --tab-active: #6366f1;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(99,102,241,0.12) 0%, transparent 55%),
+      radial-gradient(ellipse 60% 40% at 85% 105%, rgba(14,165,233,0.08) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── 헤더 ── */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(12,12,14,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--card-border);
+    padding: 0 24px;
+  }
+
+  .header-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.02em;
+  }
+
+  .logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--indigo);
+    box-shadow: 0 0 8px rgba(99,102,241,0.8);
+  }
+
+  .badge-plan {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: rgba(99,102,241,0.15);
+    color: var(--indigo-light);
+    border: 1px solid rgba(99,102,241,0.3);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* ── 사이드 탭 ── */
+  .layout {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 24px;
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 28px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 76px;
+    height: fit-content;
+  }
+
+  .sidebar-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    padding-left: 10px;
+  }
+
+  .tab-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .tab-btn {
+    width: 100%;
+    text-align: left;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-sub);
+    cursor: pointer;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+  }
+
+  .tab-btn:hover {
+    background: var(--card-hover);
+    color: var(--text);
+  }
+
+  .tab-btn.active {
+    background: rgba(99,102,241,0.12);
+    color: var(--indigo-light);
+    font-weight: 600;
+  }
+
+  .tab-btn .tab-num {
+    font-size: 10px;
+    font-weight: 700;
+    width: 18px; height: 18px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .tab-btn.active .tab-num {
+    background: rgba(99,102,241,0.25);
+    color: var(--indigo-light);
+  }
+
+  /* ── 콘텐츠 패널 ── */
+  .content { min-width: 0; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── 섹션 제목 ── */
+  .page-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: 6px;
+  }
+
+  .page-subtitle {
+    color: var(--text-sub);
+    font-size: 13px;
+    margin-bottom: 28px;
+  }
+
+  h2 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--indigo-light);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 28px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  h2::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--card-border);
+  }
+
+  h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.7);
+    margin: 18px 0 8px;
+  }
+
+  /* ── 카드 ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    transition: border-color 0.15s;
+  }
+
+  .card:hover { border-color: rgba(99,102,241,0.25); }
+
+  .card-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-sub);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .stat-value.indigo { color: var(--indigo-light); }
+  .stat-value.emerald { color: var(--emerald-light); }
+  .stat-value.amber { color: var(--amber); }
+  .stat-value.cyan { color: var(--cyan); }
+
+  /* ── 코드 블록 ── */
+  pre {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    margin: 10px 0 18px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    line-height: 1.75;
+    color: #c9d1d9;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--cyan);
+    background: rgba(34,211,238,0.08);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+
+  pre code {
+    background: none;
+    color: inherit;
+    padding: 0;
+  }
+
+  /* 코드 색상 */
+  .kw { color: #ff79c6; }   /* keyword */
+  .fn { color: #50fa7b; }   /* function */
+  .str { color: #f1fa8c; }  /* string */
+  .cm { color: #6272a4; }   /* comment */
+  .num { color: #bd93f9; }  /* number */
+  .var { color: #8be9fd; }  /* variable */
+  .op { color: #ff79c6; }   /* operator */
+
+  /* ── 테이블 ── */
+  .table-wrap { overflow-x: auto; margin: 12px 0 20px; border-radius: 10px; border: 1px solid var(--card-border); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead tr {
+    background: rgba(99,102,241,0.08);
+  }
+
+  th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--indigo-light);
+    border-bottom: 1px solid var(--card-border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.75);
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  td code { font-size: 11px; }
+
+  /* ── 배지 ── */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .badge-free { background: rgba(16,185,129,0.15); color: #34d399; }
+  .badge-key  { background: rgba(251,191,36,0.15); color: #fcd34d; }
+  .badge-api  { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+  .badge-db   { background: rgba(239,68,68,0.15);  color: #fca5a5; }
+  .badge-tab  { background: rgba(34,211,238,0.12); color: var(--cyan); }
+
+  /* ── 인포 박스 ── */
+  .info-box {
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin: 12px 0;
+    font-size: 13px;
+    display: flex;
+    gap: 10px;
+  }
+
+  .info-box.blue   { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); }
+  .info-box.amber  { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); }
+  .info-box.green  { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); }
+  .info-box.red    { background: rgba(239,68,68,0.08);  border: 1px solid rgba(239,68,68,0.2); }
+  .info-box.indigo { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); }
+
+  .info-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── 단계 카드 ── */
+  .step-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .step-item {
+    display: flex;
+    gap: 14px;
+    padding: 16px;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+  }
+
+  .step-num {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: rgba(99,102,241,0.2);
+    border: 1px solid rgba(99,102,241,0.35);
+    color: var(--indigo-light);
+    font-weight: 700;
+    font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .step-content { flex: 1; }
+  .step-title { font-weight: 600; margin-bottom: 4px; }
+  .step-desc { color: var(--text-sub); font-size: 12.5px; }
+
+  /* ── 탭 헤더 플로우 ── */
+  .flow-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+  }
+
+  .flow-box {
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+  }
+
+  .flow-arrow {
+    color: var(--text-muted);
+    font-size: 16px;
+  }
+
+  /* ── 알고리즘 비주얼 ── */
+  .flow-classify {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 12px 0;
+  }
+
+  .flow-cell {
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .flow-cell.green  { background: rgba(34,197,94,0.1);  border: 1px solid rgba(34,197,94,0.25);  color: #4ade80; }
+  .flow-cell.red    { background: rgba(239,68,68,0.1);   border: 1px solid rgba(239,68,68,0.25);  color: #f87171; }
+  .flow-cell.amber  { background: rgba(245,158,11,0.1);  border: 1px solid rgba(245,158,11,0.25); color: #fbbf24; }
+  .flow-cell.blue   { background: rgba(59,130,246,0.1);  border: 1px solid rgba(59,130,246,0.25); color: #60a5fa; }
+
+  .flow-cell .flow-label { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+  .flow-cell .flow-cond  { color: rgba(255,255,255,0.5); font-size: 11px; }
+
+  /* ── 비용 표 ── */
+  .cost-total { font-weight: 700; color: var(--emerald-light); }
+
+  /* ── 반응형 ── */
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { position: static; }
+    .tab-list { flex-direction: row; flex-wrap: wrap; }
+    .flow-classify { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* ── 스크롤바 ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+
+  /* ── 구분선 ── */
+  .divider { height: 1px; background: var(--card-border); margin: 24px 0; }
+
+  /* ── 색상 점 ── */
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .dot-green  { background: #22c55e; }
+  .dot-red    { background: #ef4444; }
+  .dot-amber  { background: #f59e0b; }
+  .dot-blue   { background: #3b82f6; }
+  .dot-gray   { background: #6b7280; }
+</style>
+</head>
+<body>
+
+<!-- ────────── 헤더 ────────── -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      크립토 인사이트 대시보드
+    </div>
+    <span class="badge-plan">기획서 v1.0</span>
+  </div>
+</header>
+
+<!-- ────────── 레이아웃 ────────── -->
+<div class="layout">
+
+  <!-- 사이드바 -->
+  <aside class="sidebar">
+    <div class="sidebar-title">목차</div>
+    <ul class="tab-list">
+      <li><button class="tab-btn active" onclick="showTab('overview')"><span class="tab-num">0</span>전체 개요</button></li>
+      <li><button class="tab-btn" onclick="showTab('tab1')"><span class="tab-num">1</span>대시보드</button></li>
+      <li><button class="tab-btn" onclick="showTab('tab2')"><span class="tab-num">2</span>볼륨 트래커</button></li>
+      <li><button class="tab-btn" onclick="showTab('tab3')"><span class="tab-num">3</span>Smart Position Flow</button></li>
+      <li><button class="tab-btn" onclick="showTab('tab4')"><span class="tab-num">4</span>크립토 리서치</button></li>
+      <li><button class="tab-btn" onclick="showTab('tab5')"><span class="tab-num">5</span>시장 변동 분석</button></li>
+      <li><button class="tab-btn" onclick="showTab('tab6')"><span class="tab-num">6</span>유동성 TGA/M2</button></li>
+      <li><button class="tab-btn" onclick="showTab('tab7')"><span class="tab-num">7</span>THE알트 CVD</button></li>
+      <li><button class="tab-btn" onclick="showTab('tab8')"><span class="tab-num">8</span>HL 고래 추적</button></li>
+      <li><button class="tab-btn" onclick="showTab('backend')"><span class="tab-num">⚙</span>백엔드 구조</button></li>
+      <li><button class="tab-btn" onclick="showTab('frontend')"><span class="tab-num">◈</span>프론트엔드</button></li>
+      <li><button class="tab-btn" onclick="showTab('deploy')"><span class="tab-num">🚀</span>배포 & 비용</button></li>
+    </ul>
+  </aside>
+
+  <!-- 콘텐츠 -->
+  <main class="content">
+
+    <!-- ═══════════════════════════════ 0. 전체 개요 ═══════════════════════════════ -->
+    <section class="panel active" id="panel-overview">
+      <div class="page-title">크립토 인사이트 대시보드</div>
+      <div class="page-subtitle">기획서 v0.8에서 업그레이드</div>
+
+      <h2>사이트 기본 정보</h2>
+      <div class="card-row">
+        <div class="stat-card">
+          <div class="stat-label">URL</div>
+          <div class="stat-value" style="font-size:13px; color: var(--cyan);">사이트 올려서 생성</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">인증</div>
+          <div class="stat-value indigo">PIN 0000 초기세팅(보안)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">총 탭 수</div>
+          <div class="stat-value emerald">8개</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">배포</div>
+          <div class="stat-value amber" style="font-size:13px;">Railway + Vercel</div>
+        </div>
+      </div>
+
+      <h2>기술 스택</h2>
+      <div class="card-row">
+        <div class="card">
+          <h3>프론트엔드</h3>
+          <ul style="list-style:none; display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+            <li><span class="badge badge-api">React 19</span> + TypeScript</li>
+            <li><span class="badge badge-api">Vite 8</span> 번들러</li>
+            <li><span class="badge badge-api">Tailwind CSS 4</span> 스타일</li>
+            <li><span class="badge badge-api">Recharts</span> 차트</li>
+            <li>Epilogue + Inter 폰트</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>백엔드</h3>
+          <ul style="list-style:none; display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+            <li><span class="badge badge-db">Node.js</span> + Express</li>
+            <li><span class="badge badge-db">PostgreSQL</span> DB</li>
+            <li><span class="badge badge-db">node-cron</span> 스케줄러</li>
+            <li><span class="badge badge-db">node-cache</span> 메모리 캐시</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>전체 탭 구조</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>라우트</th><th>탭 이름</th><th>핵심 데이터</th><th>난이도</th></tr></thead>
+          <tbody>
+            <tr><td><code>dashboard</code></td><td>크립토 대시보드</td><td>CoinGecko + Yahoo Finance + FRED</td><td><span class="badge badge-free">기본</span></td></tr>
+            <tr><td><code>volume</code></td><td>트레이딩 볼륨 트래커</td><td>업비트 + 빗썸 + KRX</td><td><span class="badge badge-free">기본</span></td></tr>
+            <tr><td><code>spf</code></td><td>Smart Position Flow</td><td>Binance OI + 펀딩레이트</td><td><span class="badge badge-key">중급</span></td></tr>
+            <tr><td><code>research</code></td><td>크립토 리서치</td><td>자체 작성 DB</td><td><span class="badge badge-free">기본</span></td></tr>
+            <tr><td><code>market</code></td><td>시장 변동 분석</td><td>Yahoo Finance + Binance</td><td><span class="badge badge-free">기본</span></td></tr>
+            <tr><td><code>liquidity</code></td><td>유동성 TGA/M2</td><td>FRED API + US Treasury</td><td><span class="badge badge-key">중급</span></td></tr>
+            <tr><td><code>alt</code></td><td>THE알트 CVD</td><td>Binance CVD + 스크리너</td><td><span class="badge badge-db">고급</span></td></tr>
+            <tr><td><code>whale</code></td><td>HL 고래 추적</td><td>Hyperliquid 공개 API</td><td><span class="badge badge-key">중급</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>PIN 인증 시스템</h2>
+      <div class="card">
+        <div class="flow-row">
+          <div class="flow-box">페이지 진입</div><div class="flow-arrow">→</div>
+          <div class="flow-box">PinScreen 표시</div><div class="flow-arrow">→</div>
+          <div class="flow-box">4자리 입력</div><div class="flow-arrow">→</div>
+          <div class="flow-box" style="border-color:rgba(16,185,129,0.3);color:#34d399;">sessionStorage 저장</div><div class="flow-arrow">→</div>
+          <div class="flow-box" style="border-color:rgba(99,102,241,0.3);color:#a5b4fc;">메인 진입</div>
+        </div>
+        <div class="info-box amber" style="margin-top:8px;">
+          <div class="info-icon">⚠️</div>
+          <div>틀리면 shake 애니메이션 + 빨간 점 + 자동 초기화 (700ms)</div>
+        </div>
+        <pre><span class="cm">// App.tsx</span>
+<span class="kw">const</span> <span class="var">CORRECT_PIN</span> = <span class="str">'0000'</span>  <span class="cm">// 초기세팅 — 보안 상 변경 필요</span>
+<span class="kw">const</span> <span class="var">AUTH_KEY</span>    = <span class="str">'crypto_auth_v2'</span>
+
+<span class="kw">function</span> <span class="fn">App</span>() {
+  <span class="kw">const</span> [<span class="var">authed</span>, setAuthed] = useState(
+    () => sessionStorage.<span class="fn">getItem</span>(<span class="var">AUTH_KEY</span>) === <span class="str">'1'</span>
+  )
+  <span class="kw">if</span> (!authed) <span class="kw">return</span> &lt;<span class="fn">PinScreen</span> onAuth={() => setAuthed(<span class="kw">true</span>)} /&gt;
+  <span class="kw">return</span> &lt;<span class="fn">MainLayout</span> /&gt; <span class="cm">// 탭 시스템</span>
+}</pre>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════ 1. 대시보드 ═══════════════════════════════ -->
+    <section class="panel" id="panel-tab1">
+      <div class="page-title">탭 1 — 크립토 대시보드</div>
+      <div class="page-subtitle">Dashboard.tsx · API: /api/dashboard · 캐시 5분</div>
+
+      <h2>화면 구성</h2>
+      <div class="step-list">
+        <div class="step-item"><div class="step-num">①</div><div class="step-content"><div class="step-title">Hero 섹션</div><div class="step-desc">BTC 현재가(대형) + 24h 변동률 + 공포탐욕지수 원형 게이지</div></div></div>
+        <div class="step-item"><div class="step-num">②</div><div class="step-content"><div class="step-title">코인 가격 6개 카드</div><div class="step-desc">BTC / ETH / SOL / HYPE / INJ / ONDO — 이름·현재가·24h 등락률</div></div></div>
+        <div class="step-item"><div class="step-num">③</div><div class="step-content"><div class="step-title">미국 시장 지표 10개</div><div class="step-desc">S&P500, NASDAQ, Russell2000, VIX, MOVE, DXY, US10Y, JP10Y, Gold, Silver</div></div></div>
+        <div class="step-item"><div class="step-num">④</div><div class="step-content"><div class="step-title">온체인 & 파생 지표 8개</div><div class="step-desc">RSI · 펀딩레이트 · OI · 코인베이스프리미엄 · 스테이블코인시총 · ETF순유입 · 롱숏비율 · 김치프리미엄</div></div></div>
+        <div class="step-item"><div class="step-num">⑤</div><div class="step-content"><div class="step-title">매크로 캘린더</div><div class="step-desc">연준(빨강) / 경제지표(보라) / 크립토(초록) 배지 + ★1~3 중요도</div></div></div>
+      </div>
+
+      <h2>데이터 출처 & API</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>데이터</th><th>출처</th><th>엔드포인트</th><th>무료</th></tr></thead>
+          <tbody>
+            <tr><td>BTC/ETH/SOL/HYPE/INJ/ONDO 가격</td><td>CoinGecko</td><td><code>api.coingecko.com/v3/simple/price</code></td><td><span class="badge badge-free">무료</span></td></tr>
+            <tr><td>공포탐욕지수</td><td>Alternative.me</td><td><code>api.alternative.me/fng/?limit=1</code></td><td><span class="badge badge-free">무제한</span></td></tr>
+            <tr><td>S&P500 · NASDAQ · VIX · DXY 등</td><td>Yahoo Finance</td><td><code>query1.finance.yahoo.com/v8/finance/chart/{TICKER}</code></td><td><span class="badge badge-free">비공식무료</span></td></tr>
+            <tr><td>OI(미결제약정)</td><td>Binance Futures</td><td><code>fapi.binance.com/fapi/v1/openInterest</code></td><td><span class="badge badge-free">무료</span></td></tr>
+            <tr><td>펀딩레이트</td><td>Binance Futures</td><td><code>fapi.binance.com/fapi/v1/fundingRate</code></td><td><span class="badge badge-free">무료</span></td></tr>
+            <tr><td>롱/숏 비율</td><td>Binance Futures</td><td><code>/futures/data/globalLongShortAccountRatio</code></td><td><span class="badge badge-free">무료</span></td></tr>
+            <tr><td>코인베이스 프리미엄</td><td>Coinbase + Binance</td><td>자체 계산</td><td><span class="badge badge-free">무료</span></td></tr>
+            <tr><td>김치 프리미엄</td><td>업비트 + KRW환율</td><td><code>api.upbit.com/v1/ticker?markets=KRW-BTC</code></td><td><span class="badge badge-free">무료</span></td></tr>
+            <tr><td>TGA 잔고</td><td>FRED</td><td><code>api.stlouisfed.org/fred/series/observations?series_id=WTREGEN</code></td><td><span class="badge badge-key">키 필요</span></td></tr>
+            <tr><td>매크로 캘린더</td><td>수동 JSON</td><td>정적 파일 직접 관리</td><td><span class="badge badge-free">무료</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>공포탐욕지수 색상 로직</h3>
+      <pre><span class="num">0</span>~<span class="num">25</span>:  극단적 공포 <span class="str">'#dc2626'</span> (빨강)
+<span class="num">26</span>~<span class="num">50</span>: 공포        <span class="str">'#d97706'</span> (주황)
+<span class="num">51</span>~<span class="num">75</span>: 탐욕        <span class="str">'#16a34a'</span> (초록)
+<span class="num">76</span>~<span class="num">100</span>: 극단적 탐욕 <span class="str">'#635a7c'</span> (보라)</pre>
+
+      <h3>응답 구조 예시</h3>
+      <pre>{
+  <span class="var">crypto</span>: {
+    <span class="var">prices</span>: { BTC: { price: <span class="num">68419</span>, change24h: <span class="num">-1.1</span> }, ... },
+    <span class="var">fearGreed</span>: { value: <span class="num">8</span>, label: <span class="str">"극단적 공포"</span> },
+    <span class="var">dominance</span>: <span class="num">56.4</span>,
+  },
+  <span class="var">us</span>: {
+    <span class="var">sp500</span>: { close: <span class="num">6506</span>, sparkline: [...] },
+    <span class="var">vix</span>: { close: <span class="num">26.78</span> }, ...
+  },
+  <span class="var">indicators</span>: {
+    <span class="var">fundingRate</span>: <span class="num">-0.0021</span>, <span class="var">rsi</span>: <span class="num">49.9</span>,
+    <span class="var">kimchiPremium</span>: <span class="num">0.29</span>, ...
+  }
+}</pre>
+    </section>
+
+    <!-- ═══════════════════════════════ 2. 볼륨 트래커 ═══════════════════════════════ -->
+    <section class="panel" id="panel-tab2">
+      <div class="page-title">탭 2 — 트레이딩 볼륨 트래커</div>
+      <div class="page-subtitle">Volume.tsx · API: /api/data, /api/weekly-all, /api/monthly</div>
+
+      <h2>화면 구성</h2>
+      <div class="step-list">
+        <div class="step-item"><div class="step-num">①</div><div class="step-content"><div class="step-title">오늘의 요약 카드 4개</div><div class="step-desc">업비트 거래대금 / 빗썸 거래대금 / KRX 거래대금 / 크립토÷KRX 비율</div></div></div>
+        <div class="step-item"><div class="step-num">②</div><div class="step-content"><div class="step-title">일별 거래량 막대 차트</div><div class="step-desc">최근 60일 | Y축 좌: 크립토(조원) / Y축 우: KRX(조원) | 비율 높을수록 초록</div></div></div>
+        <div class="step-item"><div class="step-num">③</div><div class="step-content"><div class="step-title">BTC 주간 RSI 차트</div><div class="step-desc">14주 기준 / 과매수70(빨강점선) / 과매도30(초록점선)</div></div></div>
+        <div class="step-item"><div class="step-num">④</div><div class="step-content"><div class="step-title">BTC 일간 RSI 차트</div><div class="step-desc">14일 기준</div></div></div>
+        <div class="step-item"><div class="step-num">⑤</div><div class="step-content"><div class="step-title">공포탐욕 주간 추이</div><div class="step-desc">8주 데이터 → 주별 평균 집계</div></div></div>
+      </div>
+
+      <h2>데이터 출처 & API</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>데이터</th><th>API</th><th>비고</th></tr></thead>
+          <tbody>
+            <tr><td>업비트 거래대금</td><td><code>api.upbit.com/v1/ticker?markets=KRW-*</code></td><td>acc_trade_price_24h 합산</td></tr>
+            <tr><td>빗썸 거래대금</td><td><code>api.bithumb.com/public/ticker/ALL_KRW</code></td><td>units_traded_24H × closing_price</td></tr>
+            <tr><td>KRX 거래대금</td><td>KRX 정보데이터시스템</td><td>주말/공휴일 직전 영업일 사용</td></tr>
+            <tr><td>BTC RSI (주간/일간)</td><td><code>api.binance.com/api/v3/klines</code></td><td>close[4] → RSI 계산</td></tr>
+            <tr><td>공포탐욕 주간</td><td><code>api.alternative.me/fng/?limit=56</code></td><td>56일 = 8주</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>RSI 계산 함수</h3>
+      <pre><span class="kw">function</span> <span class="fn">calcRSI</span>(closes, period = <span class="num">14</span>) {
+  <span class="kw">const</span> changes = closes.<span class="fn">slice</span>(<span class="num">1</span>).<span class="fn">map</span>((c, i) => c - closes[i])
+  <span class="kw">const</span> gains   = changes.<span class="fn">map</span>(c => c > <span class="num">0</span> ? c : <span class="num">0</span>)
+  <span class="kw">const</span> losses  = changes.<span class="fn">map</span>(c => c < <span class="num">0</span> ? <span class="fn">Math.abs</span>(c) : <span class="num">0</span>)
+  <span class="kw">let</span> avgGain = gains.<span class="fn">slice</span>(<span class="num">0</span>, period).<span class="fn">reduce</span>((a,b) => a+b) / period
+  <span class="kw">let</span> avgLoss = losses.<span class="fn">slice</span>(<span class="num">0</span>, period).<span class="fn">reduce</span>((a,b) => a+b) / period
+  <span class="kw">const</span> rsi = []
+  <span class="kw">for</span> (<span class="kw">let</span> i = period; i < gains.length; i++) {
+    avgGain = (avgGain * (period-<span class="num">1</span>) + gains[i]) / period
+    avgLoss = (avgLoss * (period-<span class="num">1</span>) + losses[i]) / period
+    rsi.<span class="fn">push</span>(<span class="num">100</span> - <span class="num">100</span>/(<span class="num">1</span> + avgGain/avgLoss))
+  }
+  <span class="kw">return</span> rsi
+}</pre>
+    </section>
+
+    <!-- ═══════════════════════════════ 3. SPF ═══════════════════════════════ -->
+    <section class="panel" id="panel-tab3">
+      <div class="page-title">탭 3 — Smart Position Flow (SPF)</div>
+      <div class="page-subtitle">SPF.tsx · OI + 펀딩레이트로 포지션 흐름 분류 → 3일 예측 · 사이트 핵심 차별화 기능</div>
+
+      <h2>화면 구성</h2>
+      <div class="step-list">
+        <div class="step-item"><div class="step-num">①</div><div class="step-content"><div class="step-title">하락위험 점수 + 반등신호 점수</div><div class="step-desc">bearishScore / bullishScore 카드 2개</div></div></div>
+        <div class="step-item"><div class="step-num">②</div><div class="step-content"><div class="step-title">OI 경고 배너</div><div class="step-desc">extreme / critical / high / warning — 조건 충족 시에만 표시</div></div></div>
+        <div class="step-item"><div class="step-num">③</div><div class="step-content"><div class="step-title">3일 예측 카드</div><div class="step-desc">방향 + 신뢰도 + 상승/하락확률 프로그레스바 + 근거 3~5개</div></div></div>
+        <div class="step-item"><div class="step-num">④</div><div class="step-content"><div class="step-title">예측 성적표</div><div class="step-desc">전체 적중률 / 적중·실패 건수 / 현재 연속 / 고신뢰 정확도</div></div></div>
+        <div class="step-item"><div class="step-num">⑤</div><div class="step-content"><div class="step-title">유사 패턴 TOP 5</div><div class="step-desc">날짜 | 유사도% | 3일/7일/14일 수익률</div></div></div>
+        <div class="step-item"><div class="step-num">⑥</div><div class="step-content"><div class="step-title">핵심 지표 패널 9개</div><div class="step-desc">현재 OI · 3/7/14일 변화 · 연속상승 · 누적 FR 3/7/14일</div></div></div>
+        <div class="step-item"><div class="step-num">⑦</div><div class="step-content"><div class="step-title">OI/가격/포지션흐름 복합 차트</div><div class="step-desc">막대(OI, 흐름색상) + 선(BTC가격, 우측축)</div></div></div>
+        <div class="step-item"><div class="step-num">⑧</div><div class="step-content"><div class="step-title">일별 해석 피드</div><div class="step-desc">역순 30일 · 날짜|BTC가격|OI상황|FR판단|포지션흐름|종합점수</div></div></div>
+      </div>
+
+      <h2>포지션 흐름 분류 알고리즘</h2>
+      <div class="flow-classify">
+        <div class="flow-cell green">
+          <div class="flow-label">🟢 long_entry</div>
+          <div class="flow-cond">OI↑ + FR 양수(&gt;0.005%)</div>
+          <div style="margin-top:6px;font-size:11px;">롱 포지션 진입</div>
+        </div>
+        <div class="flow-cell red">
+          <div class="flow-label">🔴 short_entry</div>
+          <div class="flow-cond">OI↑ + FR 음수</div>
+          <div style="margin-top:6px;font-size:11px;">숏 포지션 진입</div>
+        </div>
+        <div class="flow-cell amber">
+          <div class="flow-label">🟠 long_exit</div>
+          <div class="flow-cond">OI↓ + FR 양수</div>
+          <div style="margin-top:6px;font-size:11px;">롱 포지션 청산</div>
+        </div>
+        <div class="flow-cell blue">
+          <div class="flow-label">🔵 short_exit</div>
+          <div class="flow-cond">OI↓ + FR 음수</div>
+          <div style="margin-top:6px;font-size:11px;">숏 포지션 청산</div>
+        </div>
+      </div>
+
+      <pre><span class="kw">function</span> <span class="fn">classifyFlow</span>(prevOI, currOI, frAvg) {
+  <span class="kw">const</span> oiUp  = currOI > prevOI
+  <span class="kw">const</span> frPos = frAvg > <span class="num">0.005</span>  <span class="cm">// 과열 기준 0.005%</span>
+  <span class="kw">if</span> ( oiUp &&  frPos) <span class="kw">return</span> <span class="str">'long_entry'</span>
+  <span class="kw">if</span> ( oiUp && !frPos) <span class="kw">return</span> <span class="str">'short_entry'</span>
+  <span class="kw">if</span> (!oiUp &&  frPos) <span class="kw">return</span> <span class="str">'long_exit'</span>
+  <span class="kw">if</span> (!oiUp && !frPos) <span class="kw">return</span> <span class="str">'short_exit'</span>
+  <span class="kw">return</span> <span class="str">'neutral'</span>
+}</pre>
+
+      <h2>예측 모델 — 코사인 유사도 패턴 매칭</h2>
+      <pre><span class="kw">function</span> <span class="fn">cosineSimilarity</span>(a, b) {
+  <span class="kw">const</span> dot  = a.<span class="fn">reduce</span>((s, v, i) => s + v * b[i], <span class="num">0</span>)
+  <span class="kw">const</span> magA = <span class="fn">Math.sqrt</span>(a.<span class="fn">reduce</span>((s, v) => s + v*v, <span class="num">0</span>))
+  <span class="kw">const</span> magB = <span class="fn">Math.sqrt</span>(b.<span class="fn">reduce</span>((s, v) => s + v*v, <span class="num">0</span>))
+  <span class="kw">return</span> dot / (magA * magB)
+}
+
+<span class="cm">// 현재 벡터: [OI변화3d, 누적FR3d, 가격변화3d]</span>
+<span class="cm">// 유사도 0.9 이상인 과거 패턴 TOP 5 반환</span></pre>
+
+      <h2>DB 테이블 구조</h2>
+      <pre><span class="kw">CREATE TABLE</span> spf_records (
+  date            DATE <span class="kw">PRIMARY KEY</span>,
+  oi, fr, price   DECIMAL,
+  oi_change_3d, oi_change_7d, oi_change_14d  DECIMAL,
+  flow            VARCHAR(<span class="num">20</span>),   <span class="cm">-- long_entry/short_entry/...</span>
+  bearish_score, bullish_score  INT,
+  price_after_3d, _7d, _14d     DECIMAL  <span class="cm">-- 사후 업데이트</span>
+);
+
+<span class="kw">CREATE TABLE</span> predictions (
+  date      DATE <span class="kw">PRIMARY KEY</span>,
+  direction VARCHAR(<span class="num">30</span>),  confidence INT,
+  up_prob, down_prob  INT,
+  top_patterns  JSONB,
+  result    VARCHAR(<span class="num">10</span>)  <span class="cm">-- hit/miss/pending</span>
+);</pre>
+    </section>
+
+    <!-- ═══════════════════════════════ 4. 리서치 ═══════════════════════════════ -->
+    <section class="panel" id="panel-tab4">
+      <div class="page-title">탭 4 — 크립토 리서치</div>
+      <div class="page-subtitle">Research.tsx · 자체 작성 콘텐츠 · 모달 전체화면 상세보기</div>
+
+      <h2>화면 구성</h2>
+      <div class="step-list">
+        <div class="step-item"><div class="step-num">①</div><div class="step-content"><div class="step-title">리서치 카드 그리드</div><div class="step-desc">auto-fill 레이아웃 · 최소 340px · 분류배지(cyan) + 제목 + 부제 + 조회수/날짜/읽기시간</div></div></div>
+        <div class="step-item"><div class="step-num">②</div><div class="step-content"><div class="step-title">전체화면 모달</div><div class="step-desc">스티키 헤더(제목+닫기) · h2 섹션 · h3 소제목(indigo) · 강조박스 · SWOT 4칸 · 면책고지</div></div></div>
+      </div>
+
+      <h2>SWOT 색상 배치</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0;">
+        <div class="flow-cell green"><div class="flow-label">Strength</div><div class="flow-cond">강점 — 초록</div></div>
+        <div class="flow-cell red"><div class="flow-label">Weakness</div><div class="flow-cond">약점 — 빨강</div></div>
+        <div class="flow-cell blue"><div class="flow-label">Opportunity</div><div class="flow-cond">기회 — 파랑</div></div>
+        <div class="flow-cell amber"><div class="flow-label">Threat</div><div class="flow-cond">위협 — 주황</div></div>
+      </div>
+
+      <h2>보안: 우클릭/복사 방지</h2>
+      <pre>document.<span class="fn">addEventListener</span>(<span class="str">'contextmenu'</span>, e => e.<span class="fn">preventDefault</span>())
+document.<span class="fn">addEventListener</span>(<span class="str">'keydown'</span>, e => {
+  <span class="kw">if</span> ((e.ctrlKey||e.metaKey) && [<span class="str">'p'</span>,<span class="str">'s'</span>,<span class="str">'c'</span>].<span class="fn">includes</span>(e.key))
+    e.<span class="fn">preventDefault</span>()
+})</pre>
+
+      <h2>DB 테이블</h2>
+      <pre><span class="kw">CREATE TABLE</span> research_posts (
+  id           SERIAL <span class="kw">PRIMARY KEY</span>,
+  badge        VARCHAR(<span class="num">50</span>),
+  title        VARCHAR(<span class="num">200</span>),
+  subtitle     VARCHAR(<span class="num">300</span>),
+  category     VARCHAR(<span class="num">50</span>),
+  content      TEXT,         <span class="cm">-- HTML 또는 마크다운</span>
+  views        INT DEFAULT <span class="num">0</span>,
+  read_time    INT,          <span class="cm">-- 분</span>
+  published_at TIMESTAMP DEFAULT <span class="fn">NOW</span>()
+);</pre>
+    </section>
+
+    <!-- ═══════════════════════════════ 5. 시장 변동 ═══════════════════════════════ -->
+    <section class="panel" id="panel-tab5">
+      <div class="page-title">탭 5 — 시장 변동 분석</div>
+      <div class="page-subtitle">Market.tsx · API: /api/insights, /api/market-analysis</div>
+
+      <h2>화면 구성</h2>
+      <div class="step-list">
+        <div class="step-item"><div class="step-num">①</div><div class="step-content"><div class="step-title">AI 생성 시장 인사이트 텍스트</div><div class="step-desc">대시보드 데이터 기반 자동 생성 (규칙 기반 or OpenAI API)</div></div></div>
+        <div class="step-item"><div class="step-num">②</div><div class="step-content"><div class="step-title">핵심 지표 요약</div><div class="step-desc">공포탐욕, RSI, VIX 등 요약 카드</div></div></div>
+        <div class="step-item"><div class="step-num">③</div><div class="step-content"><div class="step-title">VIX vs BTC 변동성 차트</div><div class="step-desc">Yahoo Finance VIX + Binance BTC 변동 조합</div></div></div>
+      </div>
+
+      <h2>자체 인사이트 생성 알고리즘</h2>
+      <pre><span class="kw">function</span> <span class="fn">generateInsight</span>(data) {
+  <span class="kw">const</span> msgs = []
+  <span class="kw">const</span> fg = data.crypto.fearGreed.value
+  <span class="kw">if</span> (fg <= <span class="num">20</span>)  msgs.<span class="fn">push</span>(`공포탐욕 ${fg} — 극단적 공포. 역발상 관점.`)
+  <span class="kw">if</span> (data.indicators.rsi < <span class="num">30</span>) msgs.<span class="fn">push</span>(`BTC RSI 과매도`)
+  <span class="kw">if</span> (data.us.vix.close > <span class="num">30</span>) msgs.<span class="fn">push</span>(`VIX ${data.us.vix.close} — 주식시장 공포`)
+  <span class="kw">return</span> msgs
+}
+
+<span class="cm">// 또는 OpenAI API 사용:</span>
+<span class="cm">// prompt = `다음 데이터로 크립토 시장 인사이트 3줄: ${JSON.stringify(data)}`</span></pre>
+    </section>
+
+    <!-- ═══════════════════════════════ 6. 유동성 ═══════════════════════════════ -->
+    <section class="panel" id="panel-tab6">
+      <div class="page-title">탭 6 — 유동성 (TGA / M2)</div>
+      <div class="page-subtitle">Liquidity.tsx · API: /api/tga-btc, /api/tga-yoy, /api/m2-yoy</div>
+
+      <h2>화면 구성</h2>
+      <div class="step-list">
+        <div class="step-item"><div class="step-num">①</div><div class="step-content"><div class="step-title">TGA 현재 잔고 + 해석</div><div class="step-desc">잔고 감소 = 유동성 공급 = 호재 / 증가 = 흡수 = 악재</div></div></div>
+        <div class="step-item"><div class="step-num">②</div><div class="step-content"><div class="step-title">TGA YoY vs BTC 이중축 차트</div><div class="step-desc">타임래그 슬라이더 (0~6개월) 포함</div></div></div>
+        <div class="step-item"><div class="step-num">③</div><div class="step-content"><div class="step-title">국채 순발행량 vs BTC 막대 차트</div><div class="step-desc">순발행 양수(빨강) / 음수(파랑)</div></div></div>
+        <div class="step-item"><div class="step-num">④</div><div class="step-content"><div class="step-title">예정 국채 경매 일정 테이블</div><div class="step-desc">auctionDate · securityType · term · offeringAmount</div></div></div>
+        <div class="step-item"><div class="step-num">⑤</div><div class="step-content"><div class="step-title">연준 국채 보유량 주간 테이블</div><div class="step-desc">SOMA — T-bill / Notes+Bonds</div></div></div>
+        <div class="step-item"><div class="step-num">⑥</div><div class="step-content"><div class="step-title">M2 YoY vs BTC 차트</div><div class="step-desc">FRED M2SL · 월별 YoY % · 타임래그 슬라이더</div></div></div>
+      </div>
+
+      <h2>데이터 출처 & API</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>데이터</th><th>출처</th><th>FRED Series</th><th>비고</th></tr></thead>
+          <tbody>
+            <tr><td>TGA 일별 잔고</td><td>FRED</td><td><code>WTREGEN</code></td><td>단위: $10억 · <span class="badge badge-key">키 필요</span></td></tr>
+            <tr><td>M2 통화량</td><td>FRED</td><td><code>M2SL</code></td><td>월별 데이터 · YoY 계산</td></tr>
+            <tr><td>연준 총 국채 보유</td><td>FRED</td><td><code>WSHODLL</code></td><td>주별</td></tr>
+            <tr><td>연준 T-bill 보유</td><td>FRED</td><td><code>WSHOMBCB</code></td><td>주별</td></tr>
+            <tr><td>국채 경매 일정</td><td>US Treasury</td><td>—</td><td>api.fiscaldata.treasury.gov</td></tr>
+            <tr><td>BTC 가격 (비교용)</td><td>Binance</td><td>—</td><td>TGA/M2 상관관계용</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <pre><span class="cm">// FRED API 키 무료 발급: fred.stlouisfed.org/docs/api/api_key.html</span>
+
+GET https://api.stlouisfed.org/fred/series/observations
+  ?series_id=<span class="str">WTREGEN</span>
+  &api_key={FRED_KEY}
+  &file_type=<span class="str">json</span>
+  &limit=<span class="num">365</span>
+  &sort_order=<span class="str">desc</span>
+
+<span class="cm">→ { observations: [{ date: "2026-03-19", value: "882.82" }] }</span>
+<span class="cm">  단위: $10억 (billion)</span></pre>
+    </section>
+
+    <!-- ═══════════════════════════════ 7. CVD ═══════════════════════════════ -->
+    <section class="panel" id="panel-tab7">
+      <div class="page-title">탭 7 — THE알트 (CVD 스크리너)</div>
+      <div class="page-subtitle">Alt.tsx · API: /api/cvd, /api/cvd-screener</div>
+
+      <h2>CVD란?</h2>
+      <div class="info-box blue">
+        <div class="info-icon">📊</div>
+        <div>
+          <strong>CVD (Cumulative Volume Delta)</strong> = 누적(매수 체결량 − 매도 체결량)<br>
+          양수: 매수세 우세 / 음수: 매도세 우세
+        </div>
+      </div>
+
+      <h2>화면 구성</h2>
+      <div class="step-list">
+        <div class="step-item"><div class="step-num">①</div><div class="step-content"><div class="step-title">종목 탭</div><div class="step-desc">INJ | SOL | ETH | HYPE | SEI</div></div></div>
+        <div class="step-item"><div class="step-num">②</div><div class="step-content"><div class="step-title">주기 선택</div><div class="step-desc">1D | 4H | 1H | 5m</div></div></div>
+        <div class="step-item"><div class="step-num">③</div><div class="step-content"><div class="step-title">가격 + CVD 복합 차트</div><div class="step-desc">캔들차트 + CVD 라인 오버레이</div></div></div>
+        <div class="step-item"><div class="step-num">④</div><div class="step-content"><div class="step-title">현물 vs 선물 CVD 비교</div><div class="step-desc">선물 CVD &gt; 현물 CVD → 레버리지 매수세 강함</div></div></div>
+        <div class="step-item"><div class="step-num">⑤</div><div class="step-content"><div class="step-title">멀티팩터 스크리너 점수</div><div class="step-desc">11개 팩터 가중 합산 → S/A/B/C 등급</div></div></div>
+      </div>
+
+      <h2>멀티팩터 v6 — 11개 팩터</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>가중치</th><th>팩터</th></tr></thead>
+          <tbody>
+            <tr><td>17.9%</td><td>거래대금 변화</td></tr>
+            <tr><td>15.7%</td><td>OI/시총 비율</td></tr>
+            <tr><td>13.2%</td><td>가격-CVD 괴리</td></tr>
+            <tr><td>12.2%</td><td>시가총액</td></tr>
+            <tr><td>8.5%</td><td>BB 압축 (볼린저밴드)</td></tr>
+            <tr><td>6.x%</td><td>OI 변화</td></tr>
+            <tr><td>6.x%</td><td>펀딩레이트</td></tr>
+            <tr><td>6.x%</td><td>모멘텀</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>등급 & 백테스트</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>등급</th><th>점수</th><th>승률</th><th>Sharpe</th><th>평균 보유</th></tr></thead>
+          <tbody>
+            <tr><td><strong style="color:#fbbf24;">S</strong></td><td>80+</td><td>62.5%</td><td>2.08</td><td>21일</td></tr>
+            <tr><td><strong style="color:#a78bfa;">A</strong></td><td>70+</td><td>57.1%</td><td>2.01</td><td>30일</td></tr>
+            <tr><td><strong style="color:#60a5fa;">B</strong></td><td>65+</td><td>61.5%</td><td>2.17</td><td>7일</td></tr>
+            <tr><td><strong style="color:#9ca3af;">C</strong></td><td>50+</td><td>49.8%</td><td>1.50</td><td>14일</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>CVD 계산 코드</h2>
+      <pre><span class="kw">async function</span> <span class="fn">getCVD</span>(symbol, interval, limit) {
+  <span class="kw">const</span> klines = <span class="kw">await</span> <span class="fn">fetch</span>(
+    `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
+  ).<span class="fn">then</span>(r => r.<span class="fn">json</span>())
+
+  <span class="kw">let</span> cvd = <span class="num">0</span>
+  <span class="kw">return</span> klines.<span class="fn">map</span>(k => {
+    <span class="kw">const</span> takerBuy  = <span class="fn">parseFloat</span>(k[<span class="num">9</span>])  <span class="cm">// takerBuyBaseAssetVolume</span>
+    <span class="kw">const</span> totalVol  = <span class="fn">parseFloat</span>(k[<span class="num">5</span>])  <span class="cm">// volume</span>
+    <span class="kw">const</span> delta     = takerBuy - (totalVol - takerBuy)
+    cvd += delta
+    <span class="kw">return</span> { time: k[<span class="num">0</span>], open: k[<span class="num">1</span>], close: k[<span class="num">4</span>], delta, cvd }
+  })
+}</pre>
+    </section>
+
+    <!-- ═══════════════════════════════ 8. 고래 ═══════════════════════════════ -->
+    <section class="panel" id="panel-tab8">
+      <div class="page-title">탭 8 — HL 고래 추적</div>
+      <div class="page-subtitle">Whale.tsx · API: /api/hyperliquid-whales · 2시간마다 갱신</div>
+
+      <h2>화면 구성</h2>
+      <div class="step-list">
+        <div class="step-item"><div class="step-num">①</div><div class="step-content"><div class="step-title">리더보드 상위 고래 목록</div><div class="step-desc">지갑주소 | 닉네임 | 계좌가치 | PnL | ROI</div></div></div>
+        <div class="step-item"><div class="step-num">②</div><div class="step-content"><div class="step-title">각 고래 포지션 상세</div><div class="step-desc">coin · side(롱/숏) · size · unrealizedPnL</div></div></div>
+      </div>
+
+      <h2>Hyperliquid 공개 API</h2>
+      <pre><span class="cm">// 리더보드 조회 (키 불필요)</span>
+<span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://api.hyperliquid.xyz/info'</span>, {
+  method: <span class="str">'POST'</span>,
+  headers: { <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+  body: <span class="fn">JSON.stringify</span>({ type: <span class="str">'leaderboard'</span> })
+})
+<span class="cm">// → [{ user: "0x...", accountValue, pnl, roi }]</span>
+
+<span class="cm">// 특정 주소 포지션</span>
+body: <span class="fn">JSON.stringify</span>({ type: <span class="str">'clearinghouseState'</span>, user: <span class="str">'0x...'</span> })
+<span class="cm">// → { assetPositions: [{ position: { coin, szi, unrealizedPnl } }] }</span></pre>
+
+      <h2>자동 갱신 (2시간 cron)</h2>
+      <pre>cron.<span class="fn">schedule</span>(<span class="str">'0 */2 * * *'</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> whales = <span class="kw">await</span> <span class="fn">fetchHyperliquidLeaderboard</span>()
+  <span class="cm">// DB에 타임스탬프 포함 저장</span>
+})</pre>
+    </section>
+
+    <!-- ═══════════════════════════════ 백엔드 구조 ═══════════════════════════════ -->
+    <section class="panel" id="panel-backend">
+      <div class="page-title">백엔드 전체 구조</div>
+      <div class="page-subtitle">Node.js + Express + PostgreSQL · Railway 배포</div>
+
+      <h2>폴더 구조</h2>
+      <pre>backend/
+├── src/
+│   ├── routes/
+│   │   ├── dashboard.ts   ← GET /api/dashboard
+│   │   ├── volume.ts      ← GET /api/data, /weekly-all, /monthly
+│   │   ├── spf.ts         ← GET /api/spf-data, /prediction-history
+│   │   ├── liquidity.ts   ← GET /api/tga-*, /m2-yoy, /treasury-*
+│   │   ├── cvd.ts         ← GET /api/cvd, /cvd-screener
+│   │   ├── whale.ts       ← GET /api/hyperliquid-whales
+│   │   ├── market.ts      ← GET /api/insights, /market-analysis
+│   │   └── views.ts       ← GET /api/visitor-count
+│   │
+│   ├── jobs/
+│   │   ├── collectSPF.ts       ← 매일 00:10 cron
+│   │   ├── collectVolume.ts    ← 매일 09:10 cron (KRX 마감 후)
+│   │   ├── updatePredictions.ts← 매일 실제 결과 업데이트
+│   │   └── collectWhales.ts    ← 2시간마다 cron
+│   │
+│   ├── db/
+│   │   ├── client.ts      ← pg Pool 설정
+│   │   └── schema.sql     ← 테이블 정의
+│   │
+│   ├── utils/
+│   │   ├── cache.ts       ← NodeCache 인스턴스
+│   │   ├── rsi.ts         ← RSI 계산
+│   │   ├── cvd.ts         ← CVD 계산
+│   │   └── similarity.ts  ← 코사인 유사도
+│   │
+│   └── index.ts           ← Express 앱, 미들웨어, 라우터
+│
+├── .env
+└── package.json</pre>
+
+      <h2>자동 수집 스케줄러</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Cron</th><th>시간</th><th>작업</th></tr></thead>
+          <tbody>
+            <tr><td><code>10 0 * * *</code></td><td>매일 00:10</td><td>SPF 기록 저장 (OI + FR + 가격)</td></tr>
+            <tr><td><code>10 9 * * 1-5</code></td><td>매일 09:10 (평일)</td><td>KRX 장 마감 후 거래량 수집</td></tr>
+            <tr><td><code>30 0 * * *</code></td><td>매일 00:30</td><td>3일 전 예측 결과 hit/miss 업데이트</td></tr>
+            <tr><td><code>0 */2 * * *</code></td><td>2시간마다</td><td>Hyperliquid 고래 스냅샷</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>핵심 패키지</h2>
+      <pre>{
+  <span class="str">"express"</span>:    <span class="str">"^4"</span>,
+  <span class="str">"axios"</span>:      <span class="str">"^1"</span>,
+  <span class="str">"node-cache"</span>: <span class="str">"^5"</span>,
+  <span class="str">"node-cron"</span>:  <span class="str">"^3"</span>,
+  <span class="str">"pg"</span>:         <span class="str">"^8"</span>,
+  <span class="str">"cors"</span>:       <span class="str">"^2"</span>
+}</pre>
+
+      <h2>.env 설정</h2>
+      <pre>PORT=<span class="num">3001</span>
+DATABASE_URL=postgresql://user:pass@host:<span class="num">5432</span>/crypto_db
+FRED_API_KEY=your_key_here   <span class="cm"># fred.stlouisfed.org 무료 발급</span>
+<span class="cm"># 나머지 API: 키 불필요</span></pre>
+
+      <h2>전체 API 엔드포인트</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>엔드포인트</th><th>탭</th><th>캐시</th></tr></thead>
+          <tbody>
+            <tr><td><code>/api/dashboard</code></td><td>크립토 대시보드</td><td>5분</td></tr>
+            <tr><td><code>/api/data</code></td><td>트레이딩 볼륨</td><td>1시간</td></tr>
+            <tr><td><code>/api/weekly-all</code></td><td>트레이딩 볼륨 (주간)</td><td>1시간</td></tr>
+            <tr><td><code>/api/btc-weekly-rsi</code></td><td>트레이딩 볼륨</td><td>1시간</td></tr>
+            <tr><td><code>/api/btc-daily-rsi</code></td><td>트레이딩 볼륨</td><td>1시간</td></tr>
+            <tr><td><code>/api/spf-data</code></td><td>Smart Position Flow</td><td>5분</td></tr>
+            <tr><td><code>/api/prediction-history</code></td><td>Smart Position Flow</td><td>5분</td></tr>
+            <tr><td><code>/api/insights</code></td><td>시장 변동 분석</td><td>5분</td></tr>
+            <tr><td><code>/api/tga-btc</code></td><td>유동성</td><td>1시간</td></tr>
+            <tr><td><code>/api/m2-yoy</code></td><td>유동성</td><td>1시간</td></tr>
+            <tr><td><code>/api/treasury-auctions</code></td><td>유동성</td><td>1시간</td></tr>
+            <tr><td><code>/api/cvd</code></td><td>THE알트</td><td>5분</td></tr>
+            <tr><td><code>/api/cvd-screener</code></td><td>THE알트</td><td>5분</td></tr>
+            <tr><td><code>/api/hyperliquid-whales</code></td><td>HL 고래</td><td>2시간</td></tr>
+            <tr><td><code>/api/visitor-count</code></td><td>전체</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════ 프론트엔드 ═══════════════════════════════ -->
+    <section class="panel" id="panel-frontend">
+      <div class="page-title">프론트엔드 전체 구조</div>
+      <div class="page-subtitle">React 19 + TypeScript + Vite + Tailwind CSS 4 · Vercel 배포</div>
+
+      <h2>폴더 구조</h2>
+      <pre>frontend/
+├── src/
+│   ├── components/
+│   │   ├── screens/
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── Volume.tsx
+│   │   │   ├── SPF.tsx
+│   │   │   ├── Research.tsx
+│   │   │   ├── Market.tsx
+│   │   │   ├── Liquidity.tsx
+│   │   │   ├── Alt.tsx
+│   │   │   └── Whale.tsx
+│   │   └── UI.tsx   ← Card, StatCard, Spinner, Badge, fmtPrice 등
+│   │
+│   ├── hooks/
+│   │   └── useApi.ts  ← 공통 API 훅
+│   │
+│   ├── lib/
+│   │   └── api.ts     ← API 엔드포인트 상수
+│   │
+│   ├── App.tsx        ← PinScreen + 탭 시스템
+│   └── main.tsx</pre>
+
+      <h2>useApi 훅</h2>
+      <pre><span class="kw">export function</span> <span class="fn">useApi</span>&lt;T&gt;(url: string) {
+  <span class="kw">const</span> [data, setData]       = useState&lt;T | null&gt;(null)
+  <span class="kw">const</span> [loading, setLoading] = useState(<span class="kw">true</span>)
+  <span class="kw">const</span> [error, setError]     = useState&lt;string | null&gt;(null)
+
+  useEffect(() => {
+    <span class="fn">fetch</span>(url)
+      .<span class="fn">then</span>(r => r.<span class="fn">json</span>())
+      .<span class="fn">then</span>(d => { setData(d); setLoading(<span class="kw">false</span>) })
+      .<span class="fn">catch</span>(e => { setError(e.message); setLoading(<span class="kw">false</span>) })
+  }, [url])
+
+  <span class="kw">return</span> { data, loading, error }
+}</pre>
+
+      <h2>lib/api.ts</h2>
+      <pre><span class="kw">const</span> BASE = import.meta.env.<span class="var">VITE_API_URL</span> || <span class="str">''</span>
+
+<span class="kw">export const</span> api = {
+  dashboard:        `${BASE}/api/dashboard`,
+  volume:           `${BASE}/api/data`,
+  spf:              `${BASE}/api/spf-data`,
+  tgaBtc:           `${BASE}/api/tga-btc`,
+  cvd: (sym, iv) => `${BASE}/api/cvd?symbol=${sym}&interval=${iv}`,
+  whales:           `${BASE}/api/hyperliquid-whales`,
+}</pre>
+
+      <h2>디자인 시스템</h2>
+      <pre><span class="cm">/* 메인 배경 */</span>
+bg-[<span class="str">#0c0c0e</span>]
+
+<span class="cm">/* 카드 */</span>
+bg-white/[<span class="num">0.02</span>]  border border-white/[<span class="num">0.06</span>]
+
+<span class="cm">/* 포인트 색상 */</span>
+상승(초록): <span class="str">#22c55e</span>  하락(빨강): <span class="str">#ef4444</span>
+경고(주황): <span class="str">#f59e0b</span>  정보(청록): <span class="str">#22d3ee</span>
+포인트:     <span class="str">#6366f1</span>
+
+<span class="cm">/* 배경 그래디언트 */</span>
+body::before {
+  radial-gradient(ellipse 80% 50% at 20% -10%,
+    rgba(<span class="num">99,102,241</span>,<span class="num">0.15</span>) 0%, transparent 50%)
+}</pre>
+    </section>
+
+    <!-- ═══════════════════════════════ 배포 & 비용 ═══════════════════════════════ -->
+    <section class="panel" id="panel-deploy">
+      <div class="page-title">배포 설정 & 비용</div>
+      <div class="page-subtitle">Railway (백엔드+DB) + Vercel (프론트) 조합 추천</div>
+
+      <h2>Railway — 백엔드 배포</h2>
+      <div class="step-list">
+        <div class="step-item"><div class="step-num">1</div><div class="step-content"><div class="step-title">railway.app 가입</div><div class="step-desc">GitHub 계정으로 가입</div></div></div>
+        <div class="step-item"><div class="step-num">2</div><div class="step-content"><div class="step-title">New Project → Deploy from GitHub</div><div class="step-desc">backend 폴더 선택</div></div></div>
+        <div class="step-item"><div class="step-num">3</div><div class="step-content"><div class="step-title">Variables 탭 → 환경변수 입력</div><div class="step-desc">DATABASE_URL, FRED_API_KEY 설정</div></div></div>
+        <div class="step-item"><div class="step-num">4</div><div class="step-content"><div class="step-title">PostgreSQL 플러그인 추가</div><div class="step-desc">무료 1GB · DATABASE_URL 자동 연결</div></div></div>
+      </div>
+
+      <h2>Vercel — 프론트 배포</h2>
+      <div class="step-list">
+        <div class="step-item"><div class="step-num">1</div><div class="step-content"><div class="step-title">vercel.com → New Project</div><div class="step-desc">GitHub repo 연결</div></div></div>
+        <div class="step-item"><div class="step-num">2</div><div class="step-content"><div class="step-title">Environment Variables 설정</div><div class="step-desc">VITE_API_URL=https://xxx.up.railway.app</div></div></div>
+        <div class="step-item"><div class="step-num">3</div><div class="step-content"><div class="step-title">Deploy</div><div class="step-desc">자동 빌드 및 배포 (GitHub push 시 자동 갱신)</div></div></div>
+      </div>
+
+      <h2>월 예상 비용</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>항목</th><th>무료 플랜</th><th>유료</th></tr></thead>
+          <tbody>
+            <tr><td>백엔드 (Railway)</td><td>$5 크레딧/월 제공</td><td>$5~</td></tr>
+            <tr><td>프론트 (Vercel)</td><td>무료</td><td>무료</td></tr>
+            <tr><td>DB (PostgreSQL)</td><td>Railway 포함 1GB</td><td>—</td></tr>
+            <tr><td>API 키 (FRED)</td><td>무료</td><td>—</td></tr>
+            <tr><td>도메인</td><td>railway 서브도메인</td><td>연 $10~</td></tr>
+            <tr><td><strong class="cost-total">합계</strong></td><td><strong class="cost-total">거의 $0</strong></td><td><strong class="cost-total">월 $5~</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>외부 데이터 소스 전체 정리</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>소스</th><th>사용 데이터</th><th>키 필요</th></tr></thead>
+          <tbody>
+            <tr><td>CoinGecko API</td><td>암호화폐 가격·시총·도미넌스</td><td><span class="badge badge-free">불필요</span> (50콜/분)</td></tr>
+            <tr><td>Binance API</td><td>가격·캔들·OI·펀딩레이트·CVD</td><td><span class="badge badge-free">불필요</span></td></tr>
+            <tr><td>Alternative.me</td><td>공포탐욕지수</td><td><span class="badge badge-free">불필요</span></td></tr>
+            <tr><td>Yahoo Finance</td><td>주가지수·국채·달러인덱스·귀금속</td><td><span class="badge badge-free">비공식무료</span></td></tr>
+            <tr><td>FRED (연준)</td><td>TGA·M2·연준 보유자산</td><td><span class="badge badge-key">무료 키 발급</span></td></tr>
+            <tr><td>US Treasury</td><td>국채 발행 일정·잔액</td><td><span class="badge badge-free">불필요</span></td></tr>
+            <tr><td>KRX</td><td>코스피·코스닥 거래대금</td><td><span class="badge badge-free">불필요</span></td></tr>
+            <tr><td>업비트 API</td><td>크립토 거래량</td><td><span class="badge badge-free">불필요</span></td></tr>
+            <tr><td>빗썸 API</td><td>크립토 거래량</td><td><span class="badge badge-free">불필요</span></td></tr>
+            <tr><td>Hyperliquid API</td><td>고래 포지션·PnL</td><td><span class="badge badge-free">불필요</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="info-box green">
+        <div class="info-icon">✅</div>
+        <div>FRED API 키만 무료 발급 필요 (이메일 가입) — 나머지 모든 API는 키 없이 사용 가능</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+function showTab(id) {
+  // 모든 패널 숨김
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  // 모든 버튼 비활성화
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+
+  // 선택된 패널 표시
+  const panel = document.getElementById('panel-' + id);
+  if (panel) panel.classList.add('active');
+
+  // 선택된 버튼 활성화
+  event.currentTarget.classList.add('active');
+
+  // 스크롤 상단
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+
+</body>
+</html>

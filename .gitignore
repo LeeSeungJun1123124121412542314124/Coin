@@ -1,0 +1,37 @@
+# 툴 내부 파일
+.bkit/
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+*.egg
+
+# 환경변수 (절대 커밋 금지)
+.env
+.env.*
+!.env.example
+
+# DB
+*.db
+*.sqlite
+
+# Node
+node_modules/
+dashboard/frontend/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 로그
+*.log

@@ -1,0 +1,171 @@
+indicators:
+  atr:
+    enabled: true
+    weight: 0.25
+    period: 14
+    normalize:
+      min: 100
+      max: 5000
+  bollinger_width:
+    enabled: true
+    weight: 0.20
+    period: 20
+    normalize:
+      min: 0.01
+      max: 0.20
+  cvi:
+    enabled: true
+    weight: 0.20
+    period: 10
+    normalize:
+      min: -50
+      max: 50
+  historical_volatility:
+    enabled: true
+    weight: 0.20
+    period: 20
+    normalize:
+      min: 0.1
+      max: 100.0
+  volume_spike:
+    enabled: true
+    weight: 0.15
+    period: 20
+    normalize:
+      min: 0.2
+      max: 5.0
+signals:
+  high_threshold: 72
+  medium_threshold: 58
+  max_boost: 35
+  min_base_for_signal: 46
+  min_base_for_high: 48
+  require_extreme_for_high: true    # HIGH는 rsi_extreme/rsi_divergence/outlier 필수
+  require_extreme_for_medium: true  # MEDIUM도 극단 지표 필수
+
+# HA filter gate: boost is only applied when HA confirms direction.
+ha_filter:
+  enabled: true
+  mode: simple  # simple = 1 HA candle (was: safe = 2 consecutive)
+
+# Category gate: require (Trend|Momentum >= 1) AND (Volatility >= 1).
+category_gate:
+  enabled: true
+
+# Signal boosters - categorized with HA filter gate.
+# Categories: trend, momentum, volatility
+# Gate rule: HA filter pass AND (trend|momentum >= 1) AND (volatility >= 1)
+signal_boosters:
+  # ── Trend (3) ──────────────────────────────────────────────
+  hull_ma_crossover:
+    enabled: true
+    boost: 10
+    category: trend
+    medium_period: 30
+    short_period: 10
+    require_direction_match: true   # Phase 1: HA 방향과 일치 시에만 트리거
+  macd_crossover:
+    enabled: true
+    boost: 6
+    category: trend
+    require_direction_match: true   # Phase 1: HA 방향과 일치 시에만 트리거
+  adx_di_crossover:
+    enabled: true
+    boost: 8
+    category: trend
+    require_direction_match: true   # Phase 1: HA 방향과 일치 시에만 트리거
+    min_adx: 20.0                   # Phase 2: ADX < 20(횡보장) 차단
+
+  # ── Momentum (4) ───────────────────────────────────────────
+  rsi_extreme:
+    enabled: true
+    boost: 10
+    category: momentum
+    overbought: 80.0
+    oversold: 20.0
+    require_entry: true             # Phase 4: 극단 존 신규 진입 시에만 트리거
+    cooldown_bars: 24               # Phase B: 24봉(24h) 쿨다운 후 재트리거 허용
+  rsi_divergence:
+    enabled: true
+    boost: 8
+    category: momentum
+  rsi_trend_crossover:
+    enabled: true
+    boost: 8
+    category: momentum
+    fast_rsi_period: 14
+    slow_rsi_period: 28
+    hma_period: 10
+    require_direction_match: true   # Phase 1: HA 방향과 일치 시에만 트리거
+  hull_rsi_crossover:
+    enabled: true
+    boost: 8
+    category: momentum
+    hma_period: 10
+  sustained_oversold:
+    enabled: true
+    boost: 10
+    category:                  # momentum + volatility 동시 충족 → category gate 단독 통과
+      - momentum
+      - volatility
+    rsi_threshold: 30.0        # RSI < 30 기준 (실데이터: 11월 cluster RSI 22~35)
+    min_consecutive: 6         # 최근 6봉 중 min_ratio 이상이 threshold 이하
+    min_ratio: 0.7             # 6봉 중 70%(4봉 이상)가 30 이하이면 충족
+    require_confirm: true      # 횡보 필터: ATR/신저점/거래량 중 1개 충족 필요
+
+  # ── Volatility (4) ─────────────────────────────────────────
+  atr_spike:
+    enabled: true
+    boost: 8
+    category: volatility
+    multiplier: 1.5                 # Phase 3 값 복원
+    lookback: 5                     # Phase 3 값 복원
+  bb_expansion:
+    enabled: true
+    boost: 10
+    category: volatility
+    bandwidth_ratio: 1.5            # Phase 3 값 복원
+    lookback: 5                     # Phase 3 값 복원
+  volume_spike_strong:
+    enabled: true
+    boost: 10
+    category: volatility
+    threshold: 4.0
+    min_price_change_pct: 1.0       # Phase 5: 최소 1% 가격 변동 수반 필요
+  outlier:
+    enabled: true
+    boost: 12
+    category: volatility
+    critical_only: false            # non-critical(1 check)도 half-boost(6pts), category gate 통과용
+    atr_spike_multiplier: 1.5       # Phase C: 2.0→1.5 (atr_spike 부스터와 동일)
+    single_candle_pct: 3.0          # Phase C: 5.0→3.0 (1h BTC 3% 충분히 이상치)
+    # NOTE: has_extreme 판정은 critical(full boost)만 인정 (technical_analyzer.py 코드 참조)
+
+  # ── Multi-Timeframe (4h) ───────────────────────────────────
+  mtf_rsi_extreme:
+    enabled: true
+    boost: 8
+    category: momentum
+    overbought: 75.0            # 4h RSI > 75 (1h보다 넓은 범위)
+    oversold: 25.0              # 4h RSI < 25
+  mtf_bb_expansion:
+    enabled: true
+    boost: 8
+    category: volatility
+    bandwidth_ratio: 1.3        # 4h BB 폭이 최근 10봉 평균의 1.3배 이상
+    lookback: 10                # 비교 기준 4h 봉 수
+  mtf_trend_confirm:
+    enabled: true
+    boost: 6
+    category: trend
+    require_direction_match: true  # HA 방향과 4h HMA 방향 일치 시에만 트리거
+
+  # ── Disabled (replaced/removed) ────────────────────────────
+  stochrsi_extreme:
+    enabled: false
+    boost: 6
+    overbought: 80.0
+    oversold: 20.0
+  bb_middle_break:
+    enabled: false
+    boost: 4

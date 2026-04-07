@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  bot:
+    build:
+      context: .
+      target: production
+    env_file: .env
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  test:
+    build:
+      context: .
+      target: test
+    env_file: .env.example

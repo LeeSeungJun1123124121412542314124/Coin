@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Crypto Volatility Bot — AWS Lambda + EventBridge
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 512
+    Runtime: python3.12
+    Environment:
+      Variables:
+        TELEGRAM_BOT_TOKEN: !Sub "{{resolve:secretsmanager:crypto-bot/telegram:SecretString:bot_token}}"
+        TELEGRAM_CHAT_ID: !Sub "{{resolve:secretsmanager:crypto-bot/telegram:SecretString:chat_id}}"
+        CRYPTOQUANT_API_KEY: !Sub "{{resolve:secretsmanager:crypto-bot/cryptoquant:SecretString:api_key}}"
+
+Resources:
+  CryptoBotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: app.lambda_handler.handler
+      Events:
+        HourlySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 hour)
+        ReportSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(12 hours)
+        WebhookApi:
+          Type: Api
+          Properties:
+            Path: /webhook
+            Method: post
+        HealthCheck:
+          Type: Api
+          Properties:
+            Path: /health
+            Method: get
+
+Outputs:
+  WebhookUrl:
+    Description: "Telegram Webhook URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/webhook"
