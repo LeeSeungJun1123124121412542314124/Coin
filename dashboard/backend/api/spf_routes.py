@@ -39,6 +39,13 @@ async def get_spf():
     if current is None:
         current = await _calc_realtime_spf()
 
+    spf_message = None
+    if current is None:
+        spf_message = (
+            "SPF 현재 데이터 없음 — OI/FR API 실패 또는 DB 미수집입니다. "
+            "잠시 후 새로고침하거나 POST /api/spf-refresh 로 갱신해 보세요."
+        )
+
     # 유사 패턴 TOP5
     similar = find_similar_patterns(current) if current else []
 
@@ -58,6 +65,7 @@ async def get_spf():
         "history": history,
         "similar_patterns": similar,
         "today_prediction": today_pred,
+        "message": spf_message,
     })
 
 
@@ -103,8 +111,18 @@ async def _calc_realtime_spf() -> dict | None:
         return_exceptions=True,
     )
 
-    if isinstance(oi_hist, Exception) or not oi_hist:
+    if isinstance(oi_hist, Exception):
+        logger.error("SPF 실시간 OI 히스토리 실패: %s", oi_hist, exc_info=oi_hist)
         return None
+    if not oi_hist:
+        logger.warning("SPF 실시간 OI 히스토리 비어 있음")
+        return None
+    if isinstance(fr_hist, Exception):
+        logger.error("SPF 실시간 FR 히스토리 실패: %s", fr_hist, exc_info=fr_hist)
+    if isinstance(oi_now, Exception):
+        logger.error("SPF 실시간 OI 현재값 실패: %s", oi_now, exc_info=oi_now)
+    if isinstance(fr_now, Exception):
+        logger.error("SPF 실시간 FR 현재값 실패: %s", fr_now, exc_info=fr_now)
 
     oi_hist = sorted(oi_hist, key=lambda x: x["timestamp"])
     latest_oi = oi_hist[-1]["open_interest"] if oi_hist else None

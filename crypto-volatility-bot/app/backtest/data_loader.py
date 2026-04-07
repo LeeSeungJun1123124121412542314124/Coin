@@ -27,7 +27,7 @@ def from_exchange(
         symbol: Trading pair, e.g. "BTC/USDT".
         timeframe: Candlestick interval, e.g. "1h", "4h", "1d".
         limit: Number of candles to fetch.
-        exchange_id: ccxt exchange id (default: "binance").
+        exchange_id: ccxt exchange id (default: "bybit").
         api_key: Optional API key.
         api_secret: Optional API secret.
 

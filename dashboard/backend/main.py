@@ -78,6 +78,13 @@ def _build_app() -> FastAPI:
     async def on_startup():
         scheduler.start()
         logger.info("스케줄러 시작")
+        try:
+            from dashboard.backend.jobs.collect_spf import collect_spf
+
+            await collect_spf()
+            logger.info("시작 시 SPF 초기 수집 완료")
+        except Exception as e:
+            logger.error("시작 시 SPF 초기 수집 실패: %s", e, exc_info=True)
 
     @app.on_event("shutdown")
     async def on_shutdown():

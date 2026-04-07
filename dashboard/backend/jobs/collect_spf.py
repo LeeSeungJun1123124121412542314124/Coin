@@ -1,6 +1,6 @@
 """SPF 데이터 수집 — 매일 00:10 UTC.
 
-Binance에서 OI/FR/BTC 가격을 수집하여 spf_records에 저장하고,
+Bybit에서 OI/FR/BTC 가격을 수집하여 spf_records에 저장하고,
 당일 예측도 생성하여 predictions에 저장한다.
 """
 
