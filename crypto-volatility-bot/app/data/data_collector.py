@@ -54,7 +54,7 @@ class DataCollector:
         if self._binance_key:
             params["apiKey"] = self._binance_key
             params["secret"] = self._binance_secret
-        return ccxt.binance(params)
+        return ccxt.bybit(params)
 
     def fetch_ohlcv(self, symbol: str, timeframe: str = "1h", limit: int = 200) -> pd.DataFrame | None:
         def _fetch():

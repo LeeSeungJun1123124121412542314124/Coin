@@ -11,7 +11,7 @@ import json
 import logging
 from datetime import date, timedelta
 
-from dashboard.backend.collectors.binance_derivatives import (
+from dashboard.backend.collectors.bybit_derivatives import (
     fetch_oi_history,
     fetch_fr_history,
 )
@@ -36,7 +36,12 @@ async def collect_spf() -> None:
         oi_hist, fr_hist = await asyncio.gather(
             fetch_oi_history("BTCUSDT", limit=30),
             fetch_fr_history("BTCUSDT", limit=90),
+            return_exceptions=True,
         )
+        if isinstance(oi_hist, Exception):
+            oi_hist = None
+        if isinstance(fr_hist, Exception):
+            fr_hist = None
     except Exception as e:
         logger.error("SPF 데이터 수집 실패: %s", e)
         return

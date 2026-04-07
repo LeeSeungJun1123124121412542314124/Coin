@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from dashboard.backend.collectors.coingecko import fetch_prices, fetch_global
 from dashboard.backend.collectors.yahoo_finance import fetch_us_market
-from dashboard.backend.collectors.binance_derivatives import (
+from dashboard.backend.collectors.bybit_derivatives import (
     fetch_open_interest,
     fetch_funding_rate,
     fetch_long_short_ratio,
@@ -43,8 +43,17 @@ async def get_dashboard():
         fetch_funding_rate("BTCUSDT"),
         fetch_long_short_ratio("BTCUSDT"),
         fetch_btc_usd(),
-        return_exceptions=False,
+        return_exceptions=True,
     )
+
+    # 예외 발생한 항목은 None으로 처리
+    coins = None if isinstance(coins, Exception) else coins
+    global_data = None if isinstance(global_data, Exception) else global_data
+    us_market = None if isinstance(us_market, Exception) else us_market
+    oi = None if isinstance(oi, Exception) else oi
+    fr = None if isinstance(fr, Exception) else fr
+    long_short = None if isinstance(long_short, Exception) else long_short
+    coinbase_btc = None if isinstance(coinbase_btc, Exception) else coinbase_btc
 
     # BTC 가격 (코인 목록에서 추출)
     btc_price = None

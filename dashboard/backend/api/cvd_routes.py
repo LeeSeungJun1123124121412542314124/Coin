@@ -40,7 +40,7 @@ async def get_cvd_detail(
     try:
         loop = asyncio.get_event_loop()
         from app.data.data_collector import DataCollector
-        from dashboard.backend.collectors.binance_derivatives import (
+        from dashboard.backend.collectors.bybit_derivatives import (
             fetch_open_interest, fetch_funding_rate,
         )
 

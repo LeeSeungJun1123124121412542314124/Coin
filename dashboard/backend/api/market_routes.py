@@ -51,7 +51,7 @@ async def _get_dashboard_snapshot() -> dict:
     """대시보드 API 응답 재활용 (캐시 히트)."""
     from dashboard.backend.collectors.coingecko import fetch_prices, fetch_global
     from dashboard.backend.collectors.yahoo_finance import fetch_us_market
-    from dashboard.backend.collectors.binance_derivatives import (
+    from dashboard.backend.collectors.bybit_derivatives import (
         fetch_open_interest, fetch_funding_rate,
     )
     from dashboard.backend.services.kimchi_premium import calc_kimchi_premium

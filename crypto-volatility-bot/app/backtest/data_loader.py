@@ -17,7 +17,7 @@ def from_exchange(
     symbol: str,
     timeframe: str = "4h",
     limit: int = 500,
-    exchange_id: str = "binance",
+    exchange_id: str = "bybit",
     api_key: str | None = None,
     api_secret: str | None = None,
 ) -> pd.DataFrame | None:

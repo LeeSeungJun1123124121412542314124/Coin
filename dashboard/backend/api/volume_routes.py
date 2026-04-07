@@ -101,7 +101,10 @@ async def get_volume_data():
     if isinstance(bithumb_now, Exception):
         bithumb_now = None
 
-    total_now = (upbit_now or 0) + (bithumb_now or 0)
+    # upbit은 dict {"total_krw": float, "total_trillion": float} 반환
+    upbit_val = upbit_now["total_trillion"] if isinstance(upbit_now, dict) else None
+    bithumb_val = bithumb_now if isinstance(bithumb_now, (int, float)) else None
+    total_now = (upbit_val or 0) + (bithumb_val or 0)
 
     # DB 히스토리
     history = _get_volume_history(60)
@@ -114,8 +117,8 @@ async def get_volume_data():
 
     return JSONResponse({
         "current": {
-            "upbit_krw": upbit_now,
-            "bithumb_krw": bithumb_now,
+            "upbit_krw": upbit_val,
+            "bithumb_krw": bithumb_val,
             "total_krw": round(total_now, 4) if total_now else None,
         },
         "avg_30d": {

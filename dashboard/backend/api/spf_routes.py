@@ -8,7 +8,7 @@ import logging
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from dashboard.backend.collectors.binance_derivatives import (
+from dashboard.backend.collectors.bybit_derivatives import (
     fetch_open_interest,
     fetch_funding_rate,
 )
@@ -91,7 +91,7 @@ async def refresh_spf():
 
 async def _calc_realtime_spf() -> dict | None:
     """오늘 레코드 없을 때 실시간으로 계산."""
-    from dashboard.backend.collectors.binance_derivatives import (
+    from dashboard.backend.collectors.bybit_derivatives import (
         fetch_oi_history, fetch_fr_history,
     )
 
