@@ -114,11 +114,17 @@ def _mount_dashboard_routers(app: FastAPI) -> None:
     from dashboard.backend.api.spf_routes import router as spf_router
     from dashboard.backend.api.volume_routes import router as volume_router
     from dashboard.backend.api.market_routes import router as market_router
+    from dashboard.backend.api.liquidity_routes import router as liquidity_router
+    from dashboard.backend.api.cvd_routes import router as cvd_router
+    from dashboard.backend.api.whale_routes import router as whale_router
     app.include_router(dashboard_router, prefix="/api")
     app.include_router(spf_router, prefix="/api")
     app.include_router(volume_router, prefix="/api")
     app.include_router(market_router, prefix="/api")
-    # Phase 4에서 추가 예정 (유동성, CVD, 고래)
+    app.include_router(liquidity_router, prefix="/api")
+    app.include_router(cvd_router, prefix="/api")
+    app.include_router(whale_router, prefix="/api")
+    # Phase 5에서 research/visitor 라우터 추가
 
 
 def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:

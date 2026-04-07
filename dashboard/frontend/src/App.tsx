@@ -4,6 +4,9 @@ import { Dashboard } from './components/screens/Dashboard'
 import { SPF } from './components/screens/SPF'
 import { Volume } from './components/screens/Volume'
 import { Market } from './components/screens/Market'
+import { Liquidity } from './components/screens/Liquidity'
+import { Alt } from './components/screens/Alt'
+import { Whale } from './components/screens/Whale'
 
 // 탭 정의
 const TABS = [
@@ -128,9 +131,9 @@ export default function App() {
         {activeTab === 'spf' && <SPF />}
         {activeTab === 'research' && <PlaceholderScreen title="리서치" />}
         {activeTab === 'market' && <Market />}
-        {activeTab === 'liquidity' && <PlaceholderScreen title="유동성" />}
-        {activeTab === 'cvd' && <PlaceholderScreen title="CVD 스크리너" />}
-        {activeTab === 'whale' && <PlaceholderScreen title="고래 추적" />}
+        {activeTab === 'liquidity' && <Liquidity />}
+        {activeTab === 'cvd' && <Alt />}
+        {activeTab === 'whale' && <Whale />}
       </main>
     </div>
   )
