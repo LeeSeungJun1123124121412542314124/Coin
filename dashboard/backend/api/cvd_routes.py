@@ -19,7 +19,7 @@ router = APIRouter()
 
 @router.get("/cvd-screener")
 async def get_cvd_screener(
-    timeframe: str = Query("4h", regex="^(1h|4h|1d)$"),
+    timeframe: str = Query("4h", pattern="^(1h|4h|1d)$"),
 ):
     """CVD 11팩터 스크리너 전체 종목 결과."""
     results = await run_screener(timeframe)
@@ -33,7 +33,7 @@ async def get_cvd_screener(
 @router.get("/cvd")
 async def get_cvd_detail(
     symbol: str = Query("BTC/USDT"),
-    timeframe: str = Query("4h", regex="^(1h|4h|1d)$"),
+    timeframe: str = Query("4h", pattern="^(1h|4h|1d)$"),
     limit: int = Query(100, ge=20, le=500),
 ):
     """특정 종목 CVD 차트 + 스코어."""
