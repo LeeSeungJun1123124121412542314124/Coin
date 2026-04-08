@@ -3,7 +3,7 @@ import { useApi } from '../../hooks/useApi'
 import { Card } from '../shared/Card'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  ReferenceLine, Legend, ComposedChart, Bar,
+  ReferenceLine, Legend, ComposedChart,
 } from 'recharts'
 
 interface LiquiditySummary {
@@ -202,7 +202,7 @@ export function Liquidity() {
               />
               <Legend wrapperStyle={{ fontSize: '0.75rem', color: '#94a3b8' }} />
               <ReferenceLine yAxisId="yoy" y={0} stroke="#334155" />
-              <Bar yAxisId="yoy" dataKey="yoy_pct" fill="rgba(74,222,128,0.3)" name="TGA YoY" barSize={6} />
+              <Line yAxisId="yoy" type="monotone" dataKey="yoy_pct" stroke="#4ade80" dot={false} strokeWidth={2} name="TGA YoY" />
               <Line yAxisId="btc" type="monotone" dataKey="btc" stroke="#f59e0b" dot={false} strokeWidth={2} name="BTC" />
             </ComposedChart>
           </ResponsiveContainer>

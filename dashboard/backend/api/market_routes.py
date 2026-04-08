@@ -89,13 +89,13 @@ async def _get_dashboard_snapshot() -> dict:
     return {
         "coins": coins if isinstance(coins, list) else [],
         "global": global_data if not isinstance(global_data, Exception) else {},
-        "us_market": us_market if not isinstance(us_market, Exception) else {},
+        "us_market": {r["ticker"]: r for r in us_market} if isinstance(us_market, list) else {},
         "derivatives": {
             "open_interest": oi if not isinstance(oi, Exception) else None,
-            "funding_rate": fr if not isinstance(fr, Exception) else None,
+            "funding_rate": fr.get("funding_rate") if isinstance(fr, dict) else None,
             "oi_change_3d": oi_change_3d,
         },
-        "kimchi_premium": kimchi,
+        "kimchi_premium": kimchi.get("kimchi_premium_pct") if kimchi else None,
         "fear_greed": fear_greed,
         "onchain": await _get_onchain(),
     }
@@ -104,7 +104,7 @@ async def _get_dashboard_snapshot() -> dict:
 async def _get_fear_greed() -> dict | None:
     from app.data.data_collector import DataCollector
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     try:
         collector = DataCollector()
         value = await loop.run_in_executor(None, collector.fetch_fear_greed)
@@ -121,7 +121,7 @@ async def _get_fear_greed() -> dict | None:
 async def _get_onchain() -> dict | None:
     from app.data.data_collector import DataCollector
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     try:
         collector = DataCollector()
         return await loop.run_in_executor(None, collector.fetch_onchain_data, "btc")
@@ -207,7 +207,7 @@ async def _get_vix_btc_history() -> list[dict]:
     from app.data.data_collector import DataCollector
     import httpx
 
-    loop = _asyncio.get_event_loop()
+    loop = _asyncio.get_running_loop()
 
     # BTC 일봉 OHLCV
     btc_task = loop.run_in_executor(
@@ -243,16 +243,20 @@ async def _get_vix_btc_history() -> list[dict]:
 
 
 def _fetch_btc_ohlcv_sync() -> list[dict]:
+    """BTC 일봉 30일 — since 파라미터로 최근 데이터 확보."""
     try:
         from app.data.data_collector import DataCollector
+        from datetime import datetime, timezone, timedelta
         collector = DataCollector()
-        df = collector.fetch_ohlcv("BTC/USDT", "1d", 35)
-        if df is None or df.empty:
+        exchange = collector._get_exchange()
+        since_ms = int((datetime.now(tz=timezone.utc) - timedelta(days=35)).timestamp() * 1000)
+        raw = exchange.fetch_ohlcv("BTC/USDT", timeframe="1d", limit=35, since=since_ms)
+        if not raw:
             return []
         records = []
-        for idx, row in df.iterrows():
-            date_str = idx.date().isoformat() if hasattr(idx, 'date') else str(idx)[:10]
-            records.append({"date": date_str, "close": round(float(row["close"]), 2)})
+        for candle in raw:
+            date_str = datetime.fromtimestamp(candle[0] / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
+            records.append({"date": date_str, "close": round(float(candle[4]), 2)})
         return records
     except Exception as e:
         logger.error("BTC OHLCV 조회 실패: %s", e)

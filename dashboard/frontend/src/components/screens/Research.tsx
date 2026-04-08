@@ -1,21 +1,20 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { useApi } from '../../hooks/useApi'
 
-interface Post {
-  id: number
-  badge: string
+interface CategoryAnalysis {
+  key: string
+  name: string
+  level: string
+  score: number
   title: string
-  subtitle: string
-  category: string
-  views: number
-  read_time: number
-  published_at: string
-  content?: string
+  summary: string
+  details: Record<string, unknown>
+  updated_at: string
 }
 
-interface PostList {
-  posts: Post[]
-  total: number
+interface ResearchData {
+  generated_at: string
+  categories: CategoryAnalysis[]
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -28,291 +27,364 @@ const CATEGORY_COLORS: Record<string, string> = {
   '기타': '#94a3b8',
 }
 
-function categoryColor(cat: string): string {
-  return CATEGORY_COLORS[cat] ?? '#94a3b8'
+/** Market.tsx와 동일한 레벨 색 체계 */
+const LEVEL_COLORS: Record<string, string> = {
+  critical: '#ef4444',
+  warning:  '#f97316',
+  bearish:  '#f87171',
+  bullish:  '#4ade80',
+  neutral:  '#94a3b8',
 }
 
-function PostCard({ post, onClick }: { post: Post; onClick: () => void }) {
-  const catColor = categoryColor(post.category)
-  const date = post.published_at?.slice(0, 10)
-
-  return (
-    <div
-      onClick={onClick}
-      onContextMenu={e => e.preventDefault()}
-      style={{
-        background: '#111827',
-        border: '1px solid #1e293b',
-        borderRadius: 12,
-        padding: '18px 20px',
-        cursor: 'pointer',
-        transition: 'border-color 0.15s, transform 0.1s',
-        userSelect: 'none',
-      }}
-      onMouseEnter={e => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = '#334155'
-        ;(e.currentTarget as HTMLDivElement).style.transform = 'translateY(-1px)'
-      }}
-      onMouseLeave={e => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = '#1e293b'
-        ;(e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'
-      }}
-    >
-      {/* 상단: 배지 + 카테고리 */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-        {post.badge && (
-          <span style={{
-            padding: '2px 9px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 700,
-            background: 'rgba(245,158,11,0.15)', color: '#f59e0b',
-          }}>
-            {post.badge}
-          </span>
-        )}
-        {post.category && (
-          <span style={{
-            padding: '2px 9px', borderRadius: 6, fontSize: '0.7rem',
-            background: `${catColor}20`, color: catColor,
-          }}>
-            {post.category}
-          </span>
-        )}
-      </div>
-
-      {/* 제목 */}
-      <div style={{ color: '#e2e8f0', fontWeight: 600, fontSize: '0.95rem', marginBottom: 6, lineHeight: 1.4 }}>
-        {post.title}
-      </div>
-
-      {/* 부제목 */}
-      {post.subtitle && (
-        <div style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: 12, lineHeight: 1.5 }}>
-          {post.subtitle}
-        </div>
-      )}
-
-      {/* 하단: 날짜 + 조회수 + 읽기 시간 */}
-      <div style={{ display: 'flex', gap: 12, color: '#64748b', fontSize: '0.72rem' }}>
-        <span>{date}</span>
-        <span>👁 {post.views}</span>
-        <span>⏱ {post.read_time}분</span>
-      </div>
-    </div>
-  )
+const LEVEL_BG: Record<string, string> = {
+  critical: 'rgba(239,68,68,0.10)',
+  warning:  'rgba(249,115,22,0.10)',
+  bearish:  'rgba(248,113,113,0.08)',
+  bullish:  'rgba(74,222,128,0.08)',
+  neutral:  'rgba(100,116,139,0.08)',
 }
 
-function PostModal({ postId, onClose }: { postId: number; onClose: () => void }) {
-  const [post, setPost] = useState<Post | null>(null)
-  const [loading, setLoading] = useState(true)
+const LEVEL_BORDER: Record<string, string> = {
+  critical: 'rgba(239,68,68,0.4)',
+  warning:  'rgba(249,115,22,0.3)',
+  bearish:  'rgba(248,113,113,0.25)',
+  bullish:  'rgba(74,222,128,0.25)',
+  neutral:  'rgba(100,116,139,0.2)',
+}
 
-  useEffect(() => {
-    fetch(`/api/research/${postId}`)
-      .then(r => r.json())
-      .then(data => { setPost(data); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [postId])
+const LEVEL_LABELS: Record<string, string> = {
+  critical: '위험',
+  warning:  '경계',
+  bearish:  '약세',
+  bullish:  '강세',
+  neutral:  '중립',
+}
 
-  // ESC 키로 닫기
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [onClose])
-
-  return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 50,
-        background: 'rgba(0,0,0,0.75)',
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        padding: '40px 16px', overflowY: 'auto',
-      }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div
-        style={{
-          background: '#111827',
-          border: '1px solid #1e293b',
-          borderRadius: 16,
-          width: '100%', maxWidth: 760,
-          padding: '32px',
-          position: 'relative',
-        }}
-        onContextMenu={e => e.preventDefault()}
-      >
-        {/* 닫기 버튼 */}
-        <button
-          onClick={onClose}
-          style={{
-            position: 'absolute', top: 16, right: 16,
-            background: '#1e293b', border: 'none', borderRadius: 8,
-            color: '#94a3b8', fontSize: '1.1rem', width: 36, height: 36,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          ✕
-        </button>
-
-        {loading && (
-          <div style={{ color: '#64748b', textAlign: 'center', padding: '48px 0' }}>
-            로드 중...
-          </div>
-        )}
-
-        {!loading && post && (
-          <>
-            {/* 배지 + 카테고리 */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-              {post.badge && (
-                <span style={{
-                  padding: '3px 12px', borderRadius: 8, fontSize: '0.75rem', fontWeight: 700,
-                  background: 'rgba(245,158,11,0.15)', color: '#f59e0b',
-                }}>
-                  {post.badge}
-                </span>
-              )}
-              {post.category && (
-                <span style={{
-                  padding: '3px 12px', borderRadius: 8, fontSize: '0.75rem',
-                  background: `${categoryColor(post.category)}20`,
-                  color: categoryColor(post.category),
-                }}>
-                  {post.category}
-                </span>
-              )}
-            </div>
-
-            {/* 제목 */}
-            <h2 style={{ color: '#f1f5f9', fontSize: '1.3rem', fontWeight: 700, marginBottom: 8, lineHeight: 1.4 }}>
-              {post.title}
-            </h2>
-
-            {/* 부제목 */}
-            {post.subtitle && (
-              <p style={{ color: '#64748b', fontSize: '0.88rem', marginBottom: 20, lineHeight: 1.6 }}>
-                {post.subtitle}
-              </p>
-            )}
-
-            {/* 메타 */}
-            <div style={{ display: 'flex', gap: 16, color: '#64748b', fontSize: '0.75rem', marginBottom: 24, borderBottom: '1px solid #1e293b', paddingBottom: 16 }}>
-              <span>{post.published_at?.slice(0, 10)}</span>
-              <span>👁 {post.views}</span>
-              <span>⏱ {post.read_time}분</span>
-            </div>
-
-            {/* 본문 */}
-            <div
-              style={{
-                color: '#cbd5e1', fontSize: '0.9rem', lineHeight: 1.8,
-                whiteSpace: 'pre-wrap', userSelect: 'none',
-              }}
-            >
-              {post.content}
-            </div>
-          </>
-        )}
-
-        {!loading && !post && (
-          <div style={{ color: '#64748b', textAlign: 'center', padding: '48px 0' }}>
-            글을 불러올 수 없습니다
-          </div>
-        )}
-      </div>
-    </div>
-  )
+const LEVEL_ICONS: Record<string, string> = {
+  critical: '🚨',
+  warning:  '⚠️',
+  bearish:  '🔵',
+  bullish:  '🟢',
+  neutral:  '⚪',
 }
 
 const CATEGORIES = ['전체', '매크로', '온체인', '파생상품', '알트코인', '기술적분석', '시장분석', '기타']
 
-export function Research() {
-  const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [category, setCategory] = useState('전체')
+function ScoreBar({ score, level }: { score: number; level: string }) {
+  const color = LEVEL_COLORS[level] ?? '#94a3b8'
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+        <span style={{ fontSize: 11, color: '#64748b' }}>위험도</span>
+        <span style={{ fontSize: 12, color, fontWeight: 600 }}>{score}/100</span>
+      </div>
+      <div style={{ height: 4, background: '#1e293b', borderRadius: 2, overflow: 'hidden' }}>
+        <div style={{
+          height: '100%',
+          width: `${score}%`,
+          background: color,
+          borderRadius: 2,
+          transition: 'width 0.4s ease',
+        }} />
+      </div>
+    </div>
+  )
+}
 
-  const { data, loading } = useApi<PostList>('/api/research?limit=50', 60_000)
+function AnalysisCard({ cat, expanded, onToggle }: {
+  cat: CategoryAnalysis
+  expanded: boolean
+  onToggle: () => void
+}) {
+  const catColor = CATEGORY_COLORS[cat.name] ?? '#94a3b8'
+  const levelColor = LEVEL_COLORS[cat.level] ?? '#94a3b8'
+  const levelBg = LEVEL_BG[cat.level] ?? 'rgba(100,116,139,0.08)'
+  const levelBorder = LEVEL_BORDER[cat.level] ?? 'rgba(100,116,139,0.2)'
+  const levelLabel = LEVEL_LABELS[cat.level] ?? cat.level
+  const icon = LEVEL_ICONS[cat.level] ?? '⚪'
+  const time = cat.updated_at ? new Date(cat.updated_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
 
-  const filtered = category === '전체'
-    ? (data?.posts ?? [])
-    : (data?.posts ?? []).filter(p => p.category === category)
+  const details = cat.details as Record<string, unknown>
 
-  const handleOpen = useCallback((id: number) => {
-    setSelectedId(id)
-  }, [])
+  return (
+    <div
+      style={{
+        background: expanded ? levelBg : '#111827',
+        border: `1px solid ${expanded ? levelBorder : '#1e293b'}`,
+        borderRadius: 12,
+        padding: '18px 20px',
+        cursor: 'pointer',
+        transition: 'all 0.15s',
+      }}
+      onClick={onToggle}
+    >
+      {/* 헤더 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{
+            background: catColor + '22',
+            color: catColor,
+            border: `1px solid ${catColor}44`,
+            borderRadius: 6,
+            padding: '2px 8px',
+            fontSize: 11,
+            fontWeight: 600,
+          }}>{cat.name}</span>
+          <span style={{
+            background: levelBg,
+            color: levelColor,
+            border: `1px solid ${levelColor}44`,
+            borderRadius: 6,
+            padding: '2px 8px',
+            fontSize: 11,
+            fontWeight: 600,
+          }}>{icon} {levelLabel}</span>
+        </div>
+        <span style={{ fontSize: 11, color: '#475569' }}>{time}</span>
+      </div>
 
-  const handleClose = useCallback(() => {
-    setSelectedId(null)
-  }, [])
+      {/* 제목 */}
+      <div style={{ fontSize: 14, fontWeight: 700, color: '#f1f5f9', marginBottom: 8, lineHeight: 1.4 }}>
+        {cat.title}
+      </div>
 
-  if (loading || !data) {
+      {/* 요약 */}
+      <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, marginBottom: 10 }}>
+        {cat.summary}
+      </div>
+
+      {/* 점수 바 */}
+      <ScoreBar score={cat.score} level={cat.level} />
+
+      {/* 상세 정보 (expanded) */}
+      {expanded && Object.keys(details).length > 0 && (
+        <div style={{
+          marginTop: 14,
+          paddingTop: 14,
+          borderTop: '1px solid #1e293b',
+        }}>
+          {_renderDetails(cat.key, details)}
+        </div>
+      )}
+
+      <div style={{ marginTop: 8, textAlign: 'right', fontSize: 11, color: '#334155' }}>
+        {expanded ? '▲ 접기' : '▼ 상세'}
+      </div>
+    </div>
+  )
+}
+
+function _renderDetails(key: string, details: Record<string, unknown>) {
+  if (key === 'derivatives') {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* 스켈레톤 */}
-        {[1, 2, 3].map(i => (
-          <div key={i} style={{ background: '#111827', border: '1px solid #1e293b', borderRadius: 12, padding: '18px 20px', height: 120 }}>
-            <div style={{ background: '#1e293b', borderRadius: 4, height: 12, width: '30%', marginBottom: 12 }} />
-            <div style={{ background: '#1e293b', borderRadius: 4, height: 16, width: '70%', marginBottom: 8 }} />
-            <div style={{ background: '#1e293b', borderRadius: 4, height: 12, width: '90%' }} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+        {[
+          ['포지션 흐름', details.flow as string],
+          ['하락 점수', `${details.bearish_score}/100`],
+          ['반등 점수', `${details.bullish_score}/100`],
+          ['OI 3일', `${details.oi_change_3d}%`],
+          ['OI 7일', `${details.oi_change_7d}%`],
+          ['FR 3일 누적', `${details.cum_fr_3d}%`],
+        ].map(([label, value]) => value != null && (
+          <div key={label as string} style={{ fontSize: 12 }}>
+            <span style={{ color: '#64748b' }}>{label}: </span>
+            <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{value}</span>
           </div>
         ))}
       </div>
     )
   }
 
-  return (
-    <>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-        {/* 카테고리 필터 */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setCategory(cat)}
-              style={{
-                padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                fontSize: '0.8rem',
-                background: category === cat ? '#2563eb' : '#1e293b',
-                color: category === cat ? '#fff' : '#94a3b8',
-                transition: 'all 0.1s',
-              }}
-            >
-              {cat}
-            </button>
+  if (key === 'altcoin') {
+    const coins = (details.coins as Array<{ symbol: string; change_24h: number }>) ?? []
+    return (
+      <div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, marginBottom: 8 }}>
+          {coins.map(c => (
+            <div key={c.symbol} style={{ fontSize: 12 }}>
+              <span style={{ color: '#94a3b8' }}>{c.symbol} </span>
+              <span style={{ color: c.change_24h >= 0 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
+                {c.change_24h >= 0 ? '+' : ''}{c.change_24h?.toFixed(1)}%
+              </span>
+            </div>
           ))}
-          <span style={{ marginLeft: 'auto', color: '#64748b', fontSize: '0.75rem', alignSelf: 'center' }}>
-            {filtered.length}건
-          </span>
         </div>
-
-        {/* 글 그리드 */}
-        {filtered.length > 0 ? (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-            gap: 12,
-          }}>
-            {filtered.map(post => (
-              <PostCard key={post.id} post={post} onClick={() => handleOpen(post.id)} />
-            ))}
-          </div>
-        ) : (
-          <div style={{
-            textAlign: 'center', padding: '64px 0',
-            color: '#64748b', fontSize: '0.9rem',
-          }}>
-            {category === '전체'
-              ? '리서치 글이 없습니다'
-              : `${category} 카테고리 글이 없습니다`}
+        {details.btc_dominance != null && (
+          <div style={{ fontSize: 12, color: '#64748b' }}>
+            BTC 도미넌스: <span style={{ color: '#cbd5e1' }}>{String(details.btc_dominance)}%</span>
           </div>
         )}
+      </div>
+    )
+  }
 
+  if (key === 'whale') {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+        {[
+          ['롱', `${details.long_count}명 (${details.long_pct}%)`],
+          ['숏', `${details.short_count}명 (${details.short_pct}%)`],
+          ['중립', `${details.neutral_count}명`],
+          ['합계', `${details.total}명`],
+        ].map(([label, value]) => (
+          <div key={label as string} style={{ fontSize: 12 }}>
+            <span style={{ color: '#64748b' }}>{label}: </span>
+            <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{value}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (key === 'macro') {
+    const auctions = (details.upcoming_auctions as Array<{
+      auction_date: string
+      type: string
+      term: string
+      offering_amount_b: number | null
+    }>) ?? []
+    if (auctions.length === 0) {
+      return <div style={{ fontSize: 12, color: '#64748b' }}>국채 경매 일정 없음 또는 수집 중</div>
+    }
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>향후 국채 경매 (일부)</div>
+        {auctions.slice(0, 8).map((a, i) => (
+          <div key={i} style={{ fontSize: 12, color: '#94a3b8' }}>
+            <span style={{ color: '#cbd5e1' }}>{a.auction_date?.slice(0, 10)}</span>
+            {' · '}{a.type} {a.term}
+            {a.offering_amount_b != null && (
+              <span style={{ color: '#64748b' }}> · {a.offering_amount_b}B$</span>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (key === 'market') {
+    const insights = (details.insights as Array<{ level: string; title: string; body: string }>) ?? []
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {insights.slice(0, 4).map((ins, i) => (
+          <div key={i} style={{ fontSize: 12, color: '#94a3b8' }}>
+            <span style={{ color: LEVEL_COLORS[ins.level] ?? '#94a3b8', fontWeight: 600 }}>
+              {ins.title}
+            </span>
+            {' — '}{ins.body}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // 기본: key-value 나열
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+      {Object.entries(details)
+        .filter(([, v]) => v != null && typeof v !== 'object')
+        .map(([k, v]) => (
+          <div key={k} style={{ fontSize: 12 }}>
+            <span style={{ color: '#64748b' }}>{k}: </span>
+            <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{String(v)}</span>
+          </div>
+        ))}
+    </div>
+  )
+}
+
+function SkeletonCard() {
+  return (
+    <div style={{ background: '#111827', border: '1px solid #1e293b', borderRadius: 12, padding: '18px 20px' }}>
+      {[80, 140, 100, 20].map((w, i) => (
+        <div key={i} style={{
+          height: i === 0 ? 16 : i === 1 ? 14 : i === 2 ? 12 : 6,
+          width: `${w}%`,
+          background: '#1e293b',
+          borderRadius: 4,
+          marginBottom: i < 3 ? 10 : 0,
+          animation: 'pulse 1.5s infinite',
+        }} />
+      ))}
+    </div>
+  )
+}
+
+export function Research() {
+  const [activeCategory, setActiveCategory] = useState('전체')
+  const [expandedKey, setExpandedKey] = useState<string | null>(null)
+
+  const { data, loading } = useApi<ResearchData>('/api/research-analysis', 120_000)
+
+  const categories = data?.categories ?? []
+  const filtered = activeCategory === '전체'
+    ? categories
+    : categories.filter(c => c.name === activeCategory)
+
+  return (
+    <div style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto' }}>
+      {/* 헤더 */}
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>리서치</h2>
+        <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
+          수집된 데이터 기반 카테고리별 자동 분석
+          {data?.generated_at && (
+            <span style={{ marginLeft: 8 }}>
+              • {new Date(data.generated_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 갱신
+            </span>
+          )}
+        </p>
       </div>
 
-      {/* 모달 */}
-      {selectedId != null && (
-        <PostModal postId={selectedId} onClose={handleClose} />
+      {/* 카테고리 필터 */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+        {CATEGORIES.map(cat => {
+          const isActive = activeCategory === cat
+          const catColor = cat === '전체' ? '#60a5fa' : (CATEGORY_COLORS[cat] ?? '#94a3b8')
+          const count = cat === '전체' ? categories.length : categories.filter(c => c.name === cat).length
+          return (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              style={{
+                background: isActive ? catColor + '22' : 'transparent',
+                border: `1px solid ${isActive ? catColor : '#334155'}`,
+                borderRadius: 8,
+                padding: '5px 12px',
+                fontSize: 12,
+                color: isActive ? catColor : '#64748b',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                fontWeight: isActive ? 600 : 400,
+              }}
+            >
+              {cat} {count > 0 && <span style={{ opacity: 0.7 }}>({count})</span>}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* 카드 그리드 */}
+      {loading ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+          {[0, 1, 2, 3].map(i => <SkeletonCard key={i} />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 0', color: '#475569' }}>
+          {activeCategory === '전체' ? '분석 결과가 없습니다' : `${activeCategory} 분석 결과가 없습니다`}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+          {filtered.map(cat => (
+            <AnalysisCard
+              key={cat.key}
+              cat={cat}
+              expanded={expandedKey === cat.key}
+              onToggle={() => setExpandedKey(expandedKey === cat.key ? null : cat.key)}
+            />
+          ))}
+        </div>
       )}
-    </>
+    </div>
   )
 }

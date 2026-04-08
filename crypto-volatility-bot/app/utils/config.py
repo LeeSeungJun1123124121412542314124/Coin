@@ -16,8 +16,8 @@ _REQUIRED = ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")
 class Config:
     telegram_bot_token: str
     telegram_chat_id: str
-    binance_api_key: str | None = None
-    binance_api_secret: str | None = None
+    bybit_api_key: str | None = None
+    bybit_api_secret: str | None = None
     symbols: list[str] = field(default_factory=lambda: ["BTC/USDT", "ETH/USDT"])
     analysis_weights: dict[str, float] = field(
         default_factory=lambda: {"onchain": 0.40, "technical": 0.35, "sentiment": 0.25}
@@ -44,14 +44,14 @@ class Config:
                 "Check WEIGHT_ONCHAIN, WEIGHT_TECHNICAL, WEIGHT_SENTIMENT."
             )
 
-        binance_key = os.getenv("BINANCE_API_KEY") or None
-        binance_secret = os.getenv("BINANCE_API_SECRET") or None
+        binance_key = os.getenv("BYBIT_API_KEY") or None
+        binance_secret = os.getenv("BYBIT_API_SECRET") or None
 
         return cls(
             telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN"),  # type: ignore[arg-type]
             telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID"),  # type: ignore[arg-type]
-            binance_api_key=binance_key,
-            binance_api_secret=binance_secret,
+            bybit_api_key=binance_key,
+            bybit_api_secret=binance_secret,
             symbols=symbols,
             analysis_weights={"onchain": w_onchain, "technical": w_technical, "sentiment": w_sentiment},
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),

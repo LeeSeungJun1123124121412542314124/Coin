@@ -43,11 +43,12 @@ def _retry(fn, *args, retries: int = _MAX_RETRIES, **kwargs) -> Any:
 class DataCollector:
     def __init__(
         self,
-        binance_api_key: str | None = None,
-        binance_api_secret: str | None = None,
+        bybit_api_key: str | None = None,
+        bybit_api_secret: str | None = None,
     ) -> None:
-        self._binance_key = binance_api_key
-        self._binance_secret = binance_api_secret
+        self._binance_key = bybit_api_key
+        self._binance_secret = bybit_api_secret
+        self._exchange: ccxt.Exchange | None = None  # 인스턴스 재사용
 
     def _make_exchange(self) -> ccxt.Exchange:
         params: dict[str, Any] = {"enableRateLimit": True}
@@ -56,9 +57,15 @@ class DataCollector:
             params["secret"] = self._binance_secret
         return ccxt.bybit(params)
 
+    def _get_exchange(self) -> ccxt.Exchange:
+        """ccxt Exchange 인스턴스 재사용 (최초 1회만 생성)."""
+        if self._exchange is None:
+            self._exchange = self._make_exchange()
+        return self._exchange
+
     def fetch_ohlcv(self, symbol: str, timeframe: str = "1h", limit: int = 200) -> pd.DataFrame | None:
         def _fetch():
-            exchange = self._make_exchange()
+            exchange = self._get_exchange()  # 재사용
             raw = exchange.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
             df = pd.DataFrame(raw, columns=["timestamp", "open", "high", "low", "close", "volume"])
             df = df.drop(columns=["timestamp"])

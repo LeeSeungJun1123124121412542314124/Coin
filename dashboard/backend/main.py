@@ -11,7 +11,7 @@ import logging
 import sys
 from pathlib import Path
 
-# 루트(e:/Dev/coin)와 crypto-volatility-bot 패키지를 Python 경로에 추가
+# 루트와 crypto-volatility-bot 패키지를 Python 경로에 추가
 _ROOT = Path(__file__).parents[2]
 _BOT_ROOT = _ROOT / "crypto-volatility-bot"
 for _p in (str(_ROOT), str(_BOT_ROOT)):
@@ -163,17 +163,17 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     # 고래 스냅샷 — 2시간마다
     scheduler.add_job(collect_whales, IntervalTrigger(hours=2))
 
-    # 데일리 브리핑 — 매일 00:00 UTC (KST 09:00)
-    scheduler.add_job(
-        lambda: dispatcher.send_daily_briefing(),
-        CronTrigger(hour=0, minute=0),
-    )
+    # TODO: NotificationDispatcher에 send_daily_briefing() 구현 후 활성화
+    # scheduler.add_job(
+    #     lambda: dispatcher.send_daily_briefing(),
+    #     CronTrigger(hour=0, minute=0),
+    # )
 
-    # 주간 성적표 — 매주 일요일 12:00 UTC (KST 21:00)
-    scheduler.add_job(
-        lambda: dispatcher.send_weekly_report(),
-        CronTrigger(day_of_week="sun", hour=12, minute=0),
-    )
+    # TODO: NotificationDispatcher에 send_weekly_report() 구현 후 활성화
+    # scheduler.add_job(
+    #     lambda: dispatcher.send_weekly_report(),
+    #     CronTrigger(day_of_week="sun", hour=12, minute=0),
+    # )
 
 
 def create_application() -> FastAPI:

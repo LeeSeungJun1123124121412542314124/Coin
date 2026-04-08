@@ -57,7 +57,7 @@ async def get_cvd_detail(
         if isinstance(df, Exception) or df is None:
             return JSONResponse({"error": "데이터 조회 실패", "symbol": symbol}, status_code=500)
 
-        fr_val = fr if not isinstance(fr, Exception) else None
+        fr_val = fr.get("funding_rate") if isinstance(fr, dict) else None
 
         chart_data = get_cvd_chart(df)
         score_result = score_symbol(df, None, fr_val)

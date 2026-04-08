@@ -1,8 +1,8 @@
 import { useApi } from '../../hooks/useApi'
 import { Card } from '../shared/Card'
 import {
-  Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  Legend, ComposedChart, Bar,
+  XAxis, YAxis, Tooltip, ResponsiveContainer,
+  Legend, ComposedChart, Bar, ReferenceLine,
 } from 'recharts'
 
 interface Insight {
@@ -101,11 +101,14 @@ export function Market() {
 
   const { insights, key_indicators, vix_btc_history, bot_level } = data
 
-  // VIX vs BTC 이중 축 차트
-  const vixBtcChart = (vix_btc_history || []).map(r => ({
+  // VIX vs BTC — 첫날 대비 % 변화율로 정규화 (같은 스케일 비교)
+  const vixBtcRaw = vix_btc_history || []
+  const vixBase = vixBtcRaw.find(r => r.vix != null)?.vix
+  const btcBase = vixBtcRaw.find(r => r.btc != null)?.btc
+  const vixBtcChart = vixBtcRaw.map(r => ({
     date: r.date?.slice(5),
-    vix: r.vix,
-    btc: r.btc ? Math.round(r.btc / 1000) : null,  // K 단위
+    vix: vixBase && r.vix != null ? +((r.vix / vixBase - 1) * 100).toFixed(1) : null,
+    btc: btcBase && r.btc != null ? +((r.btc / btcBase - 1) * 100).toFixed(1) : null,
   }))
 
   const criticalCount = insights.filter(i => i.level === 'critical').length
@@ -173,23 +176,15 @@ export function Market() {
       {vixBtcChart.length > 0 && (
         <Card>
           <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>
-            VIX vs BTC 가격 (30일, BTC: K 단위)
+            VIX vs BTC 변화율 (30일, 첫날 대비 %)
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <ComposedChart data={vixBtcChart}>
               <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 9 }} interval="preserveStartEnd" />
               <YAxis
-                yAxisId="vix"
-                orientation="left"
                 domain={['auto', 'auto']}
-                tick={{ fill: '#f87171', fontSize: 10 }}
-                width={30}
-              />
-              <YAxis
-                yAxisId="btc"
-                orientation="right"
-                domain={['auto', 'auto']}
-                tick={{ fill: '#f59e0b', fontSize: 10 }}
+                tick={{ fill: '#94a3b8', fontSize: 10 }}
+                tickFormatter={v => `${v}%`}
                 width={40}
               />
               <Tooltip
@@ -197,12 +192,13 @@ export function Market() {
                 labelStyle={{ color: '#94a3b8' }}
                 formatter={(v, name) => {
                   const n = v as number
-                  return name === 'VIX' ? [n?.toFixed(2), 'VIX'] : [`$${n}K`, 'BTC']
+                  return [`${n >= 0 ? '+' : ''}${n}%`, name as string]
                 }}
               />
+              <ReferenceLine y={0} stroke="#334155" strokeDasharray="3 3" />
               <Legend wrapperStyle={{ fontSize: '0.75rem', color: '#94a3b8' }} />
-              <Bar yAxisId="vix" dataKey="vix" fill="rgba(248,113,113,0.3)" name="VIX" barSize={6} />
-              <Line yAxisId="btc" type="monotone" dataKey="btc" stroke="#f59e0b" dot={false} strokeWidth={2} name="BTC" />
+              <Bar dataKey="vix" fill="rgba(248,113,113,0.7)" name="VIX" barSize={8} />
+              <Bar dataKey="btc" fill="rgba(245,158,11,0.7)" name="BTC" barSize={8} />
             </ComposedChart>
           </ResponsiveContainer>
         </Card>

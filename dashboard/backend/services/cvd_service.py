@@ -22,8 +22,11 @@ CVD = 누적 (매수 체결량 - 매도 체결량)
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
+
+from dashboard.backend.cache import cached
 
 import numpy as np
 import pandas as pd
@@ -223,7 +226,7 @@ def score_symbol(
 
         # 5. BB 스퀴즈 (밴드폭 좁음 = 폭발 임박)
         try:
-            bw = bb_result.get("bandwidth_pct", 0.02)
+            bw = bb_result.get("bandwidth", 0.02)
             # 밴드폭 1% 이하 = 스퀴즈 = 방향성 확인 시 강한 진입 신호
             factors["bb_squeeze"] = max(0.0, min(100.0, (0.04 - bw) / 0.04 * 100))
         except Exception:
@@ -296,56 +299,64 @@ def score_symbol(
         return {"score": 0, "grade": "D", "factors": {}, "error": str(e)}
 
 
-async def run_screener(timeframe: str = "4h") -> list[dict]:
-    """전체 SCREENER_SYMBOLS에 대해 스코어 계산 후 정렬."""
-    import asyncio
-    from app.data.data_collector import DataCollector
+async def _process_symbol(symbol: str, timeframe: str, collector, loop) -> dict | None:
+    """단일 종목 CVD 스코어 계산 (병렬 처리용 헬퍼)."""
     from dashboard.backend.collectors.bybit_derivatives import (
         fetch_open_interest, fetch_funding_rate,
     )
+    try:
+        binance_symbol = symbol.replace("/", "").replace("USDT", "USDT")
 
-    loop = asyncio.get_event_loop()
+        df, oi, fr = await asyncio.gather(
+            loop.run_in_executor(None, collector.fetch_ohlcv, symbol, timeframe, 100),
+            fetch_open_interest(binance_symbol),
+            fetch_funding_rate(binance_symbol),
+            return_exceptions=True,
+        )
+
+        if isinstance(df, Exception) or df is None:
+            return None
+
+        oi_change = None
+        if not isinstance(oi, Exception) and oi:
+            oi_change = _get_btc_oi_change_from_db()
+
+        # funding_rate는 dict로 반환됨 → float 추출
+        fr_val = None
+        if isinstance(fr, dict):
+            fr_val = fr.get("funding_rate")
+        elif isinstance(fr, (int, float)):
+            fr_val = fr
+
+        score_result = score_symbol(df, oi_change, fr_val)
+        return {"symbol": symbol, **score_result}
+
+    except Exception as e:
+        logger.error("스크리너 %s 실패: %s", symbol, e)
+        return None
+
+
+@cached(120, "cvd_screener")
+async def run_screener(timeframe: str = "4h") -> list[dict]:
+    """전체 SCREENER_SYMBOLS에 대해 스코어 계산 후 정렬 (병렬 처리)."""
+    from app.data.data_collector import DataCollector
+
+    loop = asyncio.get_running_loop()
     collector = DataCollector()
 
-    results = []
-    for symbol in SCREENER_SYMBOLS:
-        try:
-            binance_symbol = symbol.replace("/", "").replace("USDT", "USDT")
+    # 12개 종목 병렬 처리
+    raw = await asyncio.gather(
+        *[_process_symbol(s, timeframe, collector, loop) for s in SCREENER_SYMBOLS],
+        return_exceptions=True,
+    )
 
-            df, oi, fr = await asyncio.gather(
-                loop.run_in_executor(None, collector.fetch_ohlcv, symbol, timeframe, 100),
-                fetch_open_interest(binance_symbol),
-                fetch_funding_rate(binance_symbol),
-                return_exceptions=True,
-            )
-
-            oi_change = None
-            if not isinstance(oi, Exception) and oi:
-                # OI 3일 변화는 spf_records에서 조회
-                oi_change = _get_oi_change_from_db(symbol)
-
-            fr_val = None
-            if not isinstance(fr, Exception):
-                fr_val = fr
-
-            if isinstance(df, Exception) or df is None:
-                continue
-
-            score_result = score_symbol(df, oi_change, fr_val)
-            results.append({
-                "symbol": symbol,
-                **score_result,
-            })
-
-        except Exception as e:
-            logger.error("스크리너 %s 실패: %s", symbol, e)
-
+    results = [r for r in raw if r is not None and not isinstance(r, Exception)]
     results.sort(key=lambda x: x["score"], reverse=True)
     return results
 
 
-def _get_oi_change_from_db(symbol: str) -> float | None:
-    """spf_records에서 BTC OI 변화율 조회 (BTC 기준으로 대리)."""
+def _get_btc_oi_change_from_db() -> float | None:
+    """spf_records에서 BTC OI 3일 변화율 조회 (시장 대리지표 — BTC 전용)."""
     try:
         from dashboard.backend.db.connection import get_db
         with get_db() as conn:

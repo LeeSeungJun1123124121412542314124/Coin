@@ -103,7 +103,7 @@ export function Alt() {
   const cvdChart = (detail?.chart ?? []).slice(-60).map(p => ({
     date: p.date?.slice(5),
     cvd: p.cvd,
-    close: p.close ? Math.round(p.close) : null,
+    close: p.close ?? null,
   }))
 
   return (
@@ -200,7 +200,7 @@ export function Alt() {
                 <ComposedChart data={cvdChart}>
                   <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 9 }} interval="preserveStartEnd" />
                   <YAxis yAxisId="cvd" orientation="left" tick={{ fill: '#60a5fa', fontSize: 10 }} width={45} />
-                  <YAxis yAxisId="price" orientation="right" tick={{ fill: '#f59e0b', fontSize: 10 }} width={50} />
+                  <YAxis yAxisId="price" orientation="right" domain={['auto', 'auto']} tick={{ fill: '#f59e0b', fontSize: 10 }} width={50} />
                   <Tooltip
                     contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
                     labelStyle={{ color: '#94a3b8' }}

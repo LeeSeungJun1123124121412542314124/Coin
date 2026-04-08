@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Any
 
 import httpx
@@ -27,57 +28,62 @@ async def _post(payload: dict) -> Any:
         return resp.json()
 
 
+def _load_whale_addresses() -> list[dict]:
+    """환경변수 WHALE_ADDRESSES에서 고래 주소 목록 로드.
+
+    형식: 주소:닉네임,주소:닉네임,...
+    """
+    raw = os.environ.get("WHALE_ADDRESSES", "")
+    if not raw:
+        return []
+
+    result = []
+    for i, entry in enumerate(raw.split(",")):
+        entry = entry.strip()
+        if not entry:
+            continue
+        if ":" in entry:
+            addr, _, name = entry.partition(":")
+            result.append({"address": addr.strip(), "display_name": name.strip()})
+        else:
+            result.append({"address": entry, "display_name": None})
+
+    return result
+
+
 @cached(120, "hl_leaderboard")
 async def fetch_leaderboard(top_n: int = 20) -> list[dict]:
-    """Hyperliquid 리더보드 TOP N.
+    """환경변수 WHALE_ADDRESSES에서 고래 주소 로드 후 포지션 조회.
 
-    Returns list of:
-      {rank, address, display_name, account_value, pnl_30d, roi_30d, volume_30d}
+    HL 리더보드 API가 변경되어 환경변수 기반으로 동작.
     """
-    try:
-        data = await _post({
-            "type": "leaderboard",
-            "req": {
-                "timeWindow": "month",
-            },
+    whale_list = _load_whale_addresses()
+    if not whale_list:
+        logger.warning("WHALE_ADDRESSES 환경변수가 비어있음")
+        return []
+
+    whales = whale_list[:top_n]
+    tasks = [fetch_user_positions(w["address"]) for w in whales]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    output = []
+    for i, (whale, pos_data) in enumerate(zip(whales, results)):
+        if isinstance(pos_data, Exception) or pos_data is None:
+            account_value = None
+        else:
+            account_value = pos_data.get("account_value")
+
+        output.append({
+            "rank": i + 1,
+            "address": whale["address"],
+            "display_name": whale["display_name"],
+            "account_value": account_value,
+            "pnl_30d": None,
+            "roi_30d": None,
+            "volume_30d": None,
         })
 
-        leaderboard = data if isinstance(data, list) else data.get("leaderboardRows", [])
-        if not leaderboard:
-            # 구조 변경에 대비한 폴백
-            leaderboard = data.get("rows", [])
-
-        result = []
-        for i, row in enumerate(leaderboard[:top_n]):
-            # HL API 응답 구조 처리
-            account_value = _safe_float(
-                row.get("accountValue") or row.get("equity") or row.get("value")
-            )
-            pnl = _safe_float(
-                row.get("pnl") or row.get("pnl30d") or row.get("monthlyPnl")
-            )
-            roi = _safe_float(
-                row.get("roi") or row.get("roi30d") or row.get("monthlyRoi")
-            )
-            volume = _safe_float(
-                row.get("volume") or row.get("volume30d") or row.get("monthlyVolume")
-            )
-
-            result.append({
-                "rank": i + 1,
-                "address": row.get("ethAddress") or row.get("address") or "",
-                "display_name": row.get("displayName") or row.get("nickname") or None,
-                "account_value": account_value,
-                "pnl_30d": pnl,
-                "roi_30d": roi,
-                "volume_30d": volume,
-            })
-
-        return result
-
-    except Exception as e:
-        logger.error("HL 리더보드 조회 실패: %s", e)
-        return []
+    return output
 
 
 @cached(120, "hl_positions")

@@ -13,8 +13,8 @@ from app.data.data_collector import DataCollector
 @pytest.fixture
 def collector() -> DataCollector:
     return DataCollector(
-        binance_api_key=None,
-        binance_api_secret=None,
+        bybit_api_key=None,
+        bybit_api_secret=None,
     )
 
 
@@ -24,7 +24,7 @@ class TestFetchOhlcv:
         mock_exchange.fetch_ohlcv.return_value = [
             [1_700_000_000_000, 30000, 31000, 29000, 30500, 1000.0]
         ] * 100
-        with patch("app.data.data_collector.ccxt.binance", return_value=mock_exchange):
+        with patch("app.data.data_collector.ccxt.bybit", return_value=mock_exchange):
             df = collector.fetch_ohlcv("BTC/USDT", limit=100)
         assert isinstance(df, pd.DataFrame)
         assert list(df.columns) == ["open", "high", "low", "close", "volume"]
@@ -33,7 +33,7 @@ class TestFetchOhlcv:
     def test_api_error_returns_none(self, collector):
         mock_exchange = MagicMock()
         mock_exchange.fetch_ohlcv.side_effect = Exception("Network error")
-        with patch("app.data.data_collector.ccxt.binance", return_value=mock_exchange):
+        with patch("app.data.data_collector.ccxt.bybit", return_value=mock_exchange):
             result = collector.fetch_ohlcv("BTC/USDT")
         assert result is None
 

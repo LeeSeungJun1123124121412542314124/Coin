@@ -82,8 +82,21 @@ async def get_tga_history():
     tga_data = await fetch_tga(104)
     tga_yoy = calc_tga_yoy(tga_data)
 
-    # BTC 가격 병합 (있으면)
+    # BTC 가격 병합 — 날짜 ±3일 이내 매칭
     btc_map = await _get_btc_weekly_prices()
+    btc_dates = sorted(btc_map.keys())
+
+    def _find_nearest_btc(date_str: str):
+        """TGA 날짜에서 ±3일 이내 가장 가까운 BTC 날짜 찾기."""
+        from datetime import datetime, timedelta
+        target = datetime.strptime(date_str, "%Y-%m-%d")
+        best = None
+        for bd in btc_dates:
+            bd_dt = datetime.strptime(bd, "%Y-%m-%d")
+            if abs((bd_dt - target).days) <= 3:
+                if best is None or abs((bd_dt - target).days) < abs((datetime.strptime(best, "%Y-%m-%d") - target).days):
+                    best = bd
+        return btc_map.get(best) if best else None
 
     result = []
     for row in tga_yoy[-52:]:  # 최근 1년
@@ -91,7 +104,7 @@ async def get_tga_history():
             "date": row["date"],
             "tga_b": row["value"],
             "yoy_pct": row["yoy_pct"],
-            "btc": btc_map.get(row["date"]),
+            "btc": _find_nearest_btc(row["date"]),
         })
 
     return JSONResponse({"history": result})
@@ -162,19 +175,29 @@ def _assess_liquidity_direction(
 
 
 async def _get_btc_weekly_prices() -> dict[str, float]:
-    """BTC 주간 종가 맵 {날짜: 가격}."""
+    """BTC 일봉 → 날짜별 가격 맵. Bybit 200개 제한 → 2회 분할 요청."""
     try:
         import asyncio as _asyncio
+        from datetime import datetime, timezone, timedelta
         from app.data.data_collector import DataCollector
-        loop = _asyncio.get_event_loop()
+        loop = _asyncio.get_running_loop()
         collector = DataCollector()
-        df = await loop.run_in_executor(None, collector.fetch_ohlcv, "BTC/USDT", "1w", 55)
-        if df is None or df.empty:
-            return {}
+        exchange = collector._get_exchange()
+        now = datetime.now(tz=timezone.utc)
+
+        # 2회 분할: 최근 200일 + 그 이전 200일
+        since_1 = int((now - timedelta(days=400)).timestamp() * 1000)
+        since_2 = int((now - timedelta(days=200)).timestamp() * 1000)
+
+        raw_1, raw_2 = await _asyncio.gather(
+            loop.run_in_executor(None, lambda: exchange.fetch_ohlcv("BTC/USDT", timeframe="1d", since=since_1, limit=200)),
+            loop.run_in_executor(None, lambda: exchange.fetch_ohlcv("BTC/USDT", timeframe="1d", since=since_2, limit=200)),
+        )
+
         result = {}
-        for idx, row in df.iterrows():
-            date_str = idx.date().isoformat() if hasattr(idx, "date") else str(idx)[:10]
-            result[date_str] = round(float(row["close"]), 2)
+        for candle in (raw_1 or []) + (raw_2 or []):
+            date_str = datetime.fromtimestamp(candle[0] / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
+            result[date_str] = round(float(candle[4]), 2)
         return result
     except Exception:
         return {}
