@@ -33,8 +33,8 @@ def _make_config_mock():
     cfg = MagicMock()
     cfg.telegram_bot_token = "test-token"
     cfg.telegram_chat_id = "123"
-    cfg.binance_api_key = None
-    cfg.binance_api_secret = None
+    cfg.bybit_api_key = None
+    cfg.bybit_api_secret = None
     cfg.symbols = ["BTC/USDT"]
     cfg.analysis_weights = {"onchain": 0.40, "technical": 0.35, "sentiment": 0.25}
     cfg.log_level = "INFO"

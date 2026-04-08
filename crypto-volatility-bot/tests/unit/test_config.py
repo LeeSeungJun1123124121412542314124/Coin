@@ -108,5 +108,5 @@ class TestConfigFromEnv:
 
         config = Config.from_env()
 
-        assert config.binance_api_key is None
-        assert config.binance_api_secret is None
+        assert config.bybit_api_key is None
+        assert config.bybit_api_secret is None

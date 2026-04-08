@@ -34,8 +34,8 @@ async def run_analysis(config: Config) -> tuple[AnalysisResults, AnalysisErrors]
       - errors: list of (symbol, error_message) for failed symbols
     """
     collector = DataCollector(
-        binance_api_key=config.binance_api_key,
-        binance_api_secret=config.binance_api_secret,
+        bybit_api_key=config.bybit_api_key,
+        bybit_api_secret=config.bybit_api_secret,
     )
     aggregator = ScoreAggregator(weights=config.analysis_weights)
 
