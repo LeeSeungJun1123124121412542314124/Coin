@@ -1,7 +1,6 @@
 """Bybit V5 공개 API — OI, FR (Binance 451 대체).
 
-Railway US 서버에서 api.bybit.com도 CloudFront 지역 차단(403)되므로
-대체 도메인 api.bytick.com 사용.
+Railway US 서버에서는 api.bybit.com이 차단되므로 EU/아시아 리전 필요.
 """
 
 from __future__ import annotations
@@ -13,7 +12,7 @@ from dashboard.backend.cache import cached
 
 logger = logging.getLogger(__name__)
 
-_BASE = "https://api.bytick.com"  # api.bybit.com → Railway US CloudFront 403 차단 우회
+_BASE = "https://api.bybit.com"
 
 # 모듈 레벨 httpx 클라이언트 — TCP/TLS 연결 재사용
 _http_client: httpx.AsyncClient | None = None
