@@ -23,7 +23,9 @@ class TelegramNotifier:
         """메시지를 전송한다. 성공 시 True, 실패 시 False 반환."""
         for attempt in range(_MAX_RETRIES):
             try:
-                await self._bot.send_message(chat_id=self._chat_id, text=text)
+                await self._bot.send_message(
+                    chat_id=self._chat_id, text=text, parse_mode="Markdown",
+                )
                 return True
             except TelegramError as e:
                 if attempt == _MAX_RETRIES - 1:

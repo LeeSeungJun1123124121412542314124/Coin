@@ -163,17 +163,28 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     # 고래 스냅샷 — 2시간마다
     scheduler.add_job(collect_whales, IntervalTrigger(hours=2))
 
-    # TODO: NotificationDispatcher에 send_daily_briefing() 구현 후 활성화
-    # scheduler.add_job(
-    #     lambda: dispatcher.send_daily_briefing(),
-    #     CronTrigger(hour=0, minute=0),
-    # )
+    # 봇 분석 — 매시간 이벤트 알림 (긴급/고래)
+    async def _hourly_alerts():
+        try:
+            results, errors = await run_analysis(config)
+            await dispatcher.dispatch_event_alerts(results, errors)
+            _save_analysis_history(results)
+            logger.info("매시간 분석 완료: %d개 종목", len(results))
+        except Exception as e:
+            logger.error("매시간 분석 실패: %s", e, exc_info=True)
 
-    # TODO: NotificationDispatcher에 send_weekly_report() 구현 후 활성화
-    # scheduler.add_job(
-    #     lambda: dispatcher.send_weekly_report(),
-    #     CronTrigger(day_of_week="sun", hour=12, minute=0),
-    # )
+    scheduler.add_job(_hourly_alerts, IntervalTrigger(hours=1))
+
+    # 봇 리포트 — 12시간마다 전체 리포트 발송
+    async def _periodic_report():
+        try:
+            results, errors = await run_analysis(config)
+            await dispatcher.dispatch_periodic_report(results, errors)
+            logger.info("정기 리포트 발송: %d개 종목", len(results))
+        except Exception as e:
+            logger.error("정기 리포트 실패: %s", e, exc_info=True)
+
+    scheduler.add_job(_periodic_report, CronTrigger(hour="0,12", minute=5))
 
 
 def create_application() -> FastAPI:
