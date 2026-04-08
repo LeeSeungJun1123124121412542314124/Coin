@@ -342,11 +342,10 @@ async def run_screener(timeframe: str = "4h") -> list[dict]:
     from app.data.data_collector import DataCollector
 
     loop = asyncio.get_running_loop()
-    collector = DataCollector()
 
-    # 12개 종목 병렬 처리
+    # 종목별 DataCollector 생성 (ccxt exchange는 스레드 안전하지 않음)
     raw = await asyncio.gather(
-        *[_process_symbol(s, timeframe, collector, loop) for s in SCREENER_SYMBOLS],
+        *[_process_symbol(s, timeframe, DataCollector(), loop) for s in SCREENER_SYMBOLS],
         return_exceptions=True,
     )
 
