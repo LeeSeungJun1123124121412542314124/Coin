@@ -31,13 +31,13 @@ class MessageFormatter:
         d = result.details
         rec = _RECOMMENDATIONS.get(result.alert_level, "")
         lines = [
-            f"📊 *변동성 분석 리포트* — {symbol}",
+            f"📊 <b>변동성 분석 리포트</b> — {symbol}",
             f"🕐 {ts}",
             "",
-            f"**종합 점수**: {result.final_score:.1f}/100",
-            f"**알림 레벨**: {result.alert_level}",
+            f"<b>종합 점수</b>: {result.final_score:.1f}/100",
+            f"<b>알림 레벨</b>: {result.alert_level}",
             "",
-            "**세부 점수**",
+            "<b>세부 점수</b>",
             f"  • 온체인:    {d.get('onchain_score', 0):.1f} ({d.get('onchain_signal','')})",
             f"  • 기술적:    {d.get('technical_score', 0):.1f} ({d.get('technical_signal','')})",
             f"  • 감성:      {d.get('sentiment_score', 0):.1f} ({d.get('sentiment_signal','')})",
@@ -49,9 +49,9 @@ class MessageFormatter:
     def emergency_alert(self, symbol: str, result: AggregatedResult) -> str:
         ts = result.timestamp.strftime("%Y-%m-%d %H:%M UTC")
         lines = [
-            "🚨 *긴급 변동성 경보* 🚨",
+            "🚨 <b>긴급 변동성 경보</b> 🚨",
             f"심볼: {symbol}",
-            f"점수: **{result.final_score:.1f}/100** (EMERGENCY)",
+            f"점수: <b>{result.final_score:.1f}/100</b> (EMERGENCY)",
             f"시간: {ts}",
             "",
             _RECOMMENDATIONS["EMERGENCY"],
@@ -62,7 +62,7 @@ class MessageFormatter:
         ts = result.timestamp.strftime("%Y-%m-%d %H:%M UTC")
         inflow = result.details.get("onchain_score", "N/A")
         lines = [
-            "🐋 *고래 활동 감지*",
+            "🐋 <b>고래 활동 감지</b>",
             f"심볼: {symbol}",
             f"온체인 점수: {inflow}",
             f"시간: {ts}",
@@ -73,7 +73,7 @@ class MessageFormatter:
 
     def daily_summary(self, symbol: str, stats: dict[str, Any]) -> str:
         lines = [
-            f"📅 *일간 변동성 요약* — {symbol}",
+            f"📅 <b>일간 변동성 요약</b> — {symbol}",
             f"날짜: {stats.get('date', 'N/A')}",
             "",
             f"  최고 점수: {stats.get('high', 0):.1f}",

@@ -24,7 +24,7 @@ class TelegramNotifier:
         for attempt in range(_MAX_RETRIES):
             try:
                 await self._bot.send_message(
-                    chat_id=self._chat_id, text=text, parse_mode="Markdown",
+                    chat_id=self._chat_id, text=text, parse_mode="HTML",
                 )
                 return True
             except TelegramError as e:
