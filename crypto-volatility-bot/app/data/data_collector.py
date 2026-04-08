@@ -1,4 +1,4 @@
-"""DataCollector — fetches OHLCV, Fear & Greed, and Coin Metrics onchain data."""
+"""DataCollector — fetches OHLCV, Fear & Greed, Coin Metrics onchain, and Bybit OI/FR."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ import requests
 
 _FEAR_GREED_URL = "https://api.alternative.me/fng/?limit=1"
 _COINMETRICS_BASE = "https://community-api.coinmetrics.io/v4"
+_BYBIT_BASE = "https://api.bybit.com"
 _MAX_RETRIES = 3
 _BACKOFF_BASE = 1.0
 
@@ -111,6 +112,58 @@ class DataCollector:
                 "exchange_outflow": outflow,
                 "whale_transaction_volume": whale_proxy / 1000,  # 정규화
                 "dormant_whale_activated": False,
+            }
+
+        return _retry(_fetch)
+
+    def fetch_derivatives(self, symbol: str = "BTC/USDT") -> dict[str, Any] | None:
+        """Bybit V5에서 OI(미결제약정) 현재값 + 3일 전 값, FR(펀딩레이트) 수집.
+
+        Returns:
+            {"oi_current": float, "oi_3d_ago": float, "funding_rate": float}
+            실패 시 None (파이프라인에서 NEUTRAL 폴백 처리)
+        """
+        bybit_symbol = symbol.replace("/", "").replace("-", "")  # BTC/USDT → BTCUSDT
+
+        def _fetch():
+            # OI 히스토리 (최근 4일치, 1d 간격)
+            oi_resp = requests.get(
+                f"{_BYBIT_BASE}/v5/market/open-interest",
+                params={
+                    "category": "linear",
+                    "symbol": bybit_symbol,
+                    "intervalTime": "1d",
+                    "limit": 4,
+                },
+                timeout=10,
+            )
+            oi_resp.raise_for_status()
+            oi_items = oi_resp.json().get("result", {}).get("list", [])
+            if len(oi_items) < 2:
+                return None
+
+            # Bybit 응답은 최신순 → items[0] = 최신, items[-1] = 가장 오래된
+            oi_current = float(oi_items[0]["openInterest"])
+            oi_3d_ago = float(oi_items[-1]["openInterest"])
+
+            # FR 최근값
+            fr_resp = requests.get(
+                f"{_BYBIT_BASE}/v5/market/funding/history",
+                params={
+                    "category": "linear",
+                    "symbol": bybit_symbol,
+                    "limit": 1,
+                },
+                timeout=10,
+            )
+            fr_resp.raise_for_status()
+            fr_items = fr_resp.json().get("result", {}).get("list", [])
+            funding_rate = float(fr_items[0]["fundingRate"]) if fr_items else 0.0
+
+            return {
+                "oi_current": oi_current,
+                "oi_3d_ago": oi_3d_ago,
+                "funding_rate": funding_rate,
             }
 
         return _retry(_fetch)

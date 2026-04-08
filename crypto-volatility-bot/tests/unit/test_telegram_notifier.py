@@ -23,7 +23,7 @@ class TestSendMessage:
         mock_bot = AsyncMock()
         notifier._bot = mock_bot
         result = await notifier.send_message("Hello")
-        mock_bot.send_message.assert_called_once_with(chat_id="123456", text="Hello")
+        mock_bot.send_message.assert_called_once_with(chat_id="123456", text="Hello", parse_mode="HTML")
         assert result is True
 
     @pytest.mark.asyncio

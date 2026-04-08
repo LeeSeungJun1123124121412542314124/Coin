@@ -15,9 +15,10 @@ class TestAlertCooldown:
         cooldown.set("BTC/USDT:emergency")
         assert cooldown.is_active("BTC/USDT:emergency") is True
 
-    def test_expires_when_seconds_zero(self):
-        cooldown = AlertCooldown(seconds=0.0)
-        cooldown.set("BTC/USDT:emergency")
+    def test_not_active_with_zero_cooldown(self):
+        # 쿨다운 타입 지정 없이 is_active 호출 시 기본 쿨다운(1h) 적용
+        # seconds 파라미터 제거됨 — 유형별 쿨다운으로 대체
+        cooldown = AlertCooldown()
         assert cooldown.is_active("BTC/USDT:emergency") is False
 
     def test_symbols_independent(self):

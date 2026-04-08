@@ -53,13 +53,13 @@ class TestPeriodicReport:
         assert len(msg) <= 4096
 
 
-class TestEmergencyAlert:
-    def test_contains_emergency_header(self, formatter):
-        msg = formatter.emergency_alert("BTC/USDT", _agg(score=85, alert_level="EMERGENCY"))
-        assert "EMERGENCY" in msg.upper() or "긴급" in msg
+class TestConfirmedHighAlert:
+    def test_contains_high_header(self, formatter):
+        msg = formatter.confirmed_high_alert("BTC/USDT", _agg(score=85, alert_level="CONFIRMED_HIGH"))
+        assert "HIGH" in msg.upper() or "🚨" in msg
 
     def test_within_telegram_limit(self, formatter):
-        msg = formatter.emergency_alert("BTC/USDT", _agg(score=85, alert_level="EMERGENCY"))
+        msg = formatter.confirmed_high_alert("BTC/USDT", _agg(score=85, alert_level="CONFIRMED_HIGH"))
         assert len(msg) <= 4096
 
 

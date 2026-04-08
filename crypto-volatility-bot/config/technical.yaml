@@ -35,8 +35,8 @@ indicators:
       min: 0.2
       max: 5.0
 signals:
-  high_threshold: 72
-  medium_threshold: 58
+  high_threshold: 85
+  medium_threshold: 65
   max_boost: 35
   min_base_for_signal: 46
   min_base_for_high: 48

@@ -1,9 +1,9 @@
-"""Tests for NotificationDispatcher — event alerts and periodic reports."""
+"""Tests for NotificationDispatcher — 새 alert_level 체계."""
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -11,22 +11,19 @@ from app.analyzers.score_aggregator import AggregatedResult
 from app.notification_dispatcher import NotificationDispatcher
 
 
-def _make_config(threshold: int = 80):
-    """Create a minimal config-like object for testing."""
-
+def _make_config():
     class _FakeConfig:
         telegram_bot_token = "fake-token"
         telegram_chat_id = "fake-chat-id"
+        emergency_threshold = 80  # 레거시 필드, 현재는 alert_level로 판단
 
-    cfg = _FakeConfig()
-    cfg.emergency_threshold = threshold
-    return cfg
+    return _FakeConfig()
 
 
 def _make_result(
     score: float = 50.0,
     alert_score: float | None = None,
-    alert_level: str = "MEDIUM",
+    alert_level: str = "LOW",
     whale_alert: bool = False,
 ) -> AggregatedResult:
     return AggregatedResult(
@@ -40,7 +37,7 @@ def _make_result(
             "technical_score": score * 0.35,
             "sentiment_score": score * 0.25,
             "onchain_signal": "NEUTRAL",
-            "technical_signal": "NEUTRAL",
+            "technical_signal": "HIGH",
             "sentiment_signal": "NEUTRAL",
         },
     )
@@ -62,17 +59,42 @@ class TestDispatchEventAlerts:
         dispatcher._notifier.send_message.assert_called_once_with("⚠️ 데이터 수신 실패")
 
     @pytest.mark.asyncio
-    async def test_sends_emergency_alert(self, dispatcher):
-        result = _make_result(score=85.0, alert_level="EMERGENCY")
+    async def test_sends_confirmed_high_alert(self, dispatcher):
+        result = _make_result(score=90.0, alert_level="CONFIRMED_HIGH")
         results = [("BTC/USDT", result)]
         await dispatcher.dispatch_event_alerts(results=results, errors=[])
         dispatcher._notifier.send_message.assert_called_once()
         msg = dispatcher._notifier.send_message.call_args[0][0]
-        assert "긴급" in msg or "🚨" in msg
+        assert "HIGH" in msg.upper() or "🚨" in msg
 
     @pytest.mark.asyncio
-    async def test_no_emergency_below_threshold(self, dispatcher):
-        result = _make_result(score=70.0, alert_level="HIGH")
+    async def test_sends_high_alert(self, dispatcher):
+        result = _make_result(score=88.0, alert_level="HIGH")
+        results = [("BTC/USDT", result)]
+        await dispatcher.dispatch_event_alerts(results=results, errors=[])
+        dispatcher._notifier.send_message.assert_called_once()
+        msg = dispatcher._notifier.send_message.call_args[0][0]
+        assert "경보" in msg or "📊" in msg
+
+    @pytest.mark.asyncio
+    async def test_sends_liquidation_risk_alert(self, dispatcher):
+        result = _make_result(score=40.0, alert_level="LIQUIDATION_RISK")
+        results = [("BTC/USDT", result)]
+        await dispatcher.dispatch_event_alerts(results=results, errors=[])
+        dispatcher._notifier.send_message.assert_called_once()
+        msg = dispatcher._notifier.send_message.call_args[0][0]
+        assert "청산" in msg or "⚡" in msg
+
+    @pytest.mark.asyncio
+    async def test_no_alert_for_medium(self, dispatcher):
+        result = _make_result(score=70.0, alert_level="MEDIUM")
+        results = [("BTC/USDT", result)]
+        await dispatcher.dispatch_event_alerts(results=results, errors=[])
+        dispatcher._notifier.send_message.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_no_alert_for_low(self, dispatcher):
+        result = _make_result(score=30.0, alert_level="LOW")
         results = [("BTC/USDT", result)]
         await dispatcher.dispatch_event_alerts(results=results, errors=[])
         dispatcher._notifier.send_message.assert_not_called()
@@ -94,29 +116,11 @@ class TestDispatchEventAlerts:
         dispatcher._notifier.send_message.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_emergency_triggered_by_alert_score_not_final_score(self, dispatcher):
-        # final_score가 낮아도 alert_score(기술적)가 임계값 이상이면 긴급 알림 발송
-        result = _make_result(score=50.0, alert_score=85.0, alert_level="MEDIUM")
+    async def test_confirmed_high_cooldown_prevents_duplicate(self, dispatcher):
+        result = _make_result(score=90.0, alert_level="CONFIRMED_HIGH")
         results = [("BTC/USDT", result)]
-        await dispatcher.dispatch_event_alerts(results=results, errors=[])
-        dispatcher._notifier.send_message.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_no_emergency_when_alert_score_below_threshold(self, dispatcher):
-        # final_score가 높아도 alert_score(기술적)가 임계값 미만이면 긴급 알림 없음
-        result = _make_result(score=90.0, alert_score=70.0, alert_level="EMERGENCY")
-        results = [("BTC/USDT", result)]
-        await dispatcher.dispatch_event_alerts(results=results, errors=[])
-        dispatcher._notifier.send_message.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_emergency_cooldown_prevents_duplicate(self, dispatcher):
-        result = _make_result(score=85.0, alert_level="EMERGENCY")
-        results = [("BTC/USDT", result)]
-        # First call — alert sent
         await dispatcher.dispatch_event_alerts(results=results, errors=[])
         assert dispatcher._notifier.send_message.call_count == 1
-        # Second call — cooldown active, no additional alert
         await dispatcher.dispatch_event_alerts(results=results, errors=[])
         assert dispatcher._notifier.send_message.call_count == 1
 
@@ -138,14 +142,6 @@ class TestDispatchPeriodicReport:
             ("ETH/USDT", _make_result(score=40.0)),
         ]
         await dispatcher.dispatch_periodic_report(results=results, errors=[])
-        assert dispatcher._notifier.send_message.call_count == 2
-
-    @pytest.mark.asyncio
-    async def test_report_also_sends_emergency(self, dispatcher):
-        result = _make_result(score=85.0, alert_level="EMERGENCY")
-        results = [("BTC/USDT", result)]
-        await dispatcher.dispatch_periodic_report(results=results, errors=[])
-        # 1 periodic report + 1 emergency alert = 2 messages
         assert dispatcher._notifier.send_message.call_count == 2
 
     @pytest.mark.asyncio

@@ -9,6 +9,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from app.analyzers.base import AnalysisResult
+from app.analyzers.derivatives_analyzer import DerivativesAnalyzer, DerivativesData
 from app.analyzers.onchain_analyzer import OnchainAnalyzer, OnchainDataUnavailableError
 from app.analyzers.score_aggregator import AggregatedResult, ScoreAggregator
 from app.analyzers.sentiment_analyzer import SentimentAnalyzer
@@ -69,12 +70,13 @@ def _analyze_symbol(
     fear_greed: int | None,
 ) -> tuple[AggregatedResult | None, str | None]:
     """Analyze a single symbol. Returns (result, error_message)."""
-    # 1. Fetch onchain data — optional; failure uses neutral score (긴급 알림은 기술적 분석만 사용)
-    onchain_raw = collector.fetch_onchain_data(coin)
     onchain_analyzer = OnchainAnalyzer()
     technical_analyzer = TechnicalAnalyzer()
     sentiment_analyzer = SentimentAnalyzer()
+    derivatives_analyzer = DerivativesAnalyzer()
 
+    # 1. Onchain — 실패 시 NEUTRAL 폴백
+    onchain_raw = collector.fetch_onchain_data(coin)
     _neutral_onchain = AnalysisResult(score=50.0, signal="NEUTRAL", details={"whale_alert": False}, source="onchain")
     if onchain_raw is None:
         logger.warning("CoinMetrics data unavailable for %s, using neutral onchain score", symbol)
@@ -86,7 +88,7 @@ def _analyze_symbol(
             logger.warning("Onchain analysis failed for %s: %s, using neutral", symbol, e)
             onchain_result = _neutral_onchain
 
-    # 2. Fetch OHLCV — optional; failure uses neutral technical score
+    # 2. OHLCV 기술적 분석 — 실패 시 NEUTRAL 폴백
     ohlcv_df = collector.fetch_ohlcv(symbol)
     ohlcv_4h_df = collector.fetch_ohlcv(symbol, timeframe="4h", limit=50)
 
@@ -96,21 +98,41 @@ def _analyze_symbol(
         logger.warning("No OHLCV data for %s, using neutral technical score", symbol)
         technical_result = AnalysisResult(score=50.0, signal="NEUTRAL", source="technical")
 
+    # 3. 감성 분석
     sentiment_result = sentiment_analyzer.analyze(
         {"fear_greed_index": fear_greed} if fear_greed is not None else None
     )
 
-    # 4. Aggregate
+    # 4. 파생상품 분석 (OI + FR) — 실패 시 None (NEUTRAL 처리됨)
+    derivatives_result: AnalysisResult | None = None
+    deriv_raw = collector.fetch_derivatives(symbol)
+    if deriv_raw is not None:
+        try:
+            deriv_data = DerivativesData(
+                oi_current=deriv_raw["oi_current"],
+                oi_3d_ago=deriv_raw["oi_3d_ago"],
+                funding_rate=deriv_raw["funding_rate"],
+                symbol=symbol,
+            )
+            derivatives_result = derivatives_analyzer.analyze(deriv_data)
+        except Exception as e:
+            logger.warning("Derivatives analysis failed for %s: %s", symbol, e)
+    else:
+        logger.debug("Derivatives data unavailable for %s, skipping", symbol)
+
+    # 5. 종합 집계
     aggregated = aggregator.aggregate(
         onchain=onchain_result,
         technical=technical_result,
         sentiment=sentiment_result,
+        derivatives=derivatives_result,
     )
     logger.info(
-        "Analysis complete for %s: score=%.1f level=%s",
+        "Analysis complete for %s: score=%.1f level=%s deriv=%s",
         symbol,
         aggregated.final_score,
         aggregated.alert_level,
+        aggregated.details.get("derivatives_signal", "N/A"),
     )
 
     return aggregated, None

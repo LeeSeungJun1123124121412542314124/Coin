@@ -57,21 +57,27 @@ class TestScoreAggregator:
         )
         assert result.final_score >= 0
 
-    def test_alert_level_emergency(self, aggregator):
+    def test_alert_level_high_without_derivatives(self, aggregator):
+        # 기술적 점수 >= 85, 파생상품 없음 → HIGH
         result = aggregator.aggregate(
             onchain=_result(100), technical=_result(100), sentiment=_result(100)
         )
-        assert result.alert_level == "EMERGENCY"
-
-    def test_alert_level_high(self, aggregator):
-        result = aggregator.aggregate(
-            onchain=_result(79), technical=_result(79), sentiment=_result(79)
-        )
         assert result.alert_level == "HIGH"
 
-    def test_alert_level_medium(self, aggregator):
+    def test_alert_level_confirmed_high_with_derivatives(self, aggregator):
+        # 기술적 >= 85 + OI_SURGE → CONFIRMED_HIGH
+        from app.analyzers.base import AnalysisResult
+        deriv = AnalysisResult(score=65, signal="OI_SURGE", details={})
         result = aggregator.aggregate(
-            onchain=_result(50), technical=_result(50), sentiment=_result(50)
+            onchain=_result(100), technical=_result(100), sentiment=_result(100),
+            derivatives=deriv,
+        )
+        assert result.alert_level == "CONFIRMED_HIGH"
+
+    def test_alert_level_medium(self, aggregator):
+        # 기술적 점수 65-84 → MEDIUM
+        result = aggregator.aggregate(
+            onchain=_result(80), technical=_result(70), sentiment=_result(80)
         )
         assert result.alert_level == "MEDIUM"
 
@@ -115,18 +121,16 @@ class TestScoreAggregator:
         )
         assert result.alert_score == pytest.approx(30.0)
 
-    def test_boundary_79_is_high_not_emergency(self, aggregator):
-        # Score exactly 79 should be HIGH
-        score = 79
+    def test_boundary_84_is_medium(self, aggregator):
+        # 기술적 점수 84 → MEDIUM (HIGH 임계값 85 미만)
         result = aggregator.aggregate(
-            onchain=_result(score), technical=_result(score), sentiment=_result(score)
+            onchain=_result(84), technical=_result(84), sentiment=_result(84)
+        )
+        assert result.alert_level == "MEDIUM"
+
+    def test_boundary_85_is_high(self, aggregator):
+        # 기술적 점수 85 → HIGH (파생상품 없음)
+        result = aggregator.aggregate(
+            onchain=_result(85), technical=_result(85), sentiment=_result(85)
         )
         assert result.alert_level == "HIGH"
-
-    def test_boundary_80_is_emergency(self, aggregator):
-        # Score exactly 80 should be EMERGENCY
-        score = 80
-        result = aggregator.aggregate(
-            onchain=_result(score), technical=_result(score), sentiment=_result(score)
-        )
-        assert result.alert_level == "EMERGENCY"
