@@ -38,7 +38,7 @@ async def get_cvd_detail(
 ):
     """특정 종목 CVD 차트 + 스코어."""
     try:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         from app.data.data_collector import DataCollector
         from dashboard.backend.collectors.bybit_derivatives import (
             fetch_open_interest, fetch_funding_rate,
