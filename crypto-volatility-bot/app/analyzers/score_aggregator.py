@@ -79,6 +79,12 @@ class ScoreAggregator:
             "onchain_signal": onchain.signal,
             "technical_signal": technical.signal,
             "sentiment_signal": sentiment.signal,
+            # 메시지 포맷터 폴백 품질을 위해 핵심 detail 키를 그대로 전달
+            "flow_ratio": onchain.details.get("flow_ratio"),
+            "whale_volume": onchain.details.get("whale_volume"),
+            "fear_greed_index": sentiment.details.get("fear_greed_index"),
+            "base_score": technical.details.get("base_score"),
+            "signal_boost": technical.details.get("signal_boost"),
         }
         if derivatives:
             details["derivatives_signal"] = deriv_signal

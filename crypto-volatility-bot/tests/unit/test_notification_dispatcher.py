@@ -39,6 +39,16 @@ def _make_result(
             "onchain_signal": "NEUTRAL",
             "technical_signal": "HIGH",
             "sentiment_signal": "NEUTRAL",
+            "flow_ratio": 1.2,
+            "fear_greed_index": 48,
+            "base_score": 40.0,
+            "signal_boost": {
+                "total_boost": 8.0,
+                "active_boosters": {"rsi_extreme": 5.0, "bb_expansion": 3.0},
+            },
+            "derivatives_signal": "NEUTRAL",
+            "oi_3d_chg_pct": 2.1,
+            "funding_rate": 0.000071,
         },
     )
 
@@ -133,7 +143,9 @@ class TestDispatchPeriodicReport:
         await dispatcher.dispatch_periodic_report(results=results, errors=[])
         dispatcher._notifier.send_message.assert_called_once()
         msg = dispatcher._notifier.send_message.call_args[0][0]
-        assert "변동성 분석 리포트" in msg
+        assert "변동성 정기 리포트" in msg
+        assert "<b>한줄 요약</b>" in msg
+        assert "<b>트리거 근거</b>" in msg
 
     @pytest.mark.asyncio
     async def test_sends_report_per_symbol(self, dispatcher):
