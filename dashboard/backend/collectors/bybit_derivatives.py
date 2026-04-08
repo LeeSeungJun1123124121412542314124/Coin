@@ -1,7 +1,7 @@
 """Bybit V5 공개 API — OI, FR (Binance 451 대체).
 
-Railway US West 서버에서 Binance fapi는 HTTP 451로 차단되므로
-동일한 인터페이스를 Bybit V5 API로 구현한다.
+Railway US 서버에서 api.bybit.com도 CloudFront 지역 차단(403)되므로
+대체 도메인 api.bytick.com 사용.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from dashboard.backend.cache import cached
 
 logger = logging.getLogger(__name__)
 
-_BASE = "https://api.bybit.com"
+_BASE = "https://api.bytick.com"  # api.bybit.com → Railway US CloudFront 403 차단 우회
 
 # 모듈 레벨 httpx 클라이언트 — TCP/TLS 연결 재사용
 _http_client: httpx.AsyncClient | None = None

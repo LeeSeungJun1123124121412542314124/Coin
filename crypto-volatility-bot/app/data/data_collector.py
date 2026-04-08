@@ -51,7 +51,10 @@ class DataCollector:
         self._exchange: ccxt.Exchange | None = None  # 인스턴스 재사용
 
     def _make_exchange(self) -> ccxt.Exchange:
-        params: dict[str, Any] = {"enableRateLimit": True}
+        params: dict[str, Any] = {
+            "enableRateLimit": True,
+            "hostname": "bytick.com",  # api.bybit.com은 Railway US에서 CloudFront 403 차단
+        }
         if self._binance_key:
             params["apiKey"] = self._binance_key
             params["secret"] = self._binance_secret
