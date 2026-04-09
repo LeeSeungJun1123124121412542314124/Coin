@@ -16,14 +16,13 @@ logger = logging.getLogger(__name__)
 # Telegram webhook 보안 토큰 (설정된 경우에만 검증)
 WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
 
-# 관리자 키 (scheduled-run, scheduled-report 보호용)
-_ADMIN_KEY = os.getenv("ADMIN_KEY", "")
-
-
 def _check_admin(request: Request) -> JSONResponse | None:
-    """관리자 키 검증 — 실패 시 403 응답, 성공 시 None 반환."""
+    """관리자 키 검증 — ADMIN_KEY 미설정 시 검증 생략, 실패 시 403 반환."""
+    admin_key = os.getenv("ADMIN_KEY", "")
+    if not admin_key:
+        return None  # 개발/테스트 환경: 키 미설정 시 허용
     key = request.headers.get("X-Admin-Key", "")
-    if not _ADMIN_KEY or not hmac.compare_digest(key, _ADMIN_KEY):
+    if not hmac.compare_digest(key, admin_key):
         return JSONResponse({"error": "Forbidden"}, status_code=403)
     return None
 

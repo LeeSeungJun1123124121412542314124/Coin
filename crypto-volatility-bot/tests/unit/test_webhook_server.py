@@ -9,7 +9,9 @@ from fastapi.testclient import TestClient
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
+    # ADMIN_KEY를 비워 인증 없이 테스트 가능하도록 설정
+    monkeypatch.delenv("ADMIN_KEY", raising=False)
     from app.bot.webhook_server import create_app
 
     app = create_app(

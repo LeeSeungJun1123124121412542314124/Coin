@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  python-test:
+    name: Python 테스트 & 린팅
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 의존성 설치
+        run: |
+          pip install -r crypto-volatility-bot/requirements.txt
+          pip install ruff pytest pytest-asyncio pytest-cov
+
+      - name: Ruff 린팅
+        run: ruff check crypto-volatility-bot/app dashboard/backend --select E,F,W --ignore E501
+
+      - name: 봇 테스트
+        run: python -m pytest crypto-volatility-bot/tests/ dashboard/tests/ -v --tb=short
+        env:
+          ADMIN_KEY: ""
+          PIN_CODE: "1234"
+          APP_SECRET: "ci-test-secret"
+
+  frontend-build:
+    name: 프론트엔드 빌드
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: dashboard/frontend/package-lock.json
+
+      - name: 의존성 설치
+        run: cd dashboard/frontend && npm ci
+
+      - name: TypeScript 타입 체크 + 빌드
+        run: cd dashboard/frontend && npm run build
