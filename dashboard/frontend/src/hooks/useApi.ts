@@ -10,9 +10,15 @@ interface UseApiResult<T> {
   refetch: () => void
 }
 
-/** 지정 ms 동안 대기 */
-function sleep(ms: number) {
-  return new Promise<void>(resolve => setTimeout(resolve, ms))
+/** 지정 ms 동안 대기 — abort 신호 수신 시 즉시 거부 */
+function sleep(ms: number, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const id = setTimeout(resolve, ms)
+    signal.addEventListener('abort', () => {
+      clearTimeout(id)
+      reject(new DOMException('', 'AbortError'))
+    }, { once: true })
+  })
 }
 
 /** AbortError 여부 판별 */
@@ -71,7 +77,7 @@ export function useApi<T>(path: string | null, refreshMs?: number): UseApiResult
         }
 
         // 네트워크 오류: 지수 백오프 후 재시도 (1s, 2s)
-        await sleep(1000 * (attempt + 1))
+        await sleep(1000 * (attempt + 1), controller.signal)
       }
     }
 

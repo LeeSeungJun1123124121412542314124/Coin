@@ -1,6 +1,8 @@
 // 스켈레톤 로딩 공통 컴포넌트 — shimmer 애니메이션 적용
 // @keyframes shimmer는 index.css에 정의됨
-const shimmer: React.CSSProperties = {
+import type { CSSProperties } from 'react'
+
+const shimmer: CSSProperties = {
   background: 'linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%)',
   backgroundSize: '200% 100%',
   animation: 'shimmer 1.5s infinite',
