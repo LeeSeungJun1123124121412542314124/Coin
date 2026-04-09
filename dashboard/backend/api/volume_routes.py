@@ -101,8 +101,7 @@ async def get_volume_data():
     if isinstance(bithumb_now, Exception):
         bithumb_now = None
 
-    # upbit은 dict {"total_krw": float, "total_trillion": float} 반환
-    upbit_val = upbit_now["total_trillion"] if isinstance(upbit_now, dict) else None
+    upbit_val = upbit_now if isinstance(upbit_now, (int, float)) else None
     bithumb_val = bithumb_now if isinstance(bithumb_now, (int, float)) else None
     total_now = (upbit_val or 0) + (bithumb_val or 0)
 
