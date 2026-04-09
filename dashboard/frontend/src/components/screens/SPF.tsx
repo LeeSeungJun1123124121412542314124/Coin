@@ -8,6 +8,7 @@ import {
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
+import { ScoreBar } from '../shared/ScoreBar'
 
 interface SpfCurrent {
   date: string
@@ -81,19 +82,6 @@ const FLOW_COLORS: Record<string, string> = {
   neutral: '#94a3b8',
 }
 
-function ScoreBar({ label, score, color }: { label: string; score: number; color: string }) {
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>{label}</span>
-        <span style={{ color, fontWeight: 700, fontSize: '1.1rem' }}>{score}</span>
-      </div>
-      <div style={{ height: 8, background: '#334155', borderRadius: 4 }}>
-        <div style={{ height: '100%', width: `${score}%`, background: color, borderRadius: 4, transition: 'width 0.5s' }} />
-      </div>
-    </div>
-  )
-}
 
 export function SPF() {
   const { data, loading, error, refetch, lastUpdated } = useApi<SpfData>('/api/spf-data', 120_000)
@@ -142,8 +130,8 @@ export function SPF() {
         {/* 하락 위험 점수 */}
         <Card>
           <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>하락 위험 점수</div>
-          <ScoreBar label="하락 위험" score={current?.bearish_score ?? 0} color="#f87171" />
-          <ScoreBar label="반등 기대" score={current?.bullish_score ?? 0} color="#4ade80" />
+          <ScoreBar label="하락 위험" score={current?.bearish_score ?? 0} color="#f87171" height={8} scoreFormat="plain" />
+          <ScoreBar label="반등 기대" score={current?.bullish_score ?? 0} color="#4ade80" height={8} scoreFormat="plain" />
           <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
             <span style={{
               padding: '3px 10px', borderRadius: 12, fontSize: '0.75rem', fontWeight: 600,

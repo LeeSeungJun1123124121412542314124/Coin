@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useApi } from '../../hooks/useApi'
 import ErrorState from '../shared/ErrorState'
 import LastUpdated from '../shared/LastUpdated'
+import { LEVEL_COLORS, LEVEL_BG, LEVEL_BORDER } from '../../lib/theme'
+import { ScoreBar } from '../shared/ScoreBar'
 
 interface CategoryAnalysis {
   key: string
@@ -29,30 +31,6 @@ const CATEGORY_COLORS: Record<string, string> = {
   '기타': '#94a3b8',
 }
 
-/** Market.tsx와 동일한 레벨 색 체계 */
-const LEVEL_COLORS: Record<string, string> = {
-  critical: '#ef4444',
-  warning:  '#f97316',
-  bearish:  '#f87171',
-  bullish:  '#4ade80',
-  neutral:  '#94a3b8',
-}
-
-const LEVEL_BG: Record<string, string> = {
-  critical: 'rgba(239,68,68,0.10)',
-  warning:  'rgba(249,115,22,0.10)',
-  bearish:  'rgba(248,113,113,0.08)',
-  bullish:  'rgba(74,222,128,0.08)',
-  neutral:  'rgba(100,116,139,0.08)',
-}
-
-const LEVEL_BORDER: Record<string, string> = {
-  critical: 'rgba(239,68,68,0.4)',
-  warning:  'rgba(249,115,22,0.3)',
-  bearish:  'rgba(248,113,113,0.25)',
-  bullish:  'rgba(74,222,128,0.25)',
-  neutral:  'rgba(100,116,139,0.2)',
-}
 
 const LEVEL_LABELS: Record<string, string> = {
   critical: '위험',
@@ -72,26 +50,6 @@ const LEVEL_ICONS: Record<string, string> = {
 
 const CATEGORIES = ['전체', '매크로', '온체인', '파생상품', '알트코인', '기술적분석', '시장분석', '기타']
 
-function ScoreBar({ score, level }: { score: number; level: string }) {
-  const color = LEVEL_COLORS[level] ?? '#94a3b8'
-  return (
-    <div style={{ marginTop: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ fontSize: 11, color: '#64748b' }}>위험도</span>
-        <span style={{ fontSize: 12, color, fontWeight: 600 }}>{score}/100</span>
-      </div>
-      <div style={{ height: 4, background: '#1e293b', borderRadius: 2, overflow: 'hidden' }}>
-        <div style={{
-          height: '100%',
-          width: `${score}%`,
-          background: color,
-          borderRadius: 2,
-          transition: 'width 0.4s ease',
-        }} />
-      </div>
-    </div>
-  )
-}
 
 function AnalysisCard({ cat, expanded, onToggle }: {
   cat: CategoryAnalysis

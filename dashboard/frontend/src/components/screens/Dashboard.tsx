@@ -5,6 +5,7 @@ import { GaugeChart } from '../shared/GaugeChart'
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
+import { fmt } from '../../lib/format'
 
 interface DashboardData {
   coins: Array<{
@@ -38,13 +39,6 @@ interface DashboardData {
   } | null
 }
 
-function fmt(n: number | null | undefined, decimals = 2): string {
-  if (n == null) return '—'
-  if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`
-  if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`
-  if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`
-  return n.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
-}
 
 export function Dashboard() {
   const { data, loading, error, refetch, lastUpdated } = useApi<DashboardData>('/api/dashboard', 60_000)
