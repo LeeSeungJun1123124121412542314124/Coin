@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useApi } from '../../hooks/useApi'
+import ErrorState from '../shared/ErrorState'
 
 interface CategoryAnalysis {
   key: string
@@ -314,7 +315,7 @@ export function Research() {
   const [activeCategory, setActiveCategory] = useState('전체')
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
 
-  const { data, loading, error } = useApi<ResearchData>('/api/research-analysis', 120_000)
+  const { data, loading, error, refetch } = useApi<ResearchData>('/api/research-analysis', 120_000)
 
   const categories = data?.categories ?? []
   const filtered = activeCategory === '전체'
@@ -366,7 +367,7 @@ export function Research() {
 
       {/* 카드 그리드 */}
       {error ? (
-        <div style={{ color: '#f87171', padding: 16 }}>데이터 로드 실패: {error}</div>
+        <ErrorState error={error} onRetry={refetch} />
       ) : loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
           {[0, 1, 2, 3].map(i => <SkeletonCard key={i} />)}

@@ -5,6 +5,8 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip,
   ResponsiveContainer, ReferenceLine,
 } from 'recharts'
+import ErrorState from '../shared/ErrorState'
+import Skeleton from '../shared/Skeleton'
 
 interface SpfCurrent {
   date: string
@@ -93,13 +95,11 @@ function ScoreBar({ label, score, color }: { label: string; score: number; color
 }
 
 export function SPF() {
-  const { data, loading, error } = useApi<SpfData>('/api/spf-data', 120_000)
+  const { data, loading, error, refetch } = useApi<SpfData>('/api/spf-data', 120_000)
   const { data: predData } = useApi<PredHistory>('/api/prediction-history')
 
-  if (error) return <div style={{ color: '#f87171', padding: 16 }}>데이터 로드 실패: {error}</div>
-  if (loading || !data) {
-    return <div style={{ color: '#64748b', padding: 32, textAlign: 'center' }}>SPF 데이터 로드 중...</div>
-  }
+  if (error) return <ErrorState error={error} onRetry={refetch} />
+  if (loading || !data) return <Skeleton />
 
   const { current, history, similar_patterns, today_prediction } = data
   let reasons: string[] = []

@@ -1,5 +1,7 @@
 import { useApi } from '../../hooks/useApi'
 import { Card } from '../shared/Card'
+import ErrorState from '../shared/ErrorState'
+import Skeleton from '../shared/Skeleton'
 
 interface Position {
   coin: string
@@ -109,13 +111,11 @@ function ConsensusMeter({ data }: { data: Consensus }) {
 }
 
 export function Whale() {
-  const { data, loading, error } = useApi<WhaleData>('/api/hyperliquid-whales', 120_000)
+  const { data, loading, error, refetch } = useApi<WhaleData>('/api/hyperliquid-whales', 120_000)
   const { data: consensus } = useApi<Consensus>('/api/whale-consensus', 120_000)
 
-  if (error) return <div style={{ color: '#f87171', padding: 16 }}>데이터 로드 실패: {error}</div>
-  if (loading || !data) {
-    return <div style={{ color: '#64748b', padding: 32, textAlign: 'center' }}>고래 데이터 로드 중...</div>
-  }
+  if (error) return <ErrorState error={error} onRetry={refetch} />
+  if (loading || !data) return <Skeleton />
 
   const { whales } = data
 

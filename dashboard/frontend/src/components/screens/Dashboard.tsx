@@ -2,6 +2,8 @@ import { useApi } from '../../hooks/useApi'
 import { Card } from '../shared/Card'
 import { StatRow } from '../shared/StatRow'
 import { GaugeChart } from '../shared/GaugeChart'
+import ErrorState from '../shared/ErrorState'
+import Skeleton from '../shared/Skeleton'
 
 interface DashboardData {
   coins: Array<{
@@ -44,10 +46,10 @@ function fmt(n: number | null | undefined, decimals = 2): string {
 }
 
 export function Dashboard() {
-  const { data, loading, error } = useApi<DashboardData>('/api/dashboard', 60_000)
+  const { data, loading, error, refetch } = useApi<DashboardData>('/api/dashboard', 60_000)
 
-  if (loading) return <LoadingSkeleton />
-  if (error) return <div style={{ color: '#f87171', padding: 16 }}>데이터 로드 실패: {error}</div>
+  if (loading && !data) return <Skeleton />
+  if (error) return <ErrorState error={error} onRetry={refetch} />
   if (!data) return null
 
   const btc = data.coins?.find(c => c.symbol === 'BTC')
@@ -162,12 +164,3 @@ export function Dashboard() {
   )
 }
 
-function LoadingSkeleton() {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {[1, 2, 3].map(i => (
-        <div key={i} style={{ height: 80, background: '#1e293b', borderRadius: 12, animation: 'pulse 1.5s infinite' }} />
-      ))}
-    </div>
-  )
-}
