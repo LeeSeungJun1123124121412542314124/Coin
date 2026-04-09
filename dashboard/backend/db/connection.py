@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import threading
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -12,6 +13,8 @@ _DB_FALLBACK = "crypto.db"
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 _conn: sqlite3.Connection | None = None
+# 동시 스케줄 job 간 트랜잭션 간섭 방지용 Lock
+_db_lock = threading.Lock()
 
 import logging as _logging
 _logger = _logging.getLogger(__name__)
@@ -52,11 +55,15 @@ def _init_schema(conn: sqlite3.Connection) -> None:
 
 @contextmanager
 def get_db():
-    """요청 단위 커넥션 컨텍스트 매니저."""
+    """요청 단위 커넥션 컨텍스트 매니저.
+
+    단일 커넥션을 공유하므로 Lock으로 동시 write 트랜잭션 간섭을 방지한다.
+    """
     conn = get_connection()
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
+    with _db_lock:
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise

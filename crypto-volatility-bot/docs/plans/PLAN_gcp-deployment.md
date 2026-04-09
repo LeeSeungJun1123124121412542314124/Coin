@@ -109,10 +109,10 @@ Telegram Bot Token, Chat ID 등 민감 정보를 Secret Manager에 안전하게 
   echo -n "실제_채팅_ID" | gcloud secrets create TELEGRAM_CHAT_ID --data-file=-
   ```
 
-- [ ] **3.3** (선택) Binance API Key 등록 — 공개 데이터만 사용하면 불필요
+- [ ] **3.3** (선택) Bybit API Key 등록 — 공개 데이터만 사용하면 불필요
   ```bash
-  echo -n "BINANCE_KEY" | gcloud secrets create BINANCE_API_KEY --data-file=-
-  echo -n "BINANCE_SECRET" | gcloud secrets create BINANCE_API_SECRET --data-file=-
+  echo -n "BYBIT_KEY" | gcloud secrets create BYBIT_API_KEY --data-file=-
+  echo -n "BYBIT_SECRET" | gcloud secrets create BYBIT_API_SECRET --data-file=-
   ```
 
 - [ ] **3.4** Cloud Build 서비스 계정에 Secret 접근 권한 부여

@@ -84,7 +84,7 @@ export function Alt() {
   const [timeframe, setTimeframe] = useState<Timeframe>('4h')
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
 
-  const { data: screener, loading } = useApi<ScreenerData>(
+  const { data: screener, loading, error } = useApi<ScreenerData>(
     `/api/cvd-screener?timeframe=${timeframe}`,
     300_000,
     // 타임프레임 변경 시 재조회
@@ -95,6 +95,7 @@ export function Alt() {
     300_000,
   )
 
+  if (error) return <div style={{ color: '#f87171', padding: 16 }}>데이터 로드 실패: {error}</div>
   if (loading || !screener) {
     return <div style={{ color: '#64748b', padding: 32, textAlign: 'center' }}>CVD 스크리너 분석 중...</div>
   }

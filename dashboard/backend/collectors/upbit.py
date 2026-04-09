@@ -14,8 +14,12 @@ _CHUNK_SIZE = 100  # 한 번에 조회 가능한 마켓 수
 
 
 @cached(ttl=300, key_prefix="upbit_volume")
-async def fetch_krw_volume() -> dict | None:
-    """KRW 전체 마켓 24h 거래대금 합산 (조 원 단위)."""
+async def fetch_krw_volume() -> float | None:
+    """KRW 전체 마켓 24h 거래대금 합산 (조 원 단위, float).
+
+    빗썸 fetch_krw_volume()과 반환 타입을 통일하여 collect_volume 잡에서
+    직접 합산 연산이 가능하도록 함.
+    """
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             # 1. KRW 마켓 목록
@@ -35,10 +39,7 @@ async def fetch_krw_volume() -> dict | None:
                 for t in r.json():
                     total_krw += float(t.get("acc_trade_price_24h") or 0)
 
-        return {
-            "total_krw": total_krw,
-            "total_trillion": round(total_krw / 1e12, 2),
-        }
+        return round(total_krw / 1e12, 2)
     except Exception as e:
         logger.error("업비트 거래량 조회 실패: %s", e)
         return None

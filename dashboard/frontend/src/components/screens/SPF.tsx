@@ -93,17 +93,21 @@ function ScoreBar({ label, score, color }: { label: string; score: number; color
 }
 
 export function SPF() {
-  const { data, loading } = useApi<SpfData>('/api/spf-data', 120_000)
+  const { data, loading, error } = useApi<SpfData>('/api/spf-data', 120_000)
   const { data: predData } = useApi<PredHistory>('/api/prediction-history')
 
+  if (error) return <div style={{ color: '#f87171', padding: 16 }}>데이터 로드 실패: {error}</div>
   if (loading || !data) {
     return <div style={{ color: '#64748b', padding: 32, textAlign: 'center' }}>SPF 데이터 로드 중...</div>
   }
 
   const { current, history, similar_patterns, today_prediction } = data
-  const reasons: string[] = today_prediction?.reasons
-    ? JSON.parse(today_prediction.reasons)
-    : []
+  let reasons: string[] = []
+  try {
+    reasons = today_prediction?.reasons ? JSON.parse(today_prediction.reasons) : []
+  } catch {
+    reasons = []
+  }
 
   const directionColor = today_prediction?.direction === '상승' ? '#4ade80'
     : today_prediction?.direction === '하락' ? '#f87171' : '#94a3b8'

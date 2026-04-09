@@ -58,11 +58,12 @@ type TgaLag = 0 | 4 | 8 | 12
 export function Liquidity() {
   const [tgaLag, setTgaLag] = useState<TgaLag>(8)
 
-  const { data: summary, loading } = useApi<LiquiditySummary>('/api/liquidity-summary', 3_600_000)
+  const { data: summary, loading, error } = useApi<LiquiditySummary>('/api/liquidity-summary', 3_600_000)
   const { data: tgaHistory } = useApi<{ history: TgaPoint[] }>('/api/tga-history', 3_600_000)
   const { data: m2History } = useApi<{ history: M2Point[] }>('/api/m2-history', 3_600_000)
   const { data: treasury } = useApi<TreasuryData>('/api/treasury-auctions', 3_600_000)
 
+  if (error) return <div style={{ color: '#f87171', padding: 16 }}>데이터 로드 실패: {error}</div>
   if (loading || !summary) {
     return <div style={{ color: '#64748b', padding: 32, textAlign: 'center' }}>유동성 데이터 로드 중...</div>
   }

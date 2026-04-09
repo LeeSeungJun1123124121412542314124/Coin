@@ -25,7 +25,7 @@ cp .env.example .env
 ```
 TELEGRAM_BOT_TOKEN=   # @BotFather에서 발급
 TELEGRAM_CHAT_ID=     # 봇이 메시지를 보낼 채팅 ID
-CRYPTOQUANT_API_KEY=  # https://cryptoquant.com (무료 티어)
+BYBIT_API_KEY=        # (선택) Bybit API 키 — 공개 데이터만 사용하면 불필요
 ```
 
 ### 3. 로컬 실행

@@ -11,7 +11,8 @@ Globals:
       Variables:
         TELEGRAM_BOT_TOKEN: !Sub "{{resolve:secretsmanager:crypto-bot/telegram:SecretString:bot_token}}"
         TELEGRAM_CHAT_ID: !Sub "{{resolve:secretsmanager:crypto-bot/telegram:SecretString:chat_id}}"
-        CRYPTOQUANT_API_KEY: !Sub "{{resolve:secretsmanager:crypto-bot/cryptoquant:SecretString:api_key}}"
+        BYBIT_API_KEY: !Sub "{{resolve:secretsmanager:crypto-bot/bybit:SecretString:api_key}}"
+        BYBIT_API_SECRET: !Sub "{{resolve:secretsmanager:crypto-bot/bybit:SecretString:api_secret}}"
 
 Resources:
   CryptoBotFunction:

@@ -93,8 +93,9 @@ function IndicatorChip({ ind }: { ind: KeyIndicator }) {
 }
 
 export function Market() {
-  const { data, loading } = useApi<MarketData>('/api/market-analysis', 300_000)
+  const { data, loading, error } = useApi<MarketData>('/api/market-analysis', 300_000)
 
+  if (error) return <div style={{ color: '#f87171', padding: 16 }}>데이터 로드 실패: {error}</div>
   if (loading || !data) {
     return <div style={{ color: '#64748b', padding: 32, textAlign: 'center' }}>시장 데이터 로드 중...</div>
   }

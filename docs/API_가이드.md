@@ -437,7 +437,7 @@ DATABASE_PATH=/data/crypto.db            # SQLite 파일 경로 (Railway Volume)
 PIN_CODE=0000                            # 대시보드 PIN (변경 권장)
 ```
 
-> 기존 봇 환경변수(`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `BINANCE_API_KEY` 등)는 그대로 유지.
+> 기존 봇 환경변수(`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `BYBIT_API_KEY` 등)는 그대로 유지.
 
 ---
 

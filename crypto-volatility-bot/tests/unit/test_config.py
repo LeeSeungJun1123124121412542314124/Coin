@@ -100,11 +100,11 @@ class TestConfigFromEnv:
 
         assert config.emergency_threshold == 80
 
-    def test_optional_binance_keys_default_none(self, monkeypatch):
+    def test_optional_bybit_keys_default_none(self, monkeypatch):
         monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
         monkeypatch.setenv("TELEGRAM_CHAT_ID", "1")
-        monkeypatch.delenv("BINANCE_API_KEY", raising=False)
-        monkeypatch.delenv("BINANCE_API_SECRET", raising=False)
+        monkeypatch.delenv("BYBIT_API_KEY", raising=False)
+        monkeypatch.delenv("BYBIT_API_SECRET", raising=False)
 
         config = Config.from_env()
 

@@ -74,12 +74,13 @@ function RsiGauge({ value }: { value: number }) {
 }
 
 export function Volume() {
-  const { data, loading } = useApi<VolumeData>('/api/volume-data', 300_000)
+  const { data, loading, error } = useApi<VolumeData>('/api/volume-data', 300_000)
   const { data: weekly } = useApi<WeeklyData>('/api/volume-weekly', 3_600_000)
   const { data: dailyRsi } = useApi<RsiData>('/api/btc-daily-rsi', 3_600_000)
   const { data: weeklyRsi } = useApi<RsiData>('/api/btc-weekly-rsi', 3_600_000)
   const { data: fgHistory } = useApi<FearGreedHistory>('/api/fear-greed-history', 3_600_000)
 
+  if (error) return <div style={{ color: '#f87171', padding: 16 }}>데이터 로드 실패: {error}</div>
   if (loading || !data) {
     return <div style={{ color: '#64748b', padding: 32, textAlign: 'center' }}>볼륨 데이터 로드 중...</div>
   }

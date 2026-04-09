@@ -44,14 +44,14 @@ class Config:
                 "Check WEIGHT_ONCHAIN, WEIGHT_TECHNICAL, WEIGHT_SENTIMENT."
             )
 
-        binance_key = os.getenv("BYBIT_API_KEY") or None
-        binance_secret = os.getenv("BYBIT_API_SECRET") or None
+        bybit_key = os.getenv("BYBIT_API_KEY") or None
+        bybit_secret = os.getenv("BYBIT_API_SECRET") or None
 
         return cls(
             telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN"),  # type: ignore[arg-type]
             telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID"),  # type: ignore[arg-type]
-            bybit_api_key=binance_key,
-            bybit_api_secret=binance_secret,
+            bybit_api_key=bybit_key,
+            bybit_api_secret=bybit_secret,
             symbols=symbols,
             analysis_weights={"onchain": w_onchain, "technical": w_technical, "sentiment": w_sentiment},
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),

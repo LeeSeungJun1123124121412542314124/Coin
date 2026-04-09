@@ -109,9 +109,10 @@ function ConsensusMeter({ data }: { data: Consensus }) {
 }
 
 export function Whale() {
-  const { data, loading } = useApi<WhaleData>('/api/hyperliquid-whales', 120_000)
+  const { data, loading, error } = useApi<WhaleData>('/api/hyperliquid-whales', 120_000)
   const { data: consensus } = useApi<Consensus>('/api/whale-consensus', 120_000)
 
+  if (error) return <div style={{ color: '#f87171', padding: 16 }}>데이터 로드 실패: {error}</div>
   if (loading || !data) {
     return <div style={{ color: '#64748b', padding: 32, textAlign: 'center' }}>고래 데이터 로드 중...</div>
   }

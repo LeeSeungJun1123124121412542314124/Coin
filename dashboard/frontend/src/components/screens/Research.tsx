@@ -314,7 +314,7 @@ export function Research() {
   const [activeCategory, setActiveCategory] = useState('전체')
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
 
-  const { data, loading } = useApi<ResearchData>('/api/research-analysis', 120_000)
+  const { data, loading, error } = useApi<ResearchData>('/api/research-analysis', 120_000)
 
   const categories = data?.categories ?? []
   const filtered = activeCategory === '전체'
@@ -365,7 +365,9 @@ export function Research() {
       </div>
 
       {/* 카드 그리드 */}
-      {loading ? (
+      {error ? (
+        <div style={{ color: '#f87171', padding: 16 }}>데이터 로드 실패: {error}</div>
+      ) : loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
           {[0, 1, 2, 3].map(i => <SkeletonCard key={i} />)}
         </div>

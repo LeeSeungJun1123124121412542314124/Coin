@@ -24,7 +24,8 @@ gcloud services enable run.googleapis.com \
 ```bash
 echo -n "YOUR_TELEGRAM_BOT_TOKEN" | gcloud secrets create TELEGRAM_BOT_TOKEN --data-file=-
 echo -n "YOUR_TELEGRAM_CHAT_ID" | gcloud secrets create TELEGRAM_CHAT_ID --data-file=-
-echo -n "YOUR_CRYPTOQUANT_API_KEY" | gcloud secrets create CRYPTOQUANT_API_KEY --data-file=-
+echo -n "YOUR_BYBIT_API_KEY" | gcloud secrets create BYBIT_API_KEY --data-file=-
+echo -n "YOUR_BYBIT_API_SECRET" | gcloud secrets create BYBIT_API_SECRET --data-file=-
 ```
 
 ## 배포

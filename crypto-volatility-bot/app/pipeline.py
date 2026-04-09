@@ -5,6 +5,7 @@ Notification dispatch is handled separately by NotificationDispatcher.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import TYPE_CHECKING
 
@@ -43,26 +44,30 @@ async def run_analysis(config: Config) -> tuple[AnalysisResults, AnalysisErrors]
     results: AnalysisResults = []
     errors: AnalysisErrors = []
 
-    fear_greed_data = collector.fetch_fear_greed()
+    fear_greed_data = await collector.fetch_fear_greed()
 
     for symbol in config.symbols:
         coin = symbol.split("/")[0].lower()
-        result, error = _analyze_symbol(
-            symbol=symbol,
-            coin=coin,
-            collector=collector,
-            aggregator=aggregator,
-            fear_greed=fear_greed_data,
-        )
-        if result is not None:
-            results.append((symbol, result))
-        if error is not None:
-            errors.append((symbol, error))
+        try:
+            result, error = await _analyze_symbol(
+                symbol=symbol,
+                coin=coin,
+                collector=collector,
+                aggregator=aggregator,
+                fear_greed=fear_greed_data,
+            )
+            if result is not None:
+                results.append((symbol, result))
+            if error is not None:
+                errors.append((symbol, error))
+        except Exception as e:
+            logger.error("심볼 분석 실패 %s: %s", symbol, e, exc_info=True)
+            errors.append((symbol, str(e)))
 
     return results, errors
 
 
-def _analyze_symbol(
+async def _analyze_symbol(
     symbol: str,
     coin: str,
     collector: DataCollector,
@@ -76,7 +81,7 @@ def _analyze_symbol(
     derivatives_analyzer = DerivativesAnalyzer()
 
     # 1. Onchain — 실패 시 NEUTRAL 폴백
-    onchain_raw = collector.fetch_onchain_data(coin)
+    onchain_raw = await collector.fetch_onchain_data(coin)
     _neutral_onchain = AnalysisResult(score=50.0, signal="NEUTRAL", details={"whale_alert": False}, source="onchain")
     if onchain_raw is None:
         logger.warning("CoinMetrics data unavailable for %s, using neutral onchain score", symbol)
@@ -88,9 +93,9 @@ def _analyze_symbol(
             logger.warning("Onchain analysis failed for %s: %s, using neutral", symbol, e)
             onchain_result = _neutral_onchain
 
-    # 2. OHLCV 기술적 분석 — 실패 시 NEUTRAL 폴백
-    ohlcv_df = collector.fetch_ohlcv(symbol)
-    ohlcv_4h_df = collector.fetch_ohlcv(symbol, timeframe="4h", limit=50)
+    # 2. OHLCV 기술적 분석 — ccxt 동기 호출을 별도 스레드에서 실행해 이벤트루프 블로킹 방지
+    ohlcv_df = await asyncio.to_thread(collector.fetch_ohlcv, symbol)
+    ohlcv_4h_df = await asyncio.to_thread(collector.fetch_ohlcv, symbol, "4h", 50)
 
     if ohlcv_df is not None and len(ohlcv_df) >= 20:
         technical_result = technical_analyzer.analyze(ohlcv_df, df_4h=ohlcv_4h_df)
@@ -105,7 +110,7 @@ def _analyze_symbol(
 
     # 4. 파생상품 분석 (OI + FR) — 실패 시 None (NEUTRAL 처리됨)
     derivatives_result: AnalysisResult | None = None
-    deriv_raw = collector.fetch_derivatives(symbol)
+    deriv_raw = await collector.fetch_derivatives(symbol)
     if deriv_raw is not None:
         try:
             deriv_data = DerivativesData(
