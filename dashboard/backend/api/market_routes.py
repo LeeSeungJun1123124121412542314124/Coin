@@ -104,10 +104,9 @@ async def _get_dashboard_snapshot() -> dict:
 async def _get_fear_greed() -> dict | None:
     from app.data.data_collector import DataCollector
 
-    loop = asyncio.get_running_loop()
     try:
         collector = DataCollector()
-        value = await loop.run_in_executor(None, collector.fetch_fear_greed)
+        value = await collector.fetch_fear_greed()
         if value is None:
             return None
         labels = {(0,25): "극단적 공포", (26,50): "공포", (51,75): "탐욕", (76,100): "극단적 탐욕"}
@@ -121,10 +120,9 @@ async def _get_fear_greed() -> dict | None:
 async def _get_onchain() -> dict | None:
     from app.data.data_collector import DataCollector
 
-    loop = asyncio.get_running_loop()
     try:
         collector = DataCollector()
-        return await loop.run_in_executor(None, collector.fetch_onchain_data, "btc")
+        return await collector.fetch_onchain_data("btc")
     except Exception as e:
         logger.error("온체인 데이터 조회 실패: %s", e)
         return None

@@ -89,14 +89,12 @@ async def get_dashboard():
 
 
 async def _get_fear_greed() -> dict | None:
-    """봇의 DataCollector.fetch_fear_greed() 재활용 (동기 → 스레드풀)."""
-    import asyncio
+    """봇의 DataCollector.fetch_fear_greed() 재활용."""
     from app.data.data_collector import DataCollector
 
-    loop = asyncio.get_event_loop()
     try:
         collector = DataCollector()
-        value = await loop.run_in_executor(None, collector.fetch_fear_greed)
+        value = await collector.fetch_fear_greed()
         if value is None:
             return None
         label = _fear_greed_label(value)
@@ -118,13 +116,11 @@ def _fear_greed_label(value: int) -> str:
 
 async def _get_onchain() -> dict | None:
     """봇의 DataCollector.fetch_onchain_data() 재활용."""
-    import asyncio
     from app.data.data_collector import DataCollector
 
-    loop = asyncio.get_event_loop()
     try:
         collector = DataCollector()
-        data = await loop.run_in_executor(None, collector.fetch_onchain_data, "btc")
+        data = await collector.fetch_onchain_data("btc")
         return data
     except Exception as e:
         logger.error("온체인 조회 실패: %s", e)

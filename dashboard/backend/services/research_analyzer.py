@@ -270,57 +270,50 @@ async def _analyze_market() -> dict:
 # ─── 온체인 ─────────────────────────────────────────────────────────
 
 async def _analyze_onchain() -> dict:
-    loop = asyncio.get_running_loop()
+    try:
+        from app.data.data_collector import DataCollector
+        from app.analyzers.onchain_analyzer import OnchainAnalyzer
 
-    def _run() -> dict | None:
-        try:
-            from app.data.data_collector import DataCollector
-            from app.analyzers.onchain_analyzer import OnchainAnalyzer
+        collector = DataCollector()
+        raw = await collector.fetch_onchain_data("btc")
+        if not raw:
+            return _error_category("onchain", "온체인")
 
-            collector = DataCollector()
-            raw = collector.fetch_onchain_data("btc")
-            if not raw:
-                return None
+        analyzer = OnchainAnalyzer()
+        result = analyzer.analyze(raw)
+        if result is None:
+            return _error_category("onchain", "온체인")
 
-            analyzer = OnchainAnalyzer()
-            result = analyzer.analyze(raw)
-            if result is None:
-                return None
+        score = int(result.score)
+        signal = result.signal  # HIGH_SELL_PRESSURE / ACCUMULATION / NEUTRAL
+        details = result.details or {}
 
-            score = int(result.score)
-            signal = result.signal  # HIGH_SELL_PRESSURE / ACCUMULATION / NEUTRAL
-            details = result.details or {}
+        signal_labels = {
+            "HIGH_SELL_PRESSURE": ("warning", "거래소 유입 급증 — 매도 압력"),
+            "ACCUMULATION": ("bullish", "거래소 유출 — 고래 축적 신호"),
+            "NEUTRAL": ("neutral", "온체인 중립"),
+        }
+        level, title = signal_labels.get(signal, ("neutral", "온체인 분석"))
 
-            signal_labels = {
-                "HIGH_SELL_PRESSURE": ("warning", "거래소 유입 급증 — 매도 압력"),
-                "ACCUMULATION": ("bullish", "거래소 유출 — 고래 축적 신호"),
-                "NEUTRAL": ("neutral", "온체인 중립"),
-            }
-            level, title = signal_labels.get(signal, ("neutral", "온체인 분석"))
+        inflow = details.get("inflow", 0)
+        outflow = details.get("outflow", 0)
+        ratio = details.get("flow_ratio") or (inflow / outflow if outflow else 1.0)
 
-            inflow = details.get("inflow", 0)
-            outflow = details.get("outflow", 0)
-            ratio = details.get("flow_ratio") or (inflow / outflow if outflow else 1.0)
+        summary = f"유입/유출 비율 {ratio:.2f} | 유입 {inflow:.0f} BTC | 유출 {outflow:.0f} BTC"
+        if signal == "HIGH_SELL_PRESSURE":
+            summary += " — 매도 우위 주의"
+        elif signal == "ACCUMULATION":
+            summary += " — 축적 구간 신호"
 
-            summary = f"유입/유출 비율 {ratio:.2f} | 유입 {inflow:.0f} BTC | 유출 {outflow:.0f} BTC"
-            if signal == "HIGH_SELL_PRESSURE":
-                summary += " — 매도 우위 주의"
-            elif signal == "ACCUMULATION":
-                summary += " — 축적 구간 신호"
-
-            return {
-                "level": level,
-                "score": score,
-                "title": title,
-                "summary": summary,
-                "details": {"signal": signal, "flow_ratio": round(ratio, 3), "inflow": inflow, "outflow": outflow},
-            }
-        except Exception as e:
-            logger.error("온체인 분석 실패: %s", e)
-            return None
-
-    result = await loop.run_in_executor(None, _run)
-    if result is None:
+        return {
+            "level": level,
+            "score": score,
+            "title": title,
+            "summary": summary,
+            "details": {"signal": signal, "flow_ratio": round(ratio, 3), "inflow": inflow, "outflow": outflow},
+        }
+    except Exception as e:
+        logger.error("온체인 분석 실패: %s", e)
         return _error_category("onchain", "온체인")
 
     return {
