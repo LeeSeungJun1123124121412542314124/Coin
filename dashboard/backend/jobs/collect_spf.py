@@ -12,6 +12,7 @@ import logging
 from datetime import date, timedelta
 
 from dashboard.backend.utils.retry import async_retry
+from dashboard.backend.utils.alerting import notify_job_failure
 from dashboard.backend.collectors.bybit_derivatives import (
     fetch_oi_history,
     fetch_fr_history,
@@ -29,7 +30,7 @@ from dashboard.backend.services.spf_service import (
 logger = logging.getLogger(__name__)
 
 
-@async_retry(max_retries=3, backoff_base=2.0)
+@async_retry(max_retries=3, backoff_base=2.0, on_failure=notify_job_failure)
 async def collect_spf() -> None:
     """OI/FR/BTC 일별 레코드 수집 및 저장, 예측 생성."""
     logger.info("SPF 수집 시작")

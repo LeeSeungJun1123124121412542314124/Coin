@@ -9,13 +9,14 @@ import json
 import logging
 
 from dashboard.backend.utils.retry import async_retry
+from dashboard.backend.utils.alerting import notify_job_failure
 from dashboard.backend.collectors.hyperliquid import fetch_top_whale_positions
 from dashboard.backend.db.connection import get_db
 
 logger = logging.getLogger(__name__)
 
 
-@async_retry(max_retries=3, backoff_base=2.0)
+@async_retry(max_retries=3, backoff_base=2.0, on_failure=notify_job_failure)
 async def collect_whales() -> None:
     """HL 고래 스냅샷 수집 및 DB 저장."""
     logger.info("고래 스냅샷 수집 시작")

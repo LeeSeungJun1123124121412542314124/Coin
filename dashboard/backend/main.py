@@ -33,6 +33,7 @@ from app.utils.logger import setup_logger
 
 from dashboard.backend.db.connection import get_connection
 from dashboard.backend.utils.retry import async_retry
+from dashboard.backend.utils.alerting import notify_job_failure
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +166,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     scheduler.add_job(collect_whales, IntervalTrigger(hours=2))
 
     # 봇 분석 — 매시간 이벤트 알림 (긴급/고래)
-    @async_retry(max_retries=3, backoff_base=2.0)
+    @async_retry(max_retries=3, backoff_base=2.0, on_failure=notify_job_failure)
     async def _hourly_alerts():
         try:
             results, errors = await run_analysis(config)
@@ -179,7 +180,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     scheduler.add_job(_hourly_alerts, IntervalTrigger(hours=1))
 
     # 봇 리포트 — 12시간마다 전체 리포트 발송
-    @async_retry(max_retries=3, backoff_base=2.0)
+    @async_retry(max_retries=3, backoff_base=2.0, on_failure=notify_job_failure)
     async def _periodic_report():
         try:
             results, errors = await run_analysis(config)
