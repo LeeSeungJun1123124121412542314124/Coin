@@ -9,6 +9,7 @@ import asyncio
 import logging
 from datetime import date
 
+from dashboard.backend.utils.retry import async_retry
 from dashboard.backend.collectors.upbit import fetch_krw_volume as upbit_volume
 from dashboard.backend.collectors.bithumb import fetch_krw_volume as bithumb_volume
 from dashboard.backend.db.connection import get_db
@@ -16,6 +17,7 @@ from dashboard.backend.db.connection import get_db
 logger = logging.getLogger(__name__)
 
 
+@async_retry(max_retries=3, backoff_base=2.0)
 async def collect_volume() -> None:
     """거래소 거래량 수집."""
     logger.info("거래량 수집 시작")

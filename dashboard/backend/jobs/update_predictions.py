@@ -11,10 +11,12 @@ import logging
 from datetime import date, timedelta
 
 from dashboard.backend.db.connection import get_db
+from dashboard.backend.utils.retry import async_retry
 
 logger = logging.getLogger(__name__)
 
 
+@async_retry(max_retries=3, backoff_base=2.0)
 async def update_predictions() -> None:
     """3/7/14일 전 레코드의 사후 가격 및 예측 결과 업데이트."""
     logger.info("예측 결과 업데이트 시작")
