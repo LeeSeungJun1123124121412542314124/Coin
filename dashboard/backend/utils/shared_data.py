@@ -2,6 +2,8 @@
 from __future__ import annotations
 import logging
 
+from dashboard.backend.cache import cached
+
 logger = logging.getLogger(__name__)
 
 
@@ -15,8 +17,9 @@ def _fear_greed_label(value: int) -> str:
     return "극단적 탐욕"
 
 
+@cached(ttl=300, key_prefix="fear_greed")
 async def get_fear_greed() -> dict | None:
-    """봇의 DataCollector.fetch_fear_greed() 재활용."""
+    """봇의 DataCollector.fetch_fear_greed() 재활용. (5분 캐시)"""
     from app.data.data_collector import DataCollector
 
     try:
@@ -30,8 +33,9 @@ async def get_fear_greed() -> dict | None:
         return None
 
 
+@cached(ttl=300, key_prefix="onchain")
 async def get_onchain() -> dict | None:
-    """봇의 DataCollector.fetch_onchain_data() 재활용."""
+    """봇의 DataCollector.fetch_onchain_data() 재활용. (5분 캐시)"""
     from app.data.data_collector import DataCollector
 
     try:
