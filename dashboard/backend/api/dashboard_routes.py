@@ -17,6 +17,7 @@ from dashboard.backend.collectors.bybit_derivatives import (
 )
 from dashboard.backend.collectors.coinbase import fetch_btc_usd
 from dashboard.backend.services.kimchi_premium import calc_kimchi_premium
+from dashboard.backend.utils.shared_data import get_fear_greed, get_onchain
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -62,7 +63,7 @@ async def get_dashboard():
         btc_price = btc["price"] if btc else None
 
     # 봇의 Fear & Greed (기존 DataCollector 재활용)
-    fear_greed = await _get_fear_greed()
+    fear_greed = await get_fear_greed()
 
     # 김치 프리미엄 (BTC 바이낸스 가격 필요)
     kimchi = None
@@ -70,7 +71,7 @@ async def get_dashboard():
         kimchi = await calc_kimchi_premium(btc_price)
 
     # 온체인 데이터 (봇의 DataCollector 재활용)
-    onchain = await _get_onchain()
+    onchain = await get_onchain()
 
     return JSONResponse({
         "coins": coins,
@@ -86,42 +87,3 @@ async def get_dashboard():
         "fear_greed": fear_greed,
         "onchain": onchain,
     })
-
-
-async def _get_fear_greed() -> dict | None:
-    """봇의 DataCollector.fetch_fear_greed() 재활용."""
-    from app.data.data_collector import DataCollector
-
-    try:
-        collector = DataCollector()
-        value = await collector.fetch_fear_greed()
-        if value is None:
-            return None
-        label = _fear_greed_label(value)
-        return {"value": value, "label": label}
-    except Exception as e:
-        logger.error("Fear & Greed 조회 실패: %s", e)
-        return None
-
-
-def _fear_greed_label(value: int) -> str:
-    if value <= 25:
-        return "극단적 공포"
-    if value <= 50:
-        return "공포"
-    if value <= 75:
-        return "탐욕"
-    return "극단적 탐욕"
-
-
-async def _get_onchain() -> dict | None:
-    """봇의 DataCollector.fetch_onchain_data() 재활용."""
-    from app.data.data_collector import DataCollector
-
-    try:
-        collector = DataCollector()
-        data = await collector.fetch_onchain_data("btc")
-        return data
-    except Exception as e:
-        logger.error("온체인 조회 실패: %s", e)
-        return None

@@ -9,6 +9,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 from dashboard.backend.services.market_insight import generate_insights
+from dashboard.backend.utils.shared_data import get_fear_greed, get_onchain
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -81,7 +82,7 @@ async def _get_dashboard_snapshot() -> dict:
         except Exception:
             pass
 
-    fear_greed = await _get_fear_greed()
+    fear_greed = await get_fear_greed()
 
     # OI 3일 변화 (DB에서)
     oi_change_3d = _get_latest_oi_change()
@@ -97,35 +98,8 @@ async def _get_dashboard_snapshot() -> dict:
         },
         "kimchi_premium": kimchi.get("kimchi_premium_pct") if kimchi else None,
         "fear_greed": fear_greed,
-        "onchain": await _get_onchain(),
+        "onchain": await get_onchain(),
     }
-
-
-async def _get_fear_greed() -> dict | None:
-    from app.data.data_collector import DataCollector
-
-    try:
-        collector = DataCollector()
-        value = await collector.fetch_fear_greed()
-        if value is None:
-            return None
-        labels = {(0,25): "극단적 공포", (26,50): "공포", (51,75): "탐욕", (76,100): "극단적 탐욕"}
-        label = next((v for (lo,hi),v in labels.items() if lo <= value <= hi), "중립")
-        return {"value": value, "label": label}
-    except Exception as e:
-        logger.error("Fear & Greed 조회 실패: %s", e)
-        return None
-
-
-async def _get_onchain() -> dict | None:
-    from app.data.data_collector import DataCollector
-
-    try:
-        collector = DataCollector()
-        return await collector.fetch_onchain_data("btc")
-    except Exception as e:
-        logger.error("온체인 데이터 조회 실패: %s", e)
-        return None
 
 
 def _get_latest_oi_change() -> float | None:
