@@ -7,8 +7,10 @@ apscheduler로 스케줄 작업을 내장 실행한다.
 
 from __future__ import annotations
 
+import json
 import logging
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 # 루트와 crypto-volatility-bot 패키지를 Python 경로에 추가
@@ -24,6 +26,8 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 from app.bot.webhook_server import create_app
 from app.notification_dispatcher import NotificationDispatcher
@@ -31,7 +35,8 @@ from app.pipeline import run_analysis
 from app.utils.config import Config
 from app.utils.logger import setup_logger
 
-from dashboard.backend.db.connection import get_connection
+from dashboard.backend.db.connection import get_connection, get_db
+from dashboard.backend.utils.errors import api_error
 from dashboard.backend.utils.retry import async_retry
 from dashboard.backend.utils.alerting import notify_job_failure
 
@@ -65,16 +70,65 @@ def _build_app() -> FastAPI:
     app = create_app(pipeline_fn=pipeline_fn, report_fn=report_fn)
     _mount_dashboard_routers(app)
 
+    # ── apscheduler 설정 ────────────────────────────────────────
+    scheduler = AsyncIOScheduler(timezone="UTC")
+    _register_jobs(scheduler, config, dispatcher)
+
     # ── 헬스체크 전용 엔드포인트 ───────────────────────────────
     from fastapi.responses import JSONResponse
 
     @app.get("/api/health")
     async def health():
-        return JSONResponse({"status": "ok"})
+        # DB 연결 확인
+        db_ok = True
+        try:
+            with get_db() as conn:
+                conn.execute("SELECT 1")
+        except Exception:
+            db_ok = False
 
-    # ── apscheduler 설정 ────────────────────────────────────────
-    scheduler = AsyncIOScheduler(timezone="UTC")
-    _register_jobs(scheduler, config, dispatcher)
+        # 스케줄러 상태
+        sched_running = scheduler.running if scheduler else False
+
+        status = "ok" if (db_ok and sched_running) else "degraded"
+        return JSONResponse({
+            "status": status,
+            "db": db_ok,
+            "scheduler": sched_running,
+        })
+
+    # ── 글로벌 예외 핸들러 ─────────────────────────────────────
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request, exc):
+        logger.error("미처리 예외: %s", exc, exc_info=True)
+        return api_error(500, "INTERNAL_ERROR", "서버 내부 오류가 발생했습니다")
+
+    # ── 타임스탬프 미들웨어 ────────────────────────────────────
+    class TimestampMiddleware(BaseHTTPMiddleware):
+        """모든 JSON 응답에 _timestamp 필드 자동 주입."""
+        async def dispatch(self, request, call_next):
+            response = await call_next(request)
+            ct = response.headers.get("content-type", "")
+            if ct.startswith("application/json"):
+                body = b""
+                async for chunk in response.body_iterator:
+                    body += chunk
+                try:
+                    data = json.loads(body)
+                    if isinstance(data, dict):
+                        data["_timestamp"] = datetime.now(timezone.utc).isoformat()
+                    body = json.dumps(data, ensure_ascii=False).encode()
+                except (json.JSONDecodeError, TypeError):
+                    pass
+                return Response(
+                    content=body,
+                    status_code=response.status_code,
+                    headers=dict(response.headers),
+                    media_type="application/json",
+                )
+            return response
+
+    app.add_middleware(TimestampMiddleware)
 
     @app.on_event("startup")
     async def on_startup():
