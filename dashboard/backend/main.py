@@ -20,11 +20,14 @@ for _p in (str(_ROOT), str(_BOT_ROOT)):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
+import os
+
 import uvicorn
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
@@ -129,6 +132,16 @@ def _build_app() -> FastAPI:
             return response
 
     app.add_middleware(TimestampMiddleware)
+
+    # ── CORS 미들웨어 ───────────────────────────────────────────
+    cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.on_event("startup")
     async def on_startup():
