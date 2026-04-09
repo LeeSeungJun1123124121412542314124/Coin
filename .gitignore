@@ -38,3 +38,9 @@ Thumbs.db
 
 # 로그
 *.log
+
+# Git worktrees
+.worktrees/
+
+# Git worktrees
+.worktrees/
