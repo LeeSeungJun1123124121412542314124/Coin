@@ -12,6 +12,7 @@ from dashboard.backend.services.cvd_service import (
     run_screener, score_symbol, get_cvd_chart, SCREENER_SYMBOLS,
 )
 from dashboard.backend.cache import cached
+from dashboard.backend.utils.errors import api_error
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -55,7 +56,7 @@ async def get_cvd_detail(
         )
 
         if isinstance(df, Exception) or df is None:
-            return JSONResponse({"error": "데이터 조회 실패", "symbol": symbol}, status_code=500)
+            return api_error(500, "CVD_ERROR", "데이터 조회 실패")
 
         fr_val = fr.get("funding_rate") if isinstance(fr, dict) else None
 
@@ -71,7 +72,7 @@ async def get_cvd_detail(
 
     except Exception as e:
         logger.error("CVD 상세 조회 실패 (%s): %s", symbol, e)
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return api_error(500, "CVD_ERROR", "데이터 조회 실패")
 
 
 @router.get("/cvd-symbols")

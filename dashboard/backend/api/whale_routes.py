@@ -12,6 +12,7 @@ from dashboard.backend.collectors.hyperliquid import (
     fetch_leaderboard, fetch_user_positions, fetch_top_whale_positions,
 )
 from dashboard.backend.db.connection import get_db
+from dashboard.backend.utils.errors import api_error
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -62,7 +63,7 @@ async def get_whale_position(address: str):
     """특정 고래 주소의 현재 포지션 상세."""
     pos = await fetch_user_positions(address)
     if pos is None:
-        return JSONResponse({"error": "포지션 조회 실패"}, status_code=404)
+        return api_error(404, "WHALE_NOT_FOUND", "포지션 조회 실패")
     return JSONResponse(pos)
 
 
@@ -75,7 +76,7 @@ async def get_whale_consensus(top_n: int = Query(10, ge=5, le=20)):
     """
     whales = await fetch_leaderboard(top_n)
     if not whales:
-        return JSONResponse({"error": "데이터 없음"}, status_code=503)
+        return api_error(503, "WHALE_UNAVAILABLE", "데이터 없음")
 
     # DB에서 최신 스냅샷 기반 합의
     with get_db() as conn:

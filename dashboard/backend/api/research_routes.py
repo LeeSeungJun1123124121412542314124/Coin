@@ -8,6 +8,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 from dashboard.backend.services.research_analyzer import analyze_all
+from dashboard.backend.utils.errors import api_error
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -21,4 +22,4 @@ async def get_research_analysis():
         return JSONResponse(result)
     except Exception as e:
         logger.error("리서치 분석 실패: %s", e, exc_info=True)
-        return JSONResponse({"error": "분석 실패"}, status_code=500)
+        return api_error(500, "RESEARCH_ERROR", "분석 실패")
