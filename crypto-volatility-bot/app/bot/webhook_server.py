@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import logging
 import os
 from collections.abc import Callable, Coroutine
@@ -14,6 +15,17 @@ logger = logging.getLogger(__name__)
 
 # Telegram webhook 보안 토큰 (설정된 경우에만 검증)
 WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
+
+# 관리자 키 (scheduled-run, scheduled-report 보호용)
+_ADMIN_KEY = os.getenv("ADMIN_KEY", "")
+
+
+def _check_admin(request: Request) -> JSONResponse | None:
+    """관리자 키 검증 — 실패 시 403 응답, 성공 시 None 반환."""
+    key = request.headers.get("X-Admin-Key", "")
+    if not _ADMIN_KEY or not hmac.compare_digest(key, _ADMIN_KEY):
+        return JSONResponse({"error": "Forbidden"}, status_code=403)
+    return None
 
 
 def create_app(
@@ -49,7 +61,10 @@ def create_app(
         return JSONResponse({"ok": True})
 
     @app.post("/scheduled-run")
-    async def scheduled_run() -> JSONResponse:
+    async def scheduled_run(request: Request) -> JSONResponse:
+        # 관리자 키 검증
+        if (err := _check_admin(request)) is not None:
+            return err
         if pipeline_fn is not None:
             try:
                 results = await pipeline_fn()
@@ -60,8 +75,11 @@ def create_app(
         return JSONResponse({"ok": True, "count": 0})
 
     @app.post("/scheduled-report")
-    async def scheduled_report() -> JSONResponse:
-        """12-hour periodic report — separate from hourly analysis."""
+    async def scheduled_report(request: Request) -> JSONResponse:
+        """12시간 주기 리포트 — 관리자 전용."""
+        # 관리자 키 검증
+        if (err := _check_admin(request)) is not None:
+            return err
         if report_fn is not None:
             try:
                 await report_fn()

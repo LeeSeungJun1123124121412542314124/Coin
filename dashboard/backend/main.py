@@ -28,7 +28,7 @@ from slowapi.errors import RateLimitExceeded
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -199,7 +199,12 @@ def _save_analysis_history(results) -> None:
 
 
 def _mount_dashboard_routers(app: FastAPI) -> None:
-    """대시보드 API 라우터를 앱에 등록."""
+    """대시보드 API 라우터를 앱에 등록.
+
+    공개 엔드포인트: GET /api/health, POST /api/auth/verify-pin
+    인증 필요: 나머지 모든 라우터 (Bearer 토큰)
+    """
+    from dashboard.backend.api.auth_routes import router as auth_router
     from dashboard.backend.api.dashboard_routes import router as dashboard_router
     from dashboard.backend.api.spf_routes import router as spf_router
     from dashboard.backend.api.volume_routes import router as volume_router
@@ -209,15 +214,22 @@ def _mount_dashboard_routers(app: FastAPI) -> None:
     from dashboard.backend.api.whale_routes import router as whale_router
     from dashboard.backend.api.research_routes import router as research_router
     from dashboard.backend.api.visitor_routes import router as visitor_router
-    app.include_router(dashboard_router, prefix="/api")
-    app.include_router(spf_router, prefix="/api")
-    app.include_router(volume_router, prefix="/api")
-    app.include_router(market_router, prefix="/api")
-    app.include_router(liquidity_router, prefix="/api")
-    app.include_router(cvd_router, prefix="/api")
-    app.include_router(whale_router, prefix="/api")
-    app.include_router(research_router, prefix="/api")
-    app.include_router(visitor_router, prefix="/api")
+    from dashboard.backend.middleware.auth import require_auth
+
+    # 인증 불필요 — PIN 검증 엔드포인트
+    app.include_router(auth_router, prefix="/api")
+
+    # 인증 필요 — Bearer 토큰 검증
+    _auth_dep = [Depends(require_auth)]
+    app.include_router(dashboard_router, prefix="/api", dependencies=_auth_dep)
+    app.include_router(spf_router, prefix="/api", dependencies=_auth_dep)
+    app.include_router(volume_router, prefix="/api", dependencies=_auth_dep)
+    app.include_router(market_router, prefix="/api", dependencies=_auth_dep)
+    app.include_router(liquidity_router, prefix="/api", dependencies=_auth_dep)
+    app.include_router(cvd_router, prefix="/api", dependencies=_auth_dep)
+    app.include_router(whale_router, prefix="/api", dependencies=_auth_dep)
+    app.include_router(research_router, prefix="/api", dependencies=_auth_dep)
+    app.include_router(visitor_router, prefix="/api", dependencies=_auth_dep)
 
 
 def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:

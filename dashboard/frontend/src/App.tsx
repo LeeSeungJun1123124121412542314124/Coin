@@ -23,20 +23,35 @@ const TABS = [
 
 type TabId = typeof TABS[number]['id']
 
-// PIN 인증 화면
+// PIN 인증 화면 — 서버 측 검증 후 토큰 발급
 function PinScreen({ onSuccess }: { onSuccess: () => void }) {
   const [pin, setPin] = useState('')
   const [shake, setShake] = useState(false)
-  const CORRECT_PIN = import.meta.env.VITE_PIN_CODE ?? '0000'
 
-  const handleKey = (digit: string) => {
+  const handleKey = async (digit: string) => {
     if (pin.length >= 4) return
     const next = pin + digit
     setPin(next)
     if (next.length === 4) {
-      if (next === CORRECT_PIN) {
-        onSuccess()
-      } else {
+      try {
+        // 서버에 PIN 검증 요청
+        const res = await fetch('/api/auth/verify-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: next }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          // 발급된 토큰을 sessionStorage에 저장
+          sessionStorage.setItem('auth_token', data.token)
+          onSuccess()
+        } else {
+          // PIN 틀림 — 흔들기 애니메이션 후 초기화
+          setShake(true)
+          setTimeout(() => { setPin(''); setShake(false) }, 500)
+        }
+      } catch {
+        // 네트워크 오류 시도 실패 처리
         setShake(true)
         setTimeout(() => { setPin(''); setShake(false) }, 500)
       }
@@ -84,7 +99,11 @@ function PinScreen({ onSuccess }: { onSuccess: () => void }) {
 
 
 export default function App() {
-  const [authenticated, setAuthenticated] = useState(false)
+  // sessionStorage에 토큰이 있으면 낙관적으로 인증 완료로 간주 (만료 시 API가 401 반환)
+  const [authenticated, setAuthenticated] = useState(() => {
+    const token = sessionStorage.getItem('auth_token')
+    return !!token
+  })
   const [activeTab, setActiveTab] = useState<TabId>('dashboard')
 
   if (!authenticated) {
