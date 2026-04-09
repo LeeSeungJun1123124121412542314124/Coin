@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Callable, Coroutine
 from typing import Any
 
@@ -10,6 +11,9 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
+
+# Telegram webhook 보안 토큰 (설정된 경우에만 검증)
+WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
 
 
 def create_app(
@@ -24,6 +28,12 @@ def create_app(
 
     @app.post("/webhook")
     async def webhook(request: Request) -> JSONResponse:
+        # secret_token 검증 (환경변수 설정된 경우에만)
+        if WEBHOOK_SECRET:
+            token = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+            if token != WEBHOOK_SECRET:
+                return JSONResponse({"error": "Forbidden"}, status_code=403)
+
         try:
             body = await request.json()
         except ValueError:
