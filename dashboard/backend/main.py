@@ -174,6 +174,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
             logger.info("매시간 분석 완료: %d개 종목", len(results))
         except Exception as e:
             logger.error("매시간 분석 실패: %s", e, exc_info=True)
+            raise  # 예외 전파 — decorator가 재시도
 
     scheduler.add_job(_hourly_alerts, IntervalTrigger(hours=1))
 
@@ -186,6 +187,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
             logger.info("정기 리포트 발송: %d개 종목", len(results))
         except Exception as e:
             logger.error("정기 리포트 실패: %s", e, exc_info=True)
+            raise  # 예외 전파 — decorator가 재시도
 
     scheduler.add_job(_periodic_report, CronTrigger(hour="0,12", minute=5))
 

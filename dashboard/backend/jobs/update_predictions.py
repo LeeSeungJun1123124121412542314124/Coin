@@ -90,10 +90,9 @@ def _judge_prediction(conn, target_date: date, btc_today: float) -> None:
 
 
 async def _get_btc_price() -> float | None:
-    import asyncio
     from app.data.data_collector import DataCollector
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     try:
         collector = DataCollector()
         ohlcv = await loop.run_in_executor(None, collector.fetch_ohlcv, "BTC/USDT", "1d", 1)

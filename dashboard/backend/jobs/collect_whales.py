@@ -24,7 +24,7 @@ async def collect_whales() -> None:
         whales = await fetch_top_whale_positions(top_n=10)
     except Exception as e:
         logger.error("고래 데이터 조회 실패: %s", e)
-        return
+        raise  # 예외 전파 — decorator가 재시도
 
     if not whales:
         logger.warning("고래 데이터 없음, 저장 건너뜀")

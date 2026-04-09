@@ -46,7 +46,7 @@ async def collect_spf() -> None:
             fr_hist = None
     except Exception as e:
         logger.error("SPF 데이터 수집 실패: %s", e)
-        return
+        raise  # 예외 전파 — decorator가 재시도
 
     if not oi_hist or not fr_hist:
         logger.warning("SPF 데이터 없음")
