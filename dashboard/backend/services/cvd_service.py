@@ -296,7 +296,8 @@ def score_symbol(
 
     except Exception as e:
         logger.error("종목 스코어 계산 실패: %s", e)
-        return {"score": 0, "grade": "D", "factors": {}, "error": str(e)}
+        # 내부 에러 메시지 클라이언트에 노출 금지
+        return {"score": 0, "grade": "D", "factors": {}, "error": "스코어 계산 중 오류가 발생했습니다"}
 
 
 async def _process_symbol(symbol: str, timeframe: str, collector, loop) -> dict | None:
