@@ -23,6 +23,8 @@ for _p in (str(_ROOT), str(_BOT_ROOT)):
 import os
 
 import uvicorn
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -40,6 +42,7 @@ from app.utils.logger import setup_logger
 
 from dashboard.backend.db.connection import get_connection, get_db
 from dashboard.backend.utils.errors import api_error
+from dashboard.backend.utils.limiter import limiter
 from dashboard.backend.utils.retry import async_retry
 from dashboard.backend.utils.alerting import notify_job_failure
 
@@ -72,6 +75,10 @@ def _build_app() -> FastAPI:
     # ── 봇 앱 생성 후 대시보드 라우터 마운트 ──────────────────
     app = create_app(pipeline_fn=pipeline_fn, report_fn=report_fn)
     _mount_dashboard_routers(app)
+
+    # ── Rate limiter 설정 ───────────────────────────────────────
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     # ── apscheduler 설정 ────────────────────────────────────────
     scheduler = AsyncIOScheduler(timezone="UTC")

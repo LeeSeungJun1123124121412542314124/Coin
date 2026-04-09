@@ -5,8 +5,10 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+
+from dashboard.backend.utils.limiter import limiter
 
 from dashboard.backend.collectors.bybit_derivatives import (
     fetch_open_interest,
@@ -90,8 +92,9 @@ async def get_pred_history():
 
 
 @router.post("/spf-refresh")
-async def refresh_spf():
-    """SPF 데이터 강제 갱신 (수동 트리거)."""
+@limiter.limit("5/minute")
+async def refresh_spf(request: Request):
+    """SPF 데이터 강제 갱신 (수동 트리거) — IP당 분당 5회 제한."""
     from dashboard.backend.jobs.collect_spf import collect_spf
     await collect_spf()
     return JSONResponse({"ok": True, "message": "SPF 갱신 완료"})
