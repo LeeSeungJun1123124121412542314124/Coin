@@ -130,10 +130,15 @@ def _build_app() -> FastAPI:
                     body = json.dumps(data, ensure_ascii=False).encode()
                 except (json.JSONDecodeError, TypeError):
                     pass
+                # content-length 제거 → Response 생성자가 새 body 크기로 재계산
+                new_headers = {
+                    k: v for k, v in response.headers.items()
+                    if k.lower() != "content-length"
+                }
                 return Response(
                     content=body,
                     status_code=response.status_code,
-                    headers=dict(response.headers),
+                    headers=new_headers,
                     media_type="application/json",
                 )
             return response
