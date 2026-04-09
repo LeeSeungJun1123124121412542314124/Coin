@@ -7,6 +7,7 @@ import {
 } from 'recharts'
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
+import LastUpdated from '../shared/LastUpdated'
 
 interface LiquiditySummary {
   tga: { current_b: number | null; '7d_change_b': number | null; direction: string }
@@ -60,7 +61,7 @@ type TgaLag = 0 | 4 | 8 | 12
 export function Liquidity() {
   const [tgaLag, setTgaLag] = useState<TgaLag>(8)
 
-  const { data: summary, loading, error, refetch } = useApi<LiquiditySummary>('/api/liquidity-summary', 3_600_000)
+  const { data: summary, loading, error, refetch, lastUpdated } = useApi<LiquiditySummary>('/api/liquidity-summary', 3_600_000)
   const { data: tgaHistory } = useApi<{ history: TgaPoint[] }>('/api/tga-history', 3_600_000)
   const { data: m2History } = useApi<{ history: M2Point[] }>('/api/m2-history', 3_600_000)
   const { data: treasury } = useApi<TreasuryData>('/api/treasury-auctions', 3_600_000)
@@ -88,7 +89,7 @@ export function Liquidity() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
+      <LastUpdated timestamp={lastUpdated} />
       {/* 유동성 방향 배너 */}
       <div style={{
         background: `${dirColor}15`,

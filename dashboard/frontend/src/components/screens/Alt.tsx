@@ -7,6 +7,7 @@ import {
 } from 'recharts'
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
+import LastUpdated from '../shared/LastUpdated'
 
 interface ScreenerResult {
   symbol: string
@@ -86,7 +87,7 @@ export function Alt() {
   const [timeframe, setTimeframe] = useState<Timeframe>('4h')
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
 
-  const { data: screener, loading, error, refetch } = useApi<ScreenerData>(
+  const { data: screener, loading, error, refetch, lastUpdated } = useApi<ScreenerData>(
     `/api/cvd-screener?timeframe=${timeframe}`,
     300_000,
     // 타임프레임 변경 시 재조회
@@ -109,7 +110,7 @@ export function Alt() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
+      <LastUpdated timestamp={lastUpdated} />
       {/* 타임프레임 선택 */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <span style={{ color: '#64748b', fontSize: '0.8rem' }}>주기:</span>

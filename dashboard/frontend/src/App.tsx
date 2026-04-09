@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Routes, Route, NavLink, Navigate } from 'react-router-dom'
 import './index.css'
 import { Dashboard } from './components/screens/Dashboard'
 import { SPF } from './components/screens/SPF'
@@ -11,17 +12,15 @@ import { Research } from './components/screens/Research'
 
 // 탭 정의
 const TABS = [
-  { id: 'dashboard', label: '대시보드' },
-  { id: 'volume', label: '볼륨 트래커' },
-  { id: 'spf', label: 'SPF' },
-  { id: 'research', label: '리서치' },
-  { id: 'market', label: '시장 분석' },
-  { id: 'liquidity', label: '유동성' },
-  { id: 'cvd', label: 'CVD 스크리너' },
-  { id: 'whale', label: '고래 추적' },
+  { path: '/', label: '대시보드' },
+  { path: '/volume', label: '볼륨 트래커' },
+  { path: '/spf', label: 'SPF' },
+  { path: '/research', label: '리서치' },
+  { path: '/market', label: '시장 분석' },
+  { path: '/liquidity', label: '유동성' },
+  { path: '/cvd', label: 'CVD 스크리너' },
+  { path: '/whale', label: '고래 추적' },
 ] as const
-
-type TabId = typeof TABS[number]['id']
 
 // PIN 인증 화면 — 서버 측 검증 후 토큰 발급
 function PinScreen({ onSuccess }: { onSuccess: () => void }) {
@@ -34,7 +33,6 @@ function PinScreen({ onSuccess }: { onSuccess: () => void }) {
     setPin(next)
     if (next.length === 4) {
       try {
-        // 서버에 PIN 검증 요청
         const res = await fetch('/api/auth/verify-pin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -42,16 +40,13 @@ function PinScreen({ onSuccess }: { onSuccess: () => void }) {
         })
         if (res.ok) {
           const data = await res.json()
-          // 발급된 토큰을 sessionStorage에 저장
           sessionStorage.setItem('auth_token', data.token)
           onSuccess()
         } else {
-          // PIN 틀림 — 흔들기 애니메이션 후 초기화
           setShake(true)
           setTimeout(() => { setPin(''); setShake(false) }, 500)
         }
       } catch {
-        // 네트워크 오류 시도 실패 처리
         setShake(true)
         setTimeout(() => { setPin(''); setShake(false) }, 500)
       }
@@ -61,7 +56,6 @@ function PinScreen({ onSuccess }: { onSuccess: () => void }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0f1117' }}>
       <h1 style={{ color: '#fff', fontSize: '1.5rem', marginBottom: '2rem' }}>크립토 인사이트</h1>
-      {/* PIN 도트 */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: '2rem', animation: shake ? 'shake 0.5s' : 'none' }}>
         {[0, 1, 2, 3].map(i => (
           <div key={i} style={{
@@ -72,7 +66,6 @@ function PinScreen({ onSuccess }: { onSuccess: () => void }) {
           }} />
         ))}
       </div>
-      {/* 키패드 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
         {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((k, i) => (
           <button
@@ -97,14 +90,10 @@ function PinScreen({ onSuccess }: { onSuccess: () => void }) {
   )
 }
 
-
 export default function App() {
-  // sessionStorage에 토큰이 있으면 낙관적으로 인증 완료로 간주 (만료 시 API가 401 반환)
   const [authenticated, setAuthenticated] = useState(() => {
-    const token = sessionStorage.getItem('auth_token')
-    return !!token
+    return !!sessionStorage.getItem('auth_token')
   })
-  const [activeTab, setActiveTab] = useState<TabId>('dashboard')
 
   if (!authenticated) {
     return <PinScreen onSuccess={() => setAuthenticated(true)} />
@@ -120,32 +109,37 @@ export default function App() {
         display: 'flex', gap: '4px', overflowX: 'auto',
       }}>
         {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            style={{
+          <NavLink
+            key={tab.path}
+            to={tab.path}
+            end={tab.path === '/'}
+            style={({ isActive }) => ({
               padding: '8px 16px', borderRadius: 8, border: 'none',
               fontSize: '0.875rem', fontWeight: 500, whiteSpace: 'nowrap', cursor: 'pointer',
-              background: activeTab === tab.id ? '#2563eb' : 'transparent',
-              color: activeTab === tab.id ? '#fff' : '#94a3b8',
+              background: isActive ? '#2563eb' : 'transparent',
+              color: isActive ? '#fff' : '#94a3b8',
               transition: 'all 0.15s',
-            }}
+              textDecoration: 'none', display: 'inline-block',
+            })}
           >
             {tab.label}
-          </button>
+          </NavLink>
         ))}
       </nav>
 
       {/* 탭 콘텐츠 */}
       <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px 16px' }}>
-        {activeTab === 'dashboard' && <Dashboard />}
-        {activeTab === 'volume' && <Volume />}
-        {activeTab === 'spf' && <SPF />}
-        {activeTab === 'research' && <Research />}
-        {activeTab === 'market' && <Market />}
-        {activeTab === 'liquidity' && <Liquidity />}
-        {activeTab === 'cvd' && <Alt />}
-        {activeTab === 'whale' && <Whale />}
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/volume" element={<Volume />} />
+          <Route path="/spf" element={<SPF />} />
+          <Route path="/research" element={<Research />} />
+          <Route path="/market" element={<Market />} />
+          <Route path="/liquidity" element={<Liquidity />} />
+          <Route path="/cvd" element={<Alt />} />
+          <Route path="/whale" element={<Whale />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
     </div>
   )

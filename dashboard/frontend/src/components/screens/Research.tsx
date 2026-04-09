@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useApi } from '../../hooks/useApi'
 import ErrorState from '../shared/ErrorState'
+import LastUpdated from '../shared/LastUpdated'
 
 interface CategoryAnalysis {
   key: string
@@ -315,7 +316,7 @@ export function Research() {
   const [activeCategory, setActiveCategory] = useState('전체')
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
 
-  const { data, loading, error, refetch } = useApi<ResearchData>('/api/research-analysis', 120_000)
+  const { data, loading, error, refetch, lastUpdated } = useApi<ResearchData>('/api/research-analysis', 120_000)
 
   const categories = data?.categories ?? []
   const filtered = activeCategory === '전체'
@@ -324,6 +325,7 @@ export function Research() {
 
   return (
     <div style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto' }}>
+      <LastUpdated timestamp={lastUpdated} />
       {/* 헤더 */}
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>리서치</h2>

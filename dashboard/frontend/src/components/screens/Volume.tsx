@@ -6,6 +6,7 @@ import {
 } from 'recharts'
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
+import LastUpdated from '../shared/LastUpdated'
 
 interface VolumeData {
   current: {
@@ -76,7 +77,7 @@ function RsiGauge({ value }: { value: number }) {
 }
 
 export function Volume() {
-  const { data, loading, error, refetch } = useApi<VolumeData>('/api/volume-data', 300_000)
+  const { data, loading, error, refetch, lastUpdated } = useApi<VolumeData>('/api/volume-data', 300_000)
   const { data: weekly } = useApi<WeeklyData>('/api/volume-weekly', 3_600_000)
   const { data: dailyRsi } = useApi<RsiData>('/api/btc-daily-rsi', 3_600_000)
   const { data: weeklyRsi } = useApi<RsiData>('/api/btc-weekly-rsi', 3_600_000)
@@ -128,7 +129,7 @@ export function Volume() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
+      <LastUpdated timestamp={lastUpdated} />
       {/* 상단 요약 카드 4개 */}
       <div className="grid-4" style={{ gap: 12 }}>
         <Card>

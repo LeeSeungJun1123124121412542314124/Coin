@@ -6,6 +6,7 @@ import {
 } from 'recharts'
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
+import LastUpdated from '../shared/LastUpdated'
 
 interface Insight {
   level: string
@@ -95,7 +96,7 @@ function IndicatorChip({ ind }: { ind: KeyIndicator }) {
 }
 
 export function Market() {
-  const { data, loading, error, refetch } = useApi<MarketData>('/api/market-analysis', 300_000)
+  const { data, loading, error, refetch, lastUpdated } = useApi<MarketData>('/api/market-analysis', 300_000)
 
   if (error) return <ErrorState error={error} onRetry={refetch} />
   if (loading || !data) return <Skeleton />
@@ -117,7 +118,7 @@ export function Market() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
+      <LastUpdated timestamp={lastUpdated} />
       {/* 상태 요약 배너 */}
       {(criticalCount > 0 || warningCount > 0) && (
         <div style={{

@@ -4,6 +4,7 @@ import { StatRow } from '../shared/StatRow'
 import { GaugeChart } from '../shared/GaugeChart'
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
+import LastUpdated from '../shared/LastUpdated'
 
 interface DashboardData {
   coins: Array<{
@@ -46,7 +47,7 @@ function fmt(n: number | null | undefined, decimals = 2): string {
 }
 
 export function Dashboard() {
-  const { data, loading, error, refetch } = useApi<DashboardData>('/api/dashboard', 60_000)
+  const { data, loading, error, refetch, lastUpdated } = useApi<DashboardData>('/api/dashboard', 60_000)
 
   if (loading && !data) return <Skeleton />
   if (error) return <ErrorState error={error} onRetry={refetch} />
@@ -56,7 +57,7 @@ export function Dashboard() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
+      <LastUpdated timestamp={lastUpdated} />
       {/* Hero — BTC + 공포탐욕 */}
       <div className="grid-hero" style={{ gap: 16 }}>
         <Card>

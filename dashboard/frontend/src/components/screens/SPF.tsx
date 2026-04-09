@@ -7,6 +7,7 @@ import {
 } from 'recharts'
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
+import LastUpdated from '../shared/LastUpdated'
 
 interface SpfCurrent {
   date: string
@@ -95,7 +96,7 @@ function ScoreBar({ label, score, color }: { label: string; score: number; color
 }
 
 export function SPF() {
-  const { data, loading, error, refetch } = useApi<SpfData>('/api/spf-data', 120_000)
+  const { data, loading, error, refetch, lastUpdated } = useApi<SpfData>('/api/spf-data', 120_000)
   const { data: predData } = useApi<PredHistory>('/api/prediction-history')
 
   if (error) return <ErrorState error={error} onRetry={refetch} />
@@ -122,7 +123,7 @@ export function SPF() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
+      <LastUpdated timestamp={lastUpdated} />
       {/* OI 급등 경고 배너 */}
       {current?.oi_surge_alert && (
         <div style={{

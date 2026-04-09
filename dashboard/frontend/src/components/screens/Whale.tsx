@@ -2,6 +2,7 @@ import { useApi } from '../../hooks/useApi'
 import { Card } from '../shared/Card'
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
+import LastUpdated from '../shared/LastUpdated'
 
 interface Position {
   coin: string
@@ -111,7 +112,7 @@ function ConsensusMeter({ data }: { data: Consensus }) {
 }
 
 export function Whale() {
-  const { data, loading, error, refetch } = useApi<WhaleData>('/api/hyperliquid-whales', 120_000)
+  const { data, loading, error, refetch, lastUpdated } = useApi<WhaleData>('/api/hyperliquid-whales', 120_000)
   const { data: consensus } = useApi<Consensus>('/api/whale-consensus', 120_000)
 
   if (error) return <ErrorState error={error} onRetry={refetch} />
@@ -121,7 +122,7 @@ export function Whale() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
+      <LastUpdated timestamp={lastUpdated} />
       {/* 합의 미터 */}
       {consensus && consensus.total > 0 && (
         <Card>
