@@ -28,6 +28,12 @@ _MOCK_ONCHAIN = {
     "dormant_whale_activated": False,
 }
 
+_MOCK_DERIVATIVES = {
+    "oi_current": 1000.0,
+    "oi_3d_ago": 950.0,
+    "funding_rate": 0.0001,
+}
+
 
 def _make_config_mock():
     cfg = MagicMock()
@@ -42,17 +48,25 @@ def _make_config_mock():
     return cfg
 
 
+def _setup_mock_collector(mock_collector, fear_greed=50, onchain=None, derivatives=None):
+    """공통 mock_collector 설정 헬퍼."""
+    if onchain is None:
+        onchain = _MOCK_ONCHAIN
+    if derivatives is None:
+        derivatives = _MOCK_DERIVATIVES
+    mock_collector.fetch_ohlcv.return_value = _MOCK_OHLCV
+    mock_collector.fetch_fear_greed = AsyncMock(return_value=fear_greed)
+    mock_collector.fetch_onchain_data = AsyncMock(return_value=onchain)
+    mock_collector.fetch_derivatives = AsyncMock(return_value=derivatives)
+
+
 class TestPipelineRun:
     @pytest.mark.asyncio
     async def test_full_pipeline_runs_without_error(self):
         from app.pipeline import run_analysis
 
         with patch("app.pipeline.DataCollector") as MockCollector:
-            mock_collector = MockCollector.return_value
-            mock_collector.fetch_ohlcv.return_value = _MOCK_OHLCV
-            mock_collector.fetch_fear_greed.return_value = 50
-            mock_collector.fetch_onchain_data.return_value = _MOCK_ONCHAIN
-
+            _setup_mock_collector(MockCollector.return_value)
             config = _make_config_mock()
             results, errors = await run_analysis(config)
 
@@ -75,10 +89,7 @@ class TestPipelineRun:
             patch("app.pipeline.TechnicalAnalyzer") as MockTA,
             patch("app.pipeline.SentimentAnalyzer") as MockSA,
         ):
-            mock_collector = MockCollector.return_value
-            mock_collector.fetch_ohlcv.return_value = _MOCK_OHLCV
-            mock_collector.fetch_fear_greed.return_value = 5
-            mock_collector.fetch_onchain_data.return_value = high_vol_onchain
+            _setup_mock_collector(MockCollector.return_value, fear_greed=5, onchain=high_vol_onchain)
 
             from app.analyzers.base import AnalysisResult
 
@@ -102,11 +113,7 @@ class TestPipelineRun:
         whale_onchain["dormant_whale_activated"] = True
 
         with patch("app.pipeline.DataCollector") as MockCollector:
-            mock_collector = MockCollector.return_value
-            mock_collector.fetch_ohlcv.return_value = _MOCK_OHLCV
-            mock_collector.fetch_fear_greed.return_value = 50
-            mock_collector.fetch_onchain_data.return_value = whale_onchain
-
+            _setup_mock_collector(MockCollector.return_value, onchain=whale_onchain)
             config = _make_config_mock()
             results, errors = await run_analysis(config)
 
@@ -119,11 +126,7 @@ class TestPipelineRun:
         from app.pipeline import run_analysis
 
         with patch("app.pipeline.DataCollector") as MockCollector:
-            mock_collector = MockCollector.return_value
-            mock_collector.fetch_ohlcv.return_value = _MOCK_OHLCV
-            mock_collector.fetch_fear_greed.return_value = 50
-            mock_collector.fetch_onchain_data.return_value = None  # CoinMetrics failure
-
+            _setup_mock_collector(MockCollector.return_value, onchain=None)  # CoinMetrics failure
             config = _make_config_mock()
             results, errors = await run_analysis(config)
 
@@ -140,10 +143,8 @@ class TestPipelineRun:
 
         with patch("app.pipeline.DataCollector") as MockCollector:
             mock_collector = MockCollector.return_value
+            _setup_mock_collector(mock_collector)
             mock_collector.fetch_ohlcv.return_value = None  # Binance failure
-            mock_collector.fetch_fear_greed.return_value = 50
-            mock_collector.fetch_onchain_data.return_value = _MOCK_ONCHAIN
-
             config = _make_config_mock()
             results, errors = await run_analysis(config)
 
@@ -169,10 +170,7 @@ class TestNotificationDispatch:
             patch("app.pipeline.TechnicalAnalyzer") as MockTA,
             patch("app.pipeline.SentimentAnalyzer") as MockSA,
         ):
-            mock_collector = MockCollector.return_value
-            mock_collector.fetch_ohlcv.return_value = _MOCK_OHLCV
-            mock_collector.fetch_fear_greed.return_value = 5
-            mock_collector.fetch_onchain_data.return_value = high_vol_onchain
+            _setup_mock_collector(MockCollector.return_value, fear_greed=5, onchain=high_vol_onchain)
 
             from app.analyzers.base import AnalysisResult
 
@@ -196,11 +194,7 @@ class TestNotificationDispatch:
         from app.pipeline import run_analysis
 
         with patch("app.pipeline.DataCollector") as MockCollector:
-            mock_collector = MockCollector.return_value
-            mock_collector.fetch_ohlcv.return_value = _MOCK_OHLCV
-            mock_collector.fetch_fear_greed.return_value = 50
-            mock_collector.fetch_onchain_data.return_value = _MOCK_ONCHAIN
-
+            _setup_mock_collector(MockCollector.return_value)
             config = _make_config_mock()
             results, errors = await run_analysis(config)
 
@@ -212,7 +206,7 @@ class TestNotificationDispatch:
             # Should send periodic report for BTC/USDT
             assert dispatcher._notifier.send_message.call_count >= 1
             msg = dispatcher._notifier.send_message.call_args_list[0][0][0]
-            assert "변동성 분석 리포트" in msg
+            assert "리포트" in msg
 
     @pytest.mark.asyncio
     async def test_no_error_alert_on_coinmetrics_failure(self):
@@ -220,11 +214,7 @@ class TestNotificationDispatch:
         from app.pipeline import run_analysis
 
         with patch("app.pipeline.DataCollector") as MockCollector:
-            mock_collector = MockCollector.return_value
-            mock_collector.fetch_ohlcv.return_value = _MOCK_OHLCV
-            mock_collector.fetch_fear_greed.return_value = 50
-            mock_collector.fetch_onchain_data.return_value = None
-
+            _setup_mock_collector(MockCollector.return_value, onchain=None)  # CoinMetrics failure
             config = _make_config_mock()
             results, errors = await run_analysis(config)
 

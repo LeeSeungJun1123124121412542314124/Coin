@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -16,6 +16,32 @@ def collector() -> DataCollector:
         bybit_api_key=None,
         bybit_api_secret=None,
     )
+
+
+def _make_httpx_mock(json_data: dict | None = None, raise_exc: Exception | None = None):
+    """httpx.AsyncClient async context manager mock 생성 헬퍼.
+
+    httpx.AsyncClient(...)는 async context manager를 반환.
+    async with ... as client: 에서 client.get(...)는 awaitable.
+    httpx.Response.json()는 동기 메서드 → MagicMock 사용.
+    """
+    mock_resp = MagicMock()  # httpx.Response는 동기 객체
+    if json_data is not None:
+        mock_resp.json.return_value = json_data
+    mock_resp.raise_for_status = MagicMock()
+
+    mock_client = MagicMock()
+    if raise_exc is not None:
+        mock_client.get = AsyncMock(side_effect=raise_exc)
+    else:
+        mock_client.get = AsyncMock(return_value=mock_resp)
+
+    # async with httpx.AsyncClient(...) as client: 패턴 지원
+    mock_cm = AsyncMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_cm.__aexit__ = AsyncMock(return_value=None)
+
+    return mock_cm
 
 
 class TestFetchOhlcv:
@@ -39,32 +65,34 @@ class TestFetchOhlcv:
 
 
 class TestFetchFearGreed:
-    def test_returns_int(self, collector):
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = {"data": [{"value": "42"}]}
-        mock_resp.raise_for_status = MagicMock()
-        with patch("app.data.data_collector.requests.get", return_value=mock_resp):
-            result = collector.fetch_fear_greed()
+    @pytest.mark.asyncio
+    async def test_returns_int(self, collector):
+        mock_cm = _make_httpx_mock(json_data={"data": [{"value": "42"}]})
+        with patch("app.data.data_collector.httpx.AsyncClient", return_value=mock_cm):
+            result = await collector.fetch_fear_greed()
         assert result == 42
 
-    def test_api_error_returns_none(self, collector):
-        with patch("app.data.data_collector.requests.get", side_effect=Exception("timeout")):
-            result = collector.fetch_fear_greed()
+    @pytest.mark.asyncio
+    async def test_api_error_returns_none(self, collector):
+        mock_cm = _make_httpx_mock(raise_exc=Exception("timeout"))
+        with patch("app.data.data_collector.httpx.AsyncClient", return_value=mock_cm):
+            result = await collector.fetch_fear_greed()
         assert result is None
 
 
 class TestFetchOnchainData:
-    def test_returns_dict(self, collector):
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = {
-            "data": [{"exchange_inflow": 1000, "exchange_outflow": 800}]
-        }
-        mock_resp.raise_for_status = MagicMock()
-        with patch("app.data.data_collector.requests.get", return_value=mock_resp):
-            result = collector.fetch_onchain_data("BTC")
+    @pytest.mark.asyncio
+    async def test_returns_dict(self, collector):
+        mock_cm = _make_httpx_mock(json_data={
+            "data": [{"FlowInExNtv": "1000", "FlowOutExNtv": "800", "AdrActCnt": "500"}]
+        })
+        with patch("app.data.data_collector.httpx.AsyncClient", return_value=mock_cm):
+            result = await collector.fetch_onchain_data("BTC")
         assert isinstance(result, dict)
 
-    def test_api_error_returns_none(self, collector):
-        with patch("app.data.data_collector.requests.get", side_effect=Exception("timeout")):
-            result = collector.fetch_onchain_data("BTC")
+    @pytest.mark.asyncio
+    async def test_api_error_returns_none(self, collector):
+        mock_cm = _make_httpx_mock(raise_exc=Exception("timeout"))
+        with patch("app.data.data_collector.httpx.AsyncClient", return_value=mock_cm):
+            result = await collector.fetch_onchain_data("BTC")
         assert result is None
