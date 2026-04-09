@@ -130,7 +130,7 @@ export function Volume() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
       {/* 상단 요약 카드 4개 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+      <div className="grid-4" style={{ gap: 12 }}>
         <Card>
           <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 8 }}>업비트 24h 거래대금</div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f97316' }}>
@@ -219,7 +219,7 @@ export function Volume() {
       )}
 
       {/* RSI 차트 2개 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="grid-2" style={{ gap: 12 }}>
         {dailyRsiChart.length > 0 && (
           <Card>
             <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>BTC 일봉 RSI</div>

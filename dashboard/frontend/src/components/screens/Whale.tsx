@@ -135,79 +135,83 @@ export function Whale() {
           Hyperliquid 고래 TOP {whales.length} (실시간)
         </div>
 
-        {/* 헤더 */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '32px 1fr 90px 90px 80px 90px 1fr',
-          gap: 8, padding: '4px 8px',
-          color: '#64748b', fontSize: '0.7rem', marginBottom: 6,
-          borderBottom: '1px solid #1e293b',
-        }}>
-          <span>#</span>
-          <span>주소 / 닉네임</span>
-          <span style={{ textAlign: 'right' }}>자산</span>
-          <span style={{ textAlign: 'right' }}>30d PnL</span>
-          <span style={{ textAlign: 'right' }}>30d ROI</span>
-          <span style={{ textAlign: 'center' }}>BTC</span>
-          <span>포지션</span>
-        </div>
+        {/* 7컬럼 테이블 — 모바일 가로 스크롤 */}
+        <div className="table-scroll">
+          {/* 헤더 */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '32px 1fr 90px 90px 80px 90px 1fr',
+            gap: 8, padding: '4px 8px',
+            color: '#64748b', fontSize: '0.7rem', marginBottom: 6,
+            borderBottom: '1px solid #1e293b',
+            minWidth: 580,
+          }}>
+            <span>#</span>
+            <span>주소 / 닉네임</span>
+            <span style={{ textAlign: 'right' }}>자산</span>
+            <span style={{ textAlign: 'right' }}>30d PnL</span>
+            <span style={{ textAlign: 'right' }}>30d ROI</span>
+            <span style={{ textAlign: 'center' }}>BTC</span>
+            <span>포지션</span>
+          </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {whales.map((w) => (
-            <div
-              key={w.address}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '32px 1fr 90px 90px 80px 90px 1fr',
-                gap: 8, padding: '8px 8px', borderRadius: 8,
-                background: '#0f1117', alignItems: 'center',
-              }}
-            >
-              {/* 순위 */}
-              <span style={{ color: w.rank <= 3 ? '#f59e0b' : '#64748b', fontSize: '0.8rem', fontWeight: 700 }}>
-                {w.rank}
-              </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 580 }}>
+            {whales.map((w) => (
+              <div
+                key={w.address}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '32px 1fr 90px 90px 80px 90px 1fr',
+                  gap: 8, padding: '8px 8px', borderRadius: 8,
+                  background: '#0f1117', alignItems: 'center',
+                }}
+              >
+                {/* 순위 */}
+                <span style={{ color: w.rank <= 3 ? '#f59e0b' : '#64748b', fontSize: '0.8rem', fontWeight: 700 }}>
+                  {w.rank}
+                </span>
 
-              {/* 주소/닉네임 */}
-              <div>
-                {w.display_name ? (
-                  <div style={{ color: '#e2e8f0', fontSize: '0.82rem', fontWeight: 600 }}>{w.display_name}</div>
-                ) : null}
-                <div style={{ color: '#64748b', fontSize: '0.7rem', fontFamily: 'monospace' }}>
-                  {w.address.slice(0, 6)}…{w.address.slice(-4)}
+                {/* 주소/닉네임 */}
+                <div>
+                  {w.display_name ? (
+                    <div style={{ color: '#e2e8f0', fontSize: '0.82rem', fontWeight: 600 }}>{w.display_name}</div>
+                  ) : null}
+                  <div style={{ color: '#64748b', fontSize: '0.7rem', fontFamily: 'monospace' }}>
+                    {w.address.slice(0, 6)}…{w.address.slice(-4)}
+                  </div>
                 </div>
+
+                {/* 자산 */}
+                <span style={{ color: '#e2e8f0', fontSize: '0.8rem', textAlign: 'right' }}>
+                  {fmt(w.account_value)}
+                </span>
+
+                {/* 30d PnL */}
+                <span style={{
+                  color: (w.pnl_30d ?? 0) >= 0 ? '#4ade80' : '#f87171',
+                  fontSize: '0.8rem', textAlign: 'right', fontWeight: 600,
+                }}>
+                  {fmt(w.pnl_30d)}
+                </span>
+
+                {/* 30d ROI */}
+                <span style={{
+                  color: (w.roi_30d ?? 0) >= 0 ? '#4ade80' : '#f87171',
+                  fontSize: '0.78rem', textAlign: 'right',
+                }}>
+                  {w.roi_30d != null ? `${(w.roi_30d * 100).toFixed(1)}%` : '—'}
+                </span>
+
+                {/* BTC 포지션 */}
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <BtcBadge pos={w.btc_position} />
+                </div>
+
+                {/* 전체 포지션 */}
+                <PositionList positions={w.positions} />
               </div>
-
-              {/* 자산 */}
-              <span style={{ color: '#e2e8f0', fontSize: '0.8rem', textAlign: 'right' }}>
-                {fmt(w.account_value)}
-              </span>
-
-              {/* 30d PnL */}
-              <span style={{
-                color: (w.pnl_30d ?? 0) >= 0 ? '#4ade80' : '#f87171',
-                fontSize: '0.8rem', textAlign: 'right', fontWeight: 600,
-              }}>
-                {fmt(w.pnl_30d)}
-              </span>
-
-              {/* 30d ROI */}
-              <span style={{
-                color: (w.roi_30d ?? 0) >= 0 ? '#4ade80' : '#f87171',
-                fontSize: '0.78rem', textAlign: 'right',
-              }}>
-                {w.roi_30d != null ? `${(w.roi_30d * 100).toFixed(1)}%` : '—'}
-              </span>
-
-              {/* BTC 포지션 */}
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <BtcBadge pos={w.btc_position} />
-              </div>
-
-              {/* 전체 포지션 */}
-              <PositionList positions={w.positions} />
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </Card>
 

@@ -137,7 +137,7 @@ export function SPF() {
       )}
 
       {/* 상단: 점수 카드 + 예측 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+      <div className="grid-3" style={{ gap: 12 }}>
         {/* 하락 위험 점수 */}
         <Card>
           <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>하락 위험 점수</div>
@@ -216,7 +216,7 @@ export function SPF() {
       )}
 
       {/* 지표 패널 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="grid-2" style={{ gap: 12 }}>
         <Card>
           <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 10 }}>OI 지표</div>
           <StatRow label="현재 OI" value={current?.oi ? `$${(current.oi / 1e9).toFixed(2)}B` : '—'} />

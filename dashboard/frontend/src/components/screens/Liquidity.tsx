@@ -121,7 +121,7 @@ export function Liquidity() {
       </div>
 
       {/* 요약 카드 3개 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+      <div className="grid-3" style={{ gap: 12 }}>
         <Card>
           <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 8 }}>TGA 잔고</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#e2e8f0' }}>
@@ -232,7 +232,7 @@ export function Liquidity() {
 
       {/* 국채 경매 일정 */}
       {treasury && (treasury.upcoming.length > 0 || treasury.recent.length > 0) && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="grid-2" style={{ gap: 12 }}>
           {treasury.upcoming.length > 0 && (
             <Card>
               <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 10 }}>

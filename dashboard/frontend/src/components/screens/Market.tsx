@@ -144,7 +144,7 @@ export function Market() {
 
       {/* 주요 지표 그리드 */}
       {key_indicators.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+        <div className="grid-4" style={{ gap: 10 }}>
           {key_indicators.map((ind, i) => (
             <IndicatorChip key={i} ind={ind} />
           ))}

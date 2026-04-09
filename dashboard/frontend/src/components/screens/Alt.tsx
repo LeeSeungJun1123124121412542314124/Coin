@@ -229,7 +229,7 @@ export function Alt() {
                 {detail.score.grade} {detail.score.score.toFixed(0)}점
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 24px' }}>
+            <div className="grid-2" style={{ gap: '4px 24px' }}>
               {Object.entries(detail.score.factors).map(([key, val]) => (
                 <FactorBar key={key} label={FACTOR_LABELS[key] ?? key} score={val} />
               ))}

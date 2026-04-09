@@ -58,7 +58,7 @@ export function Dashboard() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* Hero — BTC + 공포탐욕 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, alignItems: 'center' }}>
+      <div className="grid-hero" style={{ gap: 16 }}>
         <Card>
           <div style={{ color: '#94a3b8', fontSize: '0.8rem', marginBottom: 4 }}>BTC / USDT</div>
           <div style={{ fontSize: '2rem', fontWeight: 700, color: '#e2e8f0' }}>
@@ -102,7 +102,7 @@ export function Dashboard() {
       </section>
 
       {/* 미국 시장 + 파생상품 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div className="grid-2" style={{ gap: 16 }}>
         {/* 미국 시장 */}
         <Card>
           <h3 style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>미국 시장</h3>
