@@ -29,6 +29,10 @@ interface CvdPoint {
   close: number | null
 }
 
+interface CvdChartPoint extends CvdPoint {
+  delta: number
+}
+
 interface CvdDetail {
   symbol: string
   timeframe: string
@@ -270,6 +274,7 @@ export function Alt() {
                   {divergenceZones.map((zone, idx) => (
                     <ReferenceArea
                       key={idx}
+                      yAxisId="cvd"
                       x1={zone.start}
                       x2={zone.end}
                       fill={zone.type === 'bearish' ? 'rgba(248,113,113,0.08)' : 'rgba(74,222,128,0.08)'}
