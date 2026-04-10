@@ -110,8 +110,9 @@ class NotificationDispatcher:
         """12시간 정기 리포트 발송."""
         await self._send_errors(errors)
 
+        ctx = await self._collect_dashboard_context()
         for symbol, result in results:
-            report = self._formatter.periodic_report(symbol, result)
+            report = self._formatter.periodic_report(symbol, result, dashboard_ctx=ctx)
             await self._notifier.send_message(report)
 
     async def _send_errors(self, errors: AnalysisErrors) -> None:

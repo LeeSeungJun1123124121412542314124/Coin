@@ -270,14 +270,15 @@ class MessageFormatter:
         ]
         return "\n".join(lines)
 
-    def periodic_report(self, symbol: str, result: AggregatedResult) -> str:
-        """12h 정기 리포트 — 파생상품/감성 포함."""
+    def periodic_report(
+        self, symbol: str, result: AggregatedResult, dashboard_ctx: dict[str, Any] | None = None
+    ) -> str:
+        """12h 정기 리포트 — 시장 상황 + 기술적 분석 포함."""
         ts = result.timestamp.strftime("%Y-%m-%d %H:%M UTC")
         d = result.details
         tech_score = _to_float(d.get("technical_score"), 0.0)
         onchain_score = _to_float(d.get("onchain_score"), 0.0)
         sentiment_score = _to_float(d.get("sentiment_score"), 0.0)
-        tech_sig = str(d.get("technical_signal", "N/A"))
         onchain_sig = str(d.get("onchain_signal", "N/A"))
         sentiment_sig = str(d.get("sentiment_signal", "N/A"))
         deriv_sig = str(d.get("derivatives_signal", "N/A"))
@@ -297,8 +298,13 @@ class MessageFormatter:
             f"📊 <b>변동성 정기 리포트</b> — {symbol}",
             f"🕐 {ts}",
             "",
-            "<b>한줄 요약</b>",
-            f"{result.alert_level} | 종합 {result.final_score:.1f}/100 | 기술 {tech_score:.1f} | 파생 {deriv_sig}",
+        ]
+        lines += _format_dashboard_summary(d, dashboard_ctx)
+        lines += [
+            "",
+        ]
+        lines += _format_tech_detail(d)
+        lines += [
             "",
             "<b>핵심 지표</b>",
             f"- 온체인: {onchain_sig} (점수 {onchain_score:.1f}, 유입/유출 비율 {flow_ratio:.2f})",
