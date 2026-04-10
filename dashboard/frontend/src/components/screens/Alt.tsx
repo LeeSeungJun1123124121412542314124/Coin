@@ -108,6 +108,38 @@ export function Alt() {
     close: p.close ?? null,
   }))
 
+  // 다이버전스 구간 감지
+  const divergenceZones: { start: string; end: string; type: 'bearish' | 'bullish' }[] = []
+  if (cvdChart.length >= 3) {
+    let streak = 0
+    let streakType: 'bearish' | 'bullish' | null = null
+    let streakStart = ''
+
+    for (let i = 1; i < cvdChart.length; i++) {
+      const priceDelta = (cvdChart[i].close ?? 0) - (cvdChart[i - 1].close ?? 0)
+      const cvdDelta = cvdChart[i].cvd - cvdChart[i - 1].cvd
+      let currentType: 'bearish' | 'bullish' | null = null
+
+      if (priceDelta > 0 && cvdDelta < 0) currentType = 'bearish'   // 가격↑ CVD↓
+      else if (priceDelta < 0 && cvdDelta > 0) currentType = 'bullish' // 가격↓ CVD↑
+
+      if (currentType && currentType === streakType) {
+        streak++
+      } else {
+        if (streak >= 3 && streakType) {
+          divergenceZones.push({ start: streakStart, end: cvdChart[i - 1].date, type: streakType })
+        }
+        streak = currentType ? 1 : 0
+        streakType = currentType
+        streakStart = cvdChart[i].date
+      }
+    }
+    // 마지막 구간 처리
+    if (streak >= 3 && streakType) {
+      divergenceZones.push({ start: streakStart, end: cvdChart[cvdChart.length - 1].date, type: streakType })
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <LastUpdated timestamp={lastUpdated} />
@@ -208,6 +240,15 @@ export function Alt() {
                     labelStyle={{ color: '#94a3b8' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '0.75rem', color: '#94a3b8' }} />
+                  {divergenceZones.map((zone, idx) => (
+                    <ReferenceArea
+                      key={idx}
+                      x1={zone.start}
+                      x2={zone.end}
+                      fill={zone.type === 'bearish' ? 'rgba(248,113,113,0.08)' : 'rgba(74,222,128,0.08)'}
+                      stroke="none"
+                    />
+                  ))}
                   <Line yAxisId="cvd" type="monotone" dataKey="cvd" stroke="#60a5fa" dot={false} strokeWidth={2} name="CVD" />
                   <Line yAxisId="price" type="monotone" dataKey="close" stroke="#f59e0b" dot={false} strokeWidth={2} name="가격" />
                 </ComposedChart>
