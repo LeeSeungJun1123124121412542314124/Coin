@@ -224,11 +224,15 @@ def score_symbol(
         except Exception:
             factors["bb_pct_b"] = 50.0
 
-        # 5. BB 스퀴즈 (밴드폭 좁음 = 폭발 임박)
+        # 5. BB 스퀴즈 (밴드폭이 역사적 평균 대비 좁으면 높은 점수)
         try:
             bw = bb_result.get("bandwidth", 0.02)
-            # 밴드폭 1% 이하 = 스퀴즈 = 방향성 확인 시 강한 진입 신호
-            factors["bb_squeeze"] = max(0.0, min(100.0, (0.04 - bw) / 0.04 * 100))
+            bw_series = bb_result.get("bandwidth_series", pd.Series(dtype=float))
+            bw_valid = bw_series.dropna()
+            hist_avg = float(bw_valid.mean()) if len(bw_valid) > 0 else bw
+            ratio = bw / (hist_avg + 1e-8)  # 현재/평균 비율
+            # ratio 0.5 이하 = 스퀴즈(100점), ratio 1.5 이상 = 확장(0점)
+            factors["bb_squeeze"] = max(0.0, min(100.0, (1.5 - ratio) / 1.0 * 100))
         except Exception:
             factors["bb_squeeze"] = 50.0
 
