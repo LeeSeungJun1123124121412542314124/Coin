@@ -117,7 +117,7 @@ export function Alt() {
   if (loading || !screener) return <Skeleton />
 
   // CVD 차트 (선택 종목) + delta 계산
-  const cvdChart = (detail?.chart ?? []).slice(-60).map((p, i, arr) => ({
+  const cvdChart: CvdChartPoint[] = (detail?.chart ?? []).slice(-60).map((p, i, arr) => ({
     date: p.date?.slice(5),
     cvd: p.cvd,
     close: p.close ?? null,
