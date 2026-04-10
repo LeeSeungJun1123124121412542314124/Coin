@@ -101,11 +101,12 @@ export function Alt() {
   if (error) return <ErrorState error={error} onRetry={refetch} />
   if (loading || !screener) return <Skeleton />
 
-  // CVD 차트 (선택 종목)
-  const cvdChart = (detail?.chart ?? []).slice(-60).map(p => ({
+  // CVD 차트 (선택 종목) + delta 계산
+  const cvdChart = (detail?.chart ?? []).slice(-60).map((p, i, arr) => ({
     date: p.date?.slice(5),
     cvd: p.cvd,
     close: p.close ?? null,
+    delta: i > 0 ? p.cvd - arr[i - 1].cvd : 0,
   }))
 
   // 다이버전스 구간 감지
@@ -251,6 +252,25 @@ export function Alt() {
                   ))}
                   <Line yAxisId="cvd" type="monotone" dataKey="cvd" stroke="#60a5fa" dot={false} strokeWidth={2} name="CVD" />
                   <Line yAxisId="price" type="monotone" dataKey="close" stroke="#f59e0b" dot={false} strokeWidth={2} name="가격" />
+                </ComposedChart>
+              </ResponsiveContainer>
+              {/* CVD Delta (매수/매도 전환) */}
+              <div style={{ color: '#64748b', fontSize: '0.7rem', marginTop: 8, marginBottom: 4 }}>
+                CVD Delta (봉간 변화량)
+              </div>
+              <ResponsiveContainer width="100%" height={80}>
+                <ComposedChart data={cvdChart}>
+                  <XAxis dataKey="date" tick={false} axisLine={false} />
+                  <YAxis tick={{ fill: '#64748b', fontSize: 9 }} width={45} />
+                  <Tooltip
+                    contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
+                    labelStyle={{ color: '#94a3b8' }}
+                  />
+                  <Bar dataKey="delta" name="CVD Delta">
+                    {cvdChart.map((entry, idx) => (
+                      <Cell key={idx} fill={entry.delta >= 0 ? '#4ade80' : '#f87171'} />
+                    ))}
+                  </Bar>
                 </ComposedChart>
               </ResponsiveContainer>
             </Card>
