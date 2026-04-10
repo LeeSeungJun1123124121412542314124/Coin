@@ -68,12 +68,23 @@ const FACTOR_LABELS: Record<string, string> = {
 
 type Timeframe = '1h' | '4h' | '1d'
 
-function FactorBar({ label, score }: { label: string; score: number }) {
+function FactorBar({ label, score, factorKey }: { label: string; score: number; factorKey?: string }) {
   const color = score >= 70 ? '#4ade80' : score >= 50 ? '#60a5fa' : score >= 30 ? '#f59e0b' : '#f87171'
+  const showSqueezeBadge = factorKey === 'bb_squeeze' && score >= 70
   return (
     <div style={{ marginBottom: 6 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-        <span style={{ color: '#94a3b8', fontSize: '0.72rem' }}>{label}</span>
+        <span style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
+          {label}
+          {showSqueezeBadge && (
+            <span style={{
+              marginLeft: 6, padding: '1px 6px', borderRadius: 4, fontSize: '0.65rem',
+              background: 'rgba(245,158,11,0.2)', color: '#f59e0b', fontWeight: 700,
+            }}>
+              스퀴즈!
+            </span>
+          )}
+        </span>
         <span style={{ color, fontSize: '0.72rem', fontWeight: 600 }}>{score.toFixed(0)}</span>
       </div>
       <div style={{ height: 4, background: '#334155', borderRadius: 2 }}>
@@ -204,6 +215,21 @@ export function Alt() {
                 {r.grade}
               </span>
 
+              {/* BB 스퀴즈 아이콘 */}
+              <span style={{ width: 16, textAlign: 'center' }}>
+                {r.factors?.bb_squeeze >= 70 ? (
+                  <span style={{
+                    display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
+                    background: '#f59e0b',
+                  }} title="BB 스퀴즈 감지" />
+                ) : r.factors?.bb_squeeze >= 50 ? (
+                  <span style={{
+                    display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
+                    background: '#475569',
+                  }} title="BB 보통" />
+                ) : null}
+              </span>
+
               {/* 점수 바 */}
               <div style={{ flex: 1, height: 6, background: '#334155', borderRadius: 3 }}>
                 <div style={{
@@ -293,7 +319,7 @@ export function Alt() {
             </div>
             <div className="grid-2" style={{ gap: '4px 24px' }}>
               {Object.entries(detail.score.factors).map(([key, val]) => (
-                <FactorBar key={key} label={FACTOR_LABELS[key] ?? key} score={val} />
+                <FactorBar key={key} label={FACTOR_LABELS[key] ?? key} score={val} factorKey={key} />
               ))}
             </div>
           </Card>
