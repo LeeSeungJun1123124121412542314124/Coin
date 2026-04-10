@@ -231,9 +231,10 @@ def score_symbol(
             bw_valid = bw_series.dropna()
             hist_avg = float(bw_valid.mean()) if len(bw_valid) > 0 else bw
             ratio = bw / (hist_avg + 1e-8)  # 현재/평균 비율
-            # ratio 0.5 이하 = 스퀴즈(100점), ratio 1.5 이상 = 확장(0점)
-            factors["bb_squeeze"] = max(0.0, min(100.0, (1.5 - ratio) / 1.0 * 100))
-        except Exception:
+            # ratio 0.5 이하 = 스퀴즈(100점), ratio 1.5 이상 = 확장(0점), range=1.0
+            factors["bb_squeeze"] = max(0.0, min(100.0, (1.5 - ratio) * 100))  # range=1.0 (0.5~1.5)
+        except Exception as e:
+            logger.debug("bb_squeeze 계산 실패: %s", e)
             factors["bb_squeeze"] = 50.0
 
         # 6. OI 변화
