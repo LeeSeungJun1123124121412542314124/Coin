@@ -3,7 +3,7 @@ import { useApi } from '../../hooks/useApi'
 import { Card } from '../shared/Card'
 import {
   Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  Legend, ComposedChart, Bar,
+  Legend, ComposedChart, Bar, Cell, ReferenceArea,
 } from 'recharts'
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
@@ -208,7 +208,7 @@ export function Alt() {
                     labelStyle={{ color: '#94a3b8' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '0.75rem', color: '#94a3b8' }} />
-                  <Bar yAxisId="cvd" dataKey="cvd" fill="rgba(96,165,250,0.3)" name="CVD" barSize={4} />
+                  <Line yAxisId="cvd" type="monotone" dataKey="cvd" stroke="#60a5fa" dot={false} strokeWidth={2} name="CVD" />
                   <Line yAxisId="price" type="monotone" dataKey="close" stroke="#f59e0b" dot={false} strokeWidth={2} name="가격" />
                 </ComposedChart>
               </ResponsiveContainer>
