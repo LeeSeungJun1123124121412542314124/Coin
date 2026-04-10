@@ -583,4 +583,34 @@ class TechnicalAnalyzer(BaseAnalyzer):
                 return float(boost)
             return 0.0
 
+        # ── OBV 다이버전스 ──────────────────────────────────────────
+        elif name == "obv_divergence":
+            from app.analyzers.indicators.obv import get_divergence
+
+            lookback = cfg.get("lookback", 14)
+            divergence = get_divergence(df, lookback=lookback)
+            if divergence is not None:
+                return float(boost)
+
+        # ── MFI 극단 과매수/과매도 ──────────────────────────────────
+        elif name == "mfi_extreme":
+            from app.analyzers.indicators.mfi import calculate as mfi_calc
+
+            period = cfg.get("period", 14)
+            mfi_val = mfi_calc(df, period=period)
+            ob = cfg.get("overbought", 80.0)
+            os_val = cfg.get("oversold", 20.0)
+            if mfi_val > ob or mfi_val < os_val:
+                return float(boost)
+
+        # ── VWAP 이탈 ────────────────────────────────────────────────
+        elif name == "vwap_deviation":
+            from app.analyzers.indicators.vwap import get_deviation_pct
+
+            period = cfg.get("period", 20)
+            threshold = cfg.get("threshold_pct", 3.0)
+            dev = get_deviation_pct(df, period=period)
+            if dev is not None and abs(dev) >= threshold:
+                return float(boost)
+
         return 0.0

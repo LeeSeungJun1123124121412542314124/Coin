@@ -11,7 +11,10 @@ from app.analyzers.indicators import (
     bollinger_width,
     cvi,
     historical_volatility,
+    mfi,
+    obv,
     volume_spike,
+    vwap,
 )
 
 REGISTRY: dict[str, Callable[[pd.DataFrame, int], float]] = {
@@ -19,5 +22,8 @@ REGISTRY: dict[str, Callable[[pd.DataFrame, int], float]] = {
     "bollinger_width": bollinger_width.calculate,
     "cvi": cvi.calculate,
     "historical_volatility": historical_volatility.calculate,
+    "mfi": mfi.calculate,
+    "obv": obv.calculate,
     "volume_spike": volume_spike.calculate,
+    "vwap": vwap.calculate,
 }

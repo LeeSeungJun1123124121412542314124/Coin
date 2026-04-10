@@ -8,16 +8,19 @@ import logging
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from dashboard.backend.collectors.coingecko import fetch_prices, fetch_global
+from dashboard.backend.collectors.coingecko import fetch_prices, fetch_global, fetch_stablecoin_caps
 from dashboard.backend.collectors.yahoo_finance import fetch_us_market
 from dashboard.backend.collectors.bybit_derivatives import (
     fetch_open_interest,
     fetch_funding_rate,
     fetch_long_short_ratio,
+    fetch_oi_change,
 )
 from dashboard.backend.collectors.coinbase import fetch_btc_usd
+from dashboard.backend.collectors.blockchain_info import fetch_hashrate
 from dashboard.backend.services.kimchi_premium import calc_kimchi_premium
 from dashboard.backend.utils.shared_data import get_fear_greed, get_onchain
+from dashboard.backend.db.connection import get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -36,6 +39,9 @@ async def get_dashboard():
         fr,
         long_short,
         coinbase_btc,
+        stablecoins,
+        hashrate,
+        oi_change,
     ) = await asyncio.gather(
         fetch_prices(),
         fetch_global(),
@@ -44,6 +50,9 @@ async def get_dashboard():
         fetch_funding_rate("BTCUSDT"),
         fetch_long_short_ratio("BTCUSDT"),
         fetch_btc_usd(),
+        fetch_stablecoin_caps(),
+        fetch_hashrate(),
+        fetch_oi_change("BTCUSDT"),
         return_exceptions=True,
     )
 
@@ -55,6 +64,9 @@ async def get_dashboard():
     fr = None if isinstance(fr, Exception) else fr
     long_short = None if isinstance(long_short, Exception) else long_short
     coinbase_btc = None if isinstance(coinbase_btc, Exception) else coinbase_btc
+    stablecoins = None if isinstance(stablecoins, Exception) else stablecoins
+    hashrate = None if isinstance(hashrate, Exception) else hashrate
+    oi_change = None if isinstance(oi_change, Exception) else oi_change
 
     # BTC 가격 (코인 목록에서 추출)
     btc_price = None
@@ -73,6 +85,9 @@ async def get_dashboard():
     # 온체인 데이터 (봇의 DataCollector 재활용)
     onchain = await get_onchain()
 
+    # 김치 프리미엄 히스토리 (최근 7일, DB에서 조회)
+    kimchi_history = _get_kimchi_history(days=7)
+
     return JSONResponse({
         "coins": coins,
         "global": global_data,
@@ -81,9 +96,38 @@ async def get_dashboard():
             "open_interest": oi,
             "funding_rate": fr,
             "long_short": long_short,
+            "oi_change": oi_change,
         },
         "coinbase_btc": coinbase_btc,
         "kimchi": kimchi,
+        "kimchi_history": kimchi_history,
         "fear_greed": fear_greed,
         "onchain": onchain,
+        "stablecoins": stablecoins,
+        "hashrate": hashrate,
     })
+
+
+def _get_kimchi_history(days: int = 7) -> list:
+    """kimchi_premium_history 테이블에서 최근 N일 데이터 반환."""
+    try:
+        with get_db() as conn:
+            rows = conn.execute(
+                """SELECT timestamp, btc_krw, btc_usd, usd_krw, premium_pct
+                   FROM kimchi_premium_history
+                   WHERE timestamp >= datetime('now', ?)
+                   ORDER BY timestamp ASC""",
+                (f"-{days} days",),
+            ).fetchall()
+        return [
+            {
+                "timestamp": row[0],
+                "btc_krw": row[1],
+                "btc_usd": row[2],
+                "usd_krw": row[3],
+                "premium_pct": row[4],
+            }
+            for row in rows
+        ]
+    except Exception:
+        return []

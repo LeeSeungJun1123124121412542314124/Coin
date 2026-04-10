@@ -9,6 +9,7 @@ import { Liquidity } from './components/screens/Liquidity'
 import { Alt } from './components/screens/Alt'
 import { Whale } from './components/screens/Whale'
 import { Research } from './components/screens/Research'
+import { Alerts } from './components/screens/Alerts'
 
 // 탭 정의
 const TABS = [
@@ -20,6 +21,7 @@ const TABS = [
   { path: '/liquidity', label: '유동성' },
   { path: '/cvd', label: 'CVD 스크리너' },
   { path: '/whale', label: '고래 추적' },
+  { path: '/alerts', label: '알림 히스토리' },
 ] as const
 
 // PIN 인증 화면 — 서버 측 검증 후 토큰 발급
@@ -138,6 +140,7 @@ export default function App() {
           <Route path="/liquidity" element={<Liquidity />} />
           <Route path="/cvd" element={<Alt />} />
           <Route path="/whale" element={<Whale />} />
+          <Route path="/alerts" element={<Alerts />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

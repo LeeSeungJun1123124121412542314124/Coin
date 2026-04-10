@@ -78,7 +78,6 @@ class TestPeriodicReport:
 class TestConfirmedHighAlert:
     def test_contains_sections(self, formatter):
         msg = formatter.confirmed_high_alert("BTC/USDT", _agg(score=85, alert_level="CONFIRMED_HIGH"))
-        assert "<b>한줄 요약</b>" in msg
         assert "<b>발생 근거</b>" in msg
         assert "신뢰도 약 92%" in msg
 

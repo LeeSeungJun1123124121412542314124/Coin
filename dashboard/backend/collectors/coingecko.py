@@ -31,6 +31,10 @@ _COIN_SYMBOLS = {
     "ondo-finance": "ONDO",
 }
 
+# 스테이블코인 시가총액 조회 대상
+_STABLECOIN_IDS = ["tether", "usd-coin"]
+_STABLECOIN_SYMBOLS = {"tether": "USDT", "usd-coin": "USDC"}
+
 
 @cached(ttl=60, key_prefix="coingecko_prices")
 async def fetch_prices() -> dict | None:
@@ -61,6 +65,37 @@ async def fetch_prices() -> dict | None:
         return result
     except Exception as e:
         logger.error("CoinGecko 가격 조회 실패: %s", e)
+        return None
+
+
+@cached(ttl=300, key_prefix="coingecko_stablecoins")
+async def fetch_stablecoin_caps() -> list | None:
+    """USDT/USDC 시가총액 + 24h 변화율 조회."""
+    params = {
+        "ids": ",".join(_STABLECOIN_IDS),
+        "vs_currencies": "usd",
+        "include_24hr_change": "true",
+        "include_market_cap": "true",
+        "x_cg_demo_api_key": _API_KEY,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(f"{_BASE}/simple/price", params=params)
+            resp.raise_for_status()
+            data = resp.json()
+
+        result = []
+        for coin_id in _STABLECOIN_IDS:
+            d = data.get(coin_id, {})
+            result.append({
+                "id": coin_id,
+                "symbol": _STABLECOIN_SYMBOLS.get(coin_id, coin_id.upper()),
+                "market_cap": d.get("usd_market_cap"),
+                "change_24h": d.get("usd_24h_change"),
+            })
+        return result
+    except Exception as e:
+        logger.error("스테이블코인 시총 조회 실패: %s", e)
         return None
 
 

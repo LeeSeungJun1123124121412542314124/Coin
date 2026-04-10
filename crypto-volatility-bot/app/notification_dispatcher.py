@@ -10,8 +10,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
-import time
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 from app.notifiers.message_formatter import MessageFormatter
@@ -33,21 +34,48 @@ _COOLDOWNS = {
 }
 
 
-class AlertCooldown:
-    """알림 중복 전송 방지 — 유형별 쿨다운 지원."""
+def _get_db():
+    """대시보드 DB 컨텍스트 매니저 (선택적 임포트 — 봇 단독 실행 시 실패 허용)."""
+    from dashboard.backend.db.connection import get_db
+    return get_db()
 
-    def __init__(self) -> None:
-        self._timestamps: dict[str, float] = {}
+
+class AlertCooldown:
+    """알림 중복 전송 방지 — DB 기반 쿨다운 (서버 재시작 후에도 유지)."""
 
     def is_active(self, key: str, cooldown_type: str = "high") -> bool:
-        ts = self._timestamps.get(key)
-        if ts is None:
-            return False
+        """DB에서 last_alerted 조회 후 쿨다운 여부 반환."""
         seconds = _COOLDOWNS.get(cooldown_type, 3600.0)
-        return (time.monotonic() - ts) < seconds
+        try:
+            with _get_db() as conn:
+                row = conn.execute(
+                    "SELECT last_alerted FROM alert_cooldowns WHERE key = ?", (key,)
+                ).fetchone()
+            if row is None:
+                return False
+            last = datetime.fromisoformat(row[0])
+            if last.tzinfo is None:
+                last = last.replace(tzinfo=timezone.utc)
+            return (datetime.now(timezone.utc) - last).total_seconds() < seconds
+        except Exception as e:
+            logger.warning("쿨다운 DB 조회 실패 (폴백: 비활성): %s", e)
+            return False
 
-    def set(self, key: str) -> None:
-        self._timestamps[key] = time.monotonic()
+    def set(self, key: str, cooldown_type: str = "high") -> None:
+        """DB에 UPSERT — last_alerted 갱신."""
+        now = datetime.now(timezone.utc).isoformat()
+        try:
+            with _get_db() as conn:
+                conn.execute(
+                    """INSERT INTO alert_cooldowns (key, last_alerted, cooldown_type)
+                       VALUES (?, ?, ?)
+                       ON CONFLICT(key) DO UPDATE SET
+                           last_alerted = excluded.last_alerted,
+                           cooldown_type = excluded.cooldown_type""",
+                    (key, now, cooldown_type),
+                )
+        except Exception as e:
+            logger.warning("쿨다운 DB 저장 실패: %s", e)
 
 
 class NotificationDispatcher:
@@ -90,6 +118,40 @@ class NotificationDispatcher:
         for _symbol, error_msg in errors:
             await self._notifier.send_message(error_msg)
 
+    async def _collect_dashboard_context(self) -> dict:
+        """대시보드 시장 컨텍스트 수집 — 알림 포맷에 포함할 데이터."""
+        import asyncio
+        ctx: dict = {}
+        try:
+            from dashboard.backend.collectors.coingecko import fetch_stablecoin_caps
+            from dashboard.backend.collectors.blockchain_info import fetch_hashrate
+            from dashboard.backend.collectors.bybit_derivatives import fetch_oi_change
+            from dashboard.backend.collectors.coinbase import fetch_btc_usd
+            from dashboard.backend.services.kimchi_premium import calc_kimchi_premium
+
+            btc_usd, stablecoins, hashrate, oi_change = await asyncio.gather(
+                fetch_btc_usd(),
+                fetch_stablecoin_caps(),
+                fetch_hashrate(),
+                fetch_oi_change("BTCUSDT"),
+                return_exceptions=True,
+            )
+
+            if not isinstance(btc_usd, Exception) and btc_usd:
+                kimchi = await calc_kimchi_premium(btc_usd)
+                if kimchi:
+                    ctx["kimchi_pct"] = kimchi.get("kimchi_premium_pct")
+
+            if not isinstance(stablecoins, Exception):
+                ctx["stablecoins"] = stablecoins
+            if not isinstance(hashrate, Exception) and hashrate:
+                ctx["hashrate_eh"] = hashrate.get("hashrate_eh")
+            if not isinstance(oi_change, Exception) and oi_change:
+                ctx["oi_change_24h_pct"] = oi_change.get("change_24h_pct")
+        except Exception as e:
+            logger.warning("대시보드 컨텍스트 수집 실패 (알림은 정상 발송): %s", e)
+        return ctx
+
     async def _check_high_alerts(self, symbol: str, result: AggregatedResult) -> None:
         """CONFIRMED_HIGH / HIGH / LIQUIDATION_RISK 순서로 체크."""
         level = result.alert_level
@@ -97,23 +159,29 @@ class NotificationDispatcher:
         if level == "CONFIRMED_HIGH":
             key = f"{symbol}:confirmed_high"
             if not self._cooldown.is_active(key, "confirmed_high"):
-                msg = self._formatter.confirmed_high_alert(symbol, result)
+                ctx = await self._collect_dashboard_context()
+                msg = self._formatter.confirmed_high_alert(symbol, result, dashboard_ctx=ctx)
                 await self._notifier.send_message(msg)
-                self._cooldown.set(key)
+                self._cooldown.set(key, "confirmed_high")
+                _save_alert_history(symbol, level, result)
 
         elif level == "HIGH":
             key = f"{symbol}:high"
             if not self._cooldown.is_active(key, "high"):
-                msg = self._formatter.high_alert(symbol, result)
+                ctx = await self._collect_dashboard_context()
+                msg = self._formatter.high_alert(symbol, result, dashboard_ctx=ctx)
                 await self._notifier.send_message(msg)
-                self._cooldown.set(key)
+                self._cooldown.set(key, "high")
+                _save_alert_history(symbol, level, result)
 
         elif level == "LIQUIDATION_RISK":
             key = f"{symbol}:liquidation_risk"
             if not self._cooldown.is_active(key, "liquidation_risk"):
-                msg = self._formatter.liquidation_risk_alert(symbol, result)
+                ctx = await self._collect_dashboard_context()
+                msg = self._formatter.liquidation_risk_alert(symbol, result, dashboard_ctx=ctx)
                 await self._notifier.send_message(msg)
-                self._cooldown.set(key)
+                self._cooldown.set(key, "liquidation_risk")
+                _save_alert_history(symbol, level, result)
 
     async def _check_whale(self, symbol: str, result: AggregatedResult) -> None:
         if result.whale_alert:
@@ -121,4 +189,26 @@ class NotificationDispatcher:
             if not self._cooldown.is_active(key, "whale"):
                 msg = self._formatter.whale_alert(symbol, result)
                 await self._notifier.send_message(msg)
-                self._cooldown.set(key)
+                self._cooldown.set(key, "whale")
+                _save_alert_history(symbol, "WHALE", result)
+
+
+def _save_alert_history(symbol: str, alert_level: str, result: "AggregatedResult") -> None:
+    """알림 발송 이력을 alert_history 테이블에 저장."""
+    try:
+        details = getattr(result, "details", {})
+        with _get_db() as conn:
+            conn.execute(
+                """INSERT INTO alert_history
+                   (symbol, alert_level, alert_score, final_score, details)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (
+                    symbol,
+                    alert_level,
+                    getattr(result, "alert_score", None),
+                    getattr(result, "final_score", None),
+                    json.dumps(details) if details else None,
+                ),
+            )
+    except Exception as e:
+        logger.warning("알림 히스토리 저장 실패: %s", e)

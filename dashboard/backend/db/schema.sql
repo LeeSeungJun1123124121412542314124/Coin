@@ -94,3 +94,38 @@ CREATE TABLE IF NOT EXISTS analysis_history (
 
 CREATE INDEX IF NOT EXISTS idx_analysis_history_symbol_ts
     ON analysis_history(symbol, timestamp DESC);
+
+-- 김치 프리미엄 히스토리 (2시간 주기 수집)
+CREATE TABLE IF NOT EXISTS kimchi_premium_history (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp   TEXT DEFAULT (datetime('now')),
+    btc_krw     REAL NOT NULL,
+    btc_usd     REAL NOT NULL,
+    usd_krw     REAL NOT NULL,
+    premium_pct REAL NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_kimchi_premium_ts
+    ON kimchi_premium_history(timestamp DESC);
+
+-- 알림 발송 히스토리
+CREATE TABLE IF NOT EXISTS alert_history (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp    TEXT DEFAULT (datetime('now')),
+    symbol       TEXT NOT NULL,
+    alert_level  TEXT NOT NULL,
+    alert_score  REAL,
+    final_score  REAL,
+    details      TEXT,   -- JSON
+    message_sent INTEGER DEFAULT 1
+);
+
+CREATE INDEX IF NOT EXISTS idx_alert_history_ts
+    ON alert_history(timestamp DESC);
+
+-- 알림 쿨다운 영속화 (서버 재시작 후에도 쿨다운 유지)
+CREATE TABLE IF NOT EXISTS alert_cooldowns (
+    key           TEXT PRIMARY KEY,
+    last_alerted  TEXT NOT NULL,
+    cooldown_type TEXT NOT NULL
+);

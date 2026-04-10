@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import sqlite3
+from contextlib import contextmanager
 
 import numpy as np
 import pandas as pd
@@ -14,6 +16,56 @@ def _clean_weight_env_vars(monkeypatch):
     """Isolate tests from .env file WEIGHT_ values loaded by load_dotenv()."""
     for key in ("WEIGHT_ONCHAIN", "WEIGHT_TECHNICAL", "WEIGHT_SENTIMENT"):
         monkeypatch.delenv(key, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_alert_cooldown_db(monkeypatch):
+    """AlertCooldown DB를 테스트마다 새 인메모리 SQLite로 격리.
+
+    production DB(crypto.db)의 stale 쿨다운 데이터가 테스트에 영향을 주지 않도록 한다.
+    """
+    _mem_conn = sqlite3.connect(":memory:")
+    _mem_conn.row_factory = sqlite3.Row
+    _mem_conn.execute("""
+        CREATE TABLE IF NOT EXISTS alert_cooldowns (
+            key TEXT PRIMARY KEY,
+            last_alerted TEXT NOT NULL,
+            cooldown_type TEXT NOT NULL
+        )
+    """)
+    _mem_conn.execute("""
+        CREATE TABLE IF NOT EXISTS alert_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT DEFAULT (datetime('now')),
+            symbol TEXT NOT NULL,
+            alert_level TEXT NOT NULL,
+            alert_score REAL,
+            final_score REAL,
+            details TEXT,
+            message_sent INTEGER DEFAULT 1
+        )
+    """)
+    _mem_conn.commit()
+
+    import threading
+    _lock = threading.Lock()
+
+    @contextmanager
+    def _fake_get_db():
+        with _lock:
+            try:
+                yield _mem_conn
+                _mem_conn.commit()
+            except Exception:
+                _mem_conn.rollback()
+                raise
+
+    import app.notification_dispatcher as nd_module
+    monkeypatch.setattr(nd_module, "_get_db", _fake_get_db)
+
+    yield
+
+    _mem_conn.close()
 
 
 

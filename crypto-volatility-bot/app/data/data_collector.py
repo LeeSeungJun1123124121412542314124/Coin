@@ -102,7 +102,7 @@ class DataCollector:
                     f"{_COINMETRICS_BASE}/timeseries/asset-metrics",
                     params={
                         "assets": asset,
-                        "metrics": "FlowInExNtv,FlowOutExNtv,AdrActCnt",
+                        "metrics": "FlowInExNtv,FlowOutExNtv,AdrActCnt,CapMVRVCur",
                         "frequency": "1d",
                         "limit_per_asset": 1,
                     },
@@ -114,6 +114,8 @@ class DataCollector:
                 latest = data[0]
                 inflow = float(latest.get("FlowInExNtv") or 0)
                 outflow = float(latest.get("FlowOutExNtv") or 0)
+                mvrv_raw = latest.get("CapMVRVCur")
+                mvrv = float(mvrv_raw) if mvrv_raw is not None else None
                 # Whale proxy: active addresses 비율로 추정 (고래 활동 대리지표)
                 whale_proxy = inflow + outflow  # 총 유동량이 클수록 고래 활동 가능성
                 return {
@@ -121,6 +123,7 @@ class DataCollector:
                     "exchange_outflow": outflow,
                     "whale_transaction_volume": whale_proxy / 1000,  # 정규화
                     "dormant_whale_activated": False,
+                    "mvrv": mvrv,
                 }
 
         return await _retry_async(_fetch)

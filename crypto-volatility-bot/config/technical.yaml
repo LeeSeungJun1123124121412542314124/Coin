@@ -160,6 +160,28 @@ signal_boosters:
     category: trend
     require_direction_match: true  # HA 방향과 4h HMA 방향 일치 시에만 트리거
 
+  # ── OBV / MFI / VWAP ──────────────────────────────────────
+  obv_divergence:
+    enabled: true
+    boost: 8
+    category: momentum
+    lookback: 14  # 다이버전스 감지 기간(봉 수)
+
+  mfi_extreme:
+    enabled: true
+    boost: 8
+    category: momentum
+    period: 14
+    overbought: 80.0
+    oversold: 20.0
+
+  vwap_deviation:
+    enabled: true
+    boost: 6
+    category: trend
+    period: 20
+    threshold_pct: 3.0  # VWAP 대비 ±3% 이상 이탈 시 트리거
+
   # ── Disabled (replaced/removed) ────────────────────────────
   stochrsi_extreme:
     enabled: false

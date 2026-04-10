@@ -128,3 +128,76 @@ async def fetch_fr_history(symbol: str = "BTCUSDT", limit: int = 1500) -> list |
 async def fetch_long_short_ratio(symbol: str = "BTCUSDT") -> dict | None:
     """롱숏 비율 — Bybit 공개 API에서 제공하지 않으므로 None 반환."""
     return None
+
+
+@cached(ttl=300, key_prefix="bybit_oi_change")
+async def fetch_oi_change(symbol: str = "BTCUSDT") -> dict | None:
+    """OI 1h/24h 변화율 계산.
+
+    fetch_oi_history의 1d 히스토리를 사용해 24h 변화율을,
+    5min 간격 OI를 별도 조회해 1h 변화율을 계산한다.
+
+    Returns:
+        {
+            "change_1h_pct": float | None,
+            "change_24h_pct": float | None,
+            "current_oi": float | None,
+        }
+    """
+    try:
+        client = _get_client()
+
+        # 5min 간격 최근 13봉 조회 (약 1시간 전 값 확보)
+        resp_5m = await client.get(
+            f"{_BASE}/v5/market/open-interest",
+            params={
+                "category": "linear",
+                "symbol": symbol,
+                "intervalTime": "5min",
+                "limit": 13,
+            },
+        )
+        resp_5m.raise_for_status()
+        items_5m = resp_5m.json().get("result", {}).get("list", [])
+
+        current_oi = None
+        oi_1h_ago = None
+        if len(items_5m) >= 13:
+            current_oi = float(items_5m[0]["openInterest"])
+            oi_1h_ago = float(items_5m[-1]["openInterest"])
+
+        change_1h_pct = None
+        if current_oi is not None and oi_1h_ago and oi_1h_ago != 0:
+            change_1h_pct = round((current_oi - oi_1h_ago) / oi_1h_ago * 100, 2)
+
+        # 1일 히스토리 — 24h 변화율
+        resp_1d = await client.get(
+            f"{_BASE}/v5/market/open-interest",
+            params={
+                "category": "linear",
+                "symbol": symbol,
+                "intervalTime": "1d",
+                "limit": 2,
+            },
+        )
+        resp_1d.raise_for_status()
+        items_1d = resp_1d.json().get("result", {}).get("list", [])
+
+        change_24h_pct = None
+        if len(items_1d) >= 2:
+            oi_now = float(items_1d[0]["openInterest"])
+            oi_24h = float(items_1d[1]["openInterest"])
+            if oi_24h != 0:
+                change_24h_pct = round((oi_now - oi_24h) / oi_24h * 100, 2)
+            if current_oi is None:
+                current_oi = oi_now
+
+        return {
+            "symbol": symbol,
+            "current_oi": current_oi,
+            "change_1h_pct": change_1h_pct,
+            "change_24h_pct": change_24h_pct,
+        }
+    except Exception as e:
+        logger.error("OI 변화율 조회 실패 (%s): %s", symbol, e)
+        return None

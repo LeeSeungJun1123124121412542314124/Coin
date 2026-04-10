@@ -10,6 +10,14 @@ _FLOW_RATIO_THRESHOLD = 1.5
 _WHALE_VOLUME_THRESHOLD = 50.0
 _WHALE_BOOST = 15.0
 
+# MVRV 스코어 부스트 임계값
+_MVRV_EXTREME_HIGH = 3.5
+_MVRV_HIGH = 2.5
+_MVRV_LOW = 1.0
+_MVRV_EXTREME_LOW = 0.8
+_MVRV_BOOST_EXTREME = 15.0
+_MVRV_BOOST_NORMAL = 10.0
+
 
 class OnchainDataUnavailableError(Exception):
     """Raised when onchain data is None or critically missing."""
@@ -24,6 +32,7 @@ class OnchainAnalyzer(BaseAnalyzer):
         outflow: float = float(data.get("exchange_outflow", 0))
         whale_vol: float = float(data.get("whale_transaction_volume", 0))
         dormant: bool = bool(data.get("dormant_whale_activated", False))
+        mvrv: float | None = data.get("mvrv")
 
         if inflow == 0 and outflow == 0:
             # 데이터 없음 — 중립 비율 사용
@@ -46,7 +55,25 @@ class OnchainAnalyzer(BaseAnalyzer):
 
         # Whale boost
         boost = _WHALE_BOOST if whale_vol > _WHALE_VOLUME_THRESHOLD else 0.0
-        score = self._clamp(base_score + boost)
+
+        # MVRV 부스트 (극단적 고평가/저평가 모두 변동성 신호)
+        mvrv_boost = 0.0
+        mvrv_signal = "NEUTRAL"
+        if mvrv is not None:
+            if mvrv > _MVRV_EXTREME_HIGH:
+                mvrv_boost = _MVRV_BOOST_EXTREME
+                mvrv_signal = "EXTREME_OVERVALUED"
+            elif mvrv > _MVRV_HIGH:
+                mvrv_boost = _MVRV_BOOST_NORMAL
+                mvrv_signal = "OVERVALUED"
+            elif mvrv < _MVRV_EXTREME_LOW:
+                mvrv_boost = _MVRV_BOOST_EXTREME
+                mvrv_signal = "EXTREME_UNDERVALUED"
+            elif mvrv < _MVRV_LOW:
+                mvrv_boost = _MVRV_BOOST_NORMAL
+                mvrv_signal = "UNDERVALUED"
+
+        score = self._clamp(base_score + boost + mvrv_boost)
 
         details: dict[str, Any] = {
             "inflow": inflow,
@@ -54,6 +81,8 @@ class OnchainAnalyzer(BaseAnalyzer):
             "flow_ratio": ratio,
             "whale_volume": whale_vol,
             "whale_alert": dormant,
+            "mvrv": mvrv,
+            "mvrv_signal": mvrv_signal,
         }
 
         return AnalysisResult(score=score, signal=signal, details=details, source="onchain")

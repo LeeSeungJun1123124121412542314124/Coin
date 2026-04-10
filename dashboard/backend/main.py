@@ -209,6 +209,7 @@ def _mount_dashboard_routers(app: FastAPI) -> None:
     공개 엔드포인트: GET /api/health, POST /api/auth/verify-pin
     인증 필요: 나머지 모든 라우터 (Bearer 토큰)
     """
+    from dashboard.backend.api.alert_routes import router as alert_router
     from dashboard.backend.api.auth_routes import router as auth_router
     from dashboard.backend.api.dashboard_routes import router as dashboard_router
     from dashboard.backend.api.spf_routes import router as spf_router
@@ -235,6 +236,7 @@ def _mount_dashboard_routers(app: FastAPI) -> None:
     app.include_router(whale_router, prefix="/api", dependencies=_auth_dep)
     app.include_router(research_router, prefix="/api", dependencies=_auth_dep)
     app.include_router(visitor_router, prefix="/api", dependencies=_auth_dep)
+    app.include_router(alert_router, prefix="/api", dependencies=_auth_dep)
 
 
 def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
@@ -242,6 +244,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     from dashboard.backend.jobs.collect_spf import collect_spf
     from dashboard.backend.jobs.collect_volume import collect_volume
     from dashboard.backend.jobs.collect_whales import collect_whales
+    from dashboard.backend.jobs.collect_kimchi import collect_kimchi
     from dashboard.backend.jobs.update_predictions import update_predictions
 
     # SPF 데이터 수집 — 매일 00:10 UTC
@@ -255,6 +258,9 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
 
     # 고래 스냅샷 — 2시간마다
     scheduler.add_job(collect_whales, IntervalTrigger(hours=2))
+
+    # 김치 프리미엄 히스토리 — 2시간마다
+    scheduler.add_job(collect_kimchi, IntervalTrigger(hours=2))
 
     # 봇 분석 — 매시간 이벤트 알림 (긴급/고래)
     @async_retry(max_retries=3, backoff_base=2.0, on_failure=notify_job_failure)

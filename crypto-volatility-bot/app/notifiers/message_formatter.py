@@ -66,8 +66,93 @@ def _recommendation(level: str) -> str:
     return _RECOMMENDATIONS.get(level, "변동성 변화 구간입니다. 리스크 관리 비중을 유지하세요.")
 
 
+def _format_dashboard_summary(d: dict[str, Any], ctx: dict[str, Any] | None) -> list[str]:
+    """대시보드 시장 상황 요약 섹션 생성.
+
+    Args:
+        d: AggregatedResult.details
+        ctx: dispatcher가 수집한 대시보드 컨텍스트 {kimchi_pct, stablecoins, hashrate_eh, oi_change_24h_pct}
+    """
+    lines = ["<b>📊 시장 상황</b>"]
+
+    # 김치 프리미엄
+    kimchi_pct = _to_float(ctx.get("kimchi_pct") if ctx else None, float("nan"))
+    if kimchi_pct == kimchi_pct:  # NaN 체크
+        lines.append(f"• 김프: {kimchi_pct:+.2f}%")
+
+    # MVRV
+    mvrv = d.get("mvrv")
+    mvrv_sig = str(d.get("mvrv_signal", ""))
+    if mvrv is not None:
+        mvrv_label = {
+            "EXTREME_OVERVALUED": "극단 과평가",
+            "OVERVALUED": "과평가",
+            "UNDERVALUED": "저평가",
+            "EXTREME_UNDERVALUED": "극단 저평가",
+        }.get(mvrv_sig, "정상 범위")
+        lines.append(f"• MVRV: {_to_float(mvrv):.2f} ({mvrv_label})")
+
+    # Fear & Greed
+    fgi = d.get("fear_greed_index")
+    if fgi is not None:
+        lines.append(f"• F&G: {int(_to_float(fgi))}")
+
+    # 스테이블코인 시총
+    if ctx:
+        stablecoins = ctx.get("stablecoins") or []
+        for sc in stablecoins:
+            cap = sc.get("market_cap")
+            if cap:
+                cap_b = cap / 1e9
+                change = sc.get("change_24h")
+                chg_str = f" ({change:+.1f}%)" if change is not None else ""
+                lines.append(f"• {sc['symbol']} 시총: ${cap_b:.1f}B{chg_str}")
+
+        # 해시레이트
+        hashrate_eh = ctx.get("hashrate_eh")
+        if hashrate_eh is not None:
+            lines.append(f"• 해시레이트: {hashrate_eh:.0f} EH/s")
+
+        # OI 변화율
+        oi_24h = ctx.get("oi_change_24h_pct")
+        if oi_24h is not None:
+            lines.append(f"• OI 변화: {oi_24h:+.1f}% (24h)")
+
+    return lines
+
+
+def _format_tech_detail(d: dict[str, Any]) -> list[str]:
+    """기술 분석 상세 섹션 — OBV/MFI/VWAP 부스터 포함."""
+    tech_score = _to_float(d.get("technical_score"), 0.0)
+    boost_obj = d.get("signal_boost")
+    active_boosters: dict = {}
+    if isinstance(boost_obj, dict):
+        active_boosters = boost_obj.get("active_boosters", {})
+
+    lines = [
+        "<b>📈 기술적 분석</b>",
+        f"종합 {_to_float(d.get('final_score_', tech_score)):.0f}/100 | 기술 {tech_score:.1f}",
+    ]
+
+    # OBV divergence
+    if "obv_divergence" in active_boosters:
+        lines.append("• OBV: 다이버전스 감지")
+
+    # MFI — score_aggregator에는 raw 값이 없으므로 부스터 활성 여부로 표시
+    if "mfi_extreme" in active_boosters:
+        lines.append("• MFI: 극단 구간 (과매수/과매도)")
+
+    # VWAP
+    if "vwap_deviation" in active_boosters:
+        lines.append("• VWAP: 이탈 감지")
+
+    return lines
+
+
 class MessageFormatter:
-    def confirmed_high_alert(self, symbol: str, result: AggregatedResult) -> str:
+    def confirmed_high_alert(
+        self, symbol: str, result: AggregatedResult, dashboard_ctx: dict[str, Any] | None = None
+    ) -> str:
         """92% 신뢰도 — 기술적 HIGH + 파생상품 확인."""
         ts = result.timestamp.strftime("%Y-%m-%d %H:%M UTC")
         d = result.details
@@ -81,8 +166,13 @@ class MessageFormatter:
             "🚨 <b>변동성 확인 경보</b>",
             f"심볼: {symbol} | 시간: {ts}",
             "",
-            "<b>한줄 요약</b>",
-            f"{result.alert_level} | 종합 {result.final_score:.1f}/100 | 기술 {tech_score:.1f} | 파생 {deriv_sig}",
+        ]
+        lines += _format_dashboard_summary(d, dashboard_ctx)
+        lines += [
+            "",
+        ]
+        lines += _format_tech_detail(d)
+        lines += [
             "",
             "<b>발생 근거</b>",
             f"- 기술: {tech_score:.1f}점 ({tech_sig})",
@@ -95,7 +185,9 @@ class MessageFormatter:
         ]
         return "\n".join(lines)
 
-    def high_alert(self, symbol: str, result: AggregatedResult) -> str:
+    def high_alert(
+        self, symbol: str, result: AggregatedResult, dashboard_ctx: dict[str, Any] | None = None
+    ) -> str:
         """75% 신뢰도 — 기술적 HIGH 단독."""
         ts = result.timestamp.strftime("%Y-%m-%d %H:%M UTC")
         d = result.details
@@ -109,8 +201,13 @@ class MessageFormatter:
             "📊 <b>변동성 경보</b>",
             f"심볼: {symbol} | 시간: {ts}",
             "",
-            "<b>한줄 요약</b>",
-            f"{result.alert_level} | 종합 {result.final_score:.1f}/100 | 기술 {tech_score:.1f} | 파생 {deriv_sig}",
+        ]
+        lines += _format_dashboard_summary(d, dashboard_ctx)
+        lines += [
+            "",
+        ]
+        lines += _format_tech_detail(d)
+        lines += [
             "",
             "<b>발생 근거</b>",
             f"- 기술: {tech_score:.1f}점 ({tech_sig})",
@@ -123,7 +220,9 @@ class MessageFormatter:
         ]
         return "\n".join(lines)
 
-    def liquidation_risk_alert(self, symbol: str, result: AggregatedResult) -> str:
+    def liquidation_risk_alert(
+        self, symbol: str, result: AggregatedResult, dashboard_ctx: dict[str, Any] | None = None
+    ) -> str:
         """신규 — 기술적 LOW이지만 OI+FR 극단 동시."""
         ts = result.timestamp.strftime("%Y-%m-%d %H:%M UTC")
         d = result.details
@@ -136,6 +235,10 @@ class MessageFormatter:
         lines = [
             "⚡ <b>청산 위험 경보</b>",
             f"심볼: {symbol} | 시간: {ts}",
+            "",
+        ]
+        lines += _format_dashboard_summary(d, dashboard_ctx)
+        lines += [
             "",
             "<b>발생 근거</b>",
             f"- 기술: {tech_score:.1f}점 ({tech_sig})",
