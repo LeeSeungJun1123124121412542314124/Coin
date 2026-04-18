@@ -158,6 +158,38 @@ async def fetch_stock_prices(slots: tuple[tuple[str, str, str | None], ...]) -> 
     return [r for r in results if r is not None]
 
 
+async def lookup_stock_info(ticker: str) -> dict | None:
+    """Yahoo Finance quoteSummary로 ticker → name/exchange 조회 (캐시 없음, 항상 fresh).
+
+    Args:
+        ticker: 조회할 종목 티커 (예: "AAPL", "005930.KS")
+
+    Returns:
+        성공 시 {"name": str, "exchange": str}, 실패/종목없음 시 None
+        exchange 값은 원본 그대로 반환 (NYSE, NasdaqGS, KRX 등).
+    """
+    url = f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{ticker}"
+    try:
+        async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+            resp = await client.get(url, params={"modules": "price"})
+            resp.raise_for_status()
+            data = resp.json()
+            result = data.get("quoteSummary", {}).get("result")
+            if not result:
+                logger.warning("lookup_stock_info: 빈 결과 (%s)", ticker)
+                return None
+            price_module = result[0].get("price", {})
+            name = price_module.get("shortName") or price_module.get("longName")
+            exchange = price_module.get("exchangeName")
+            if not name or not exchange:
+                logger.warning("lookup_stock_info: name/exchange 누락 (%s) data=%s", ticker, price_module)
+                return None
+            return {"name": name, "exchange": exchange}
+    except Exception as e:
+        logger.warning("lookup_stock_info 조회 실패 (%s): %s", ticker, e)
+        return None
+
+
 @cached(ttl=3600, key_prefix="yahoo_history")
 async def fetch_index_history(ticker: str, days: int = 30) -> list[dict] | None:
     """지수 30일 종가 히스토리 — 모달 차트용."""
