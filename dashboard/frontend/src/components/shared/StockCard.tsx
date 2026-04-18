@@ -14,7 +14,7 @@ interface StockCardProps {
   onOpenModal: (tv_symbol: string, name: string) => void
 }
 
-export function StockCard({ ticker, name, tv_symbol, price, change_pct, sparkline, high, low, onOpenModal }: StockCardProps) {
+export function StockCard({ name, tv_symbol, price, change_pct, sparkline, high, low, onOpenModal }: StockCardProps) {
   const uid = useId()
   const gradId = `stockCardGrad-${uid.replace(/:/g, '')}`
 
