@@ -1,12 +1,16 @@
+import { useState } from 'react'
 import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis } from 'recharts'
 import { useApi } from '../../hooks/useApi'
 import { Card } from '../shared/Card'
 import { StatRow } from '../shared/StatRow'
 import { GaugeChart } from '../shared/GaugeChart'
+import { Modal } from '../shared/Modal'
+import { TradingViewChart } from '../shared/TradingViewChart'
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
 import { fmt } from '../../lib/format'
+import { toTvSymbol } from '../../lib/tvSymbolMap'
 
 interface DashboardData {
   coins: Array<{
@@ -62,6 +66,7 @@ function mvrvLabel(signal: string | null | undefined, mvrv: number): string {
 
 export function Dashboard() {
   const { data, loading, error, refetch, lastUpdated } = useApi<DashboardData>('/api/dashboard', 60_000)
+  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
 
   if (loading && !data) return <Skeleton />
   if (error) return <ErrorState error={error} onRetry={refetch} />
@@ -84,7 +89,7 @@ export function Dashboard() {
       {/* ── Hero — BTC + 공포탐욕 + MVRV ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
         {/* BTC 카드 + 김프 */}
-        <Card>
+        <Card onClick={() => setSelectedSymbol('BTC')} style={{ cursor: 'pointer' }}>
           <div style={{ color: '#94a3b8', fontSize: '0.8rem', marginBottom: 4 }}>BTC / USDT</div>
           <div style={{ fontSize: '2rem', fontWeight: 700, color: '#e2e8f0' }}>
             {btc?.price ? `$${btc.price.toLocaleString()}` : '—'}
@@ -153,7 +158,12 @@ export function Dashboard() {
         <h2 style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>코인 가격</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
           {data.coins?.map(coin => (
-            <Card key={coin.symbol}>
+            <Card
+              key={coin.symbol}
+              onClick={() => setSelectedSymbol(coin.symbol)}
+              style={{ cursor: 'pointer', transition: 'border-color 0.15s' }}
+              className="coin-card"
+            >
               <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>{coin.symbol}</div>
               <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#e2e8f0', margin: '4px 0' }}>
                 {coin.price ? `$${coin.price.toLocaleString()}` : '—'}
@@ -287,6 +297,11 @@ export function Dashboard() {
           )}
         </div>
       )}
+      <Modal open={!!selectedSymbol} onClose={() => setSelectedSymbol(null)}>
+        {selectedSymbol && <TradingViewChart symbol={toTvSymbol(selectedSymbol)} />}
+      </Modal>
+
+      <style>{`.coin-card:hover { border-color: #60a5fa !important; }`}</style>
     </div>
   )
 }
