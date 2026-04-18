@@ -40,7 +40,8 @@ export function GlobalMarketCard({ data }: GlobalMarketCardProps) {
 
   const chartData = market_cap_chart ?? []
   const hasChart = chartData.length >= 2
-  const hasDominance = btc_dominance != null && eth_dominance != null
+  // eth_dominance가 null이어도 BTC + 기타 바는 표시
+  const hasDominance = btc_dominance != null
 
   return (
     <Card>
@@ -130,7 +131,7 @@ export function GlobalMarketCard({ data }: GlobalMarketCardProps) {
           }}
         >
           <div style={{ flex: btcDom, background: '#3b82f6' }} />
-          <div style={{ flex: ethDom, background: '#10b981' }} />
+          {eth_dominance != null && <div style={{ flex: ethDom, background: '#10b981' }} />}
           <div style={{ flex: othersDom, background: '#ef4444' }} />
         </div>
       )}
@@ -151,10 +152,12 @@ export function GlobalMarketCard({ data }: GlobalMarketCardProps) {
             <span style={{ color: '#3b82f6' }}>●</span> BTC{' '}
             {btcDom.toFixed(1)}%
           </span>
-          <span>
-            <span style={{ color: '#10b981' }}>●</span> ETH{' '}
-            {ethDom.toFixed(1)}%
-          </span>
+          {eth_dominance != null && (
+            <span>
+              <span style={{ color: '#10b981' }}>●</span> ETH{' '}
+              {ethDom.toFixed(1)}%
+            </span>
+          )}
           <span>
             <span style={{ color: '#ef4444' }}>●</span> 기타{' '}
             {othersDom.toFixed(1)}%
