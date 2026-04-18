@@ -71,10 +71,8 @@ async def put_stock_slot(
     # TradingView 심볼 자동 생성
     if market == "kr":
         base_ticker = ticker.split(".")[0]  # "005930.KS" → "005930"
-        # Yahoo Finance exchange 코드로 TradingView prefix 결정
-        # KOE=코스닥, KSC=코스피, KPQ=코넥스
-        kr_exchange_map = {"KOE": "KOSDAQ", "KSC": "KRX", "KPQ": "KONEX"}
-        tv_prefix = kr_exchange_map.get(info["exchange"], "KRX")
+        # 한국 거래소는 TradingView에서 거래소 구분 없이 모두 KRX: prefix 사용
+        tv_prefix = "KRX"
         tv_symbol = f"{tv_prefix}:{base_ticker}"
     else:
         exchange_raw = info["exchange"]
