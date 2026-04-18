@@ -14,6 +14,9 @@ import LastUpdated from '../shared/LastUpdated'
 import { GlobalMarketCard } from '../shared/GlobalMarketCard'
 import { fmt } from '../../lib/format'
 import { toTvSymbol } from '../../lib/tvSymbolMap'
+import { StockIndexCard } from '../shared/StockIndexCard'
+import { StockIndexModal } from '../shared/StockIndexModal'
+import { EconomicNewsSection } from '../shared/EconomicNewsSection'
 
 interface DashboardData {
   coins: Array<{
@@ -57,6 +60,14 @@ interface DashboardData {
   hashrate: { hashrate_eh: number } | null
 }
 
+interface StockIndexItem {
+  ticker: string
+  name: string
+  price: number | null
+  change_pct: number | null
+  sparkline: number[]
+}
+
 /** MVRV 값(0~5+)을 게이지(0~100)에 매핑 */
 function mvrvToGauge(mvrv: number): number {
   return Math.min(100, Math.round((mvrv / 5) * 100))
@@ -74,6 +85,8 @@ function mvrvLabel(signal: string | null | undefined, mvrv: number): string {
 export function Dashboard() {
   const { data, loading, error, refetch, lastUpdated } = useApi<DashboardData>('/api/dashboard', 60_000)
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
+  const { data: stockIndices } = useApi<StockIndexItem[]>('/api/stock-indices', 300_000)
+  const [activeIndex, setActiveIndex] = useState<{ ticker: string; name: string } | null>(null)
 
   // 편집 모드 상태
   const [editMode, setEditMode] = useState(false)
@@ -194,7 +207,24 @@ export function Dashboard() {
         {data.global && (
           <GlobalMarketCard data={data.global} />
         )}
+        {stockIndices?.map(idx => (
+          <StockIndexCard
+            key={idx.ticker}
+            name={idx.name}
+            ticker={idx.ticker}
+            price={idx.price}
+            change_pct={idx.change_pct}
+            sparkline={idx.sparkline ?? []}
+            onOpenModal={(ticker) => {
+              const found = stockIndices.find(i => i.ticker === ticker)
+              setActiveIndex(found ? { ticker: found.ticker, name: found.name } : null)
+            }}
+          />
+        ))}
       </div>
+
+      {/* ── 경제 뉴스 ── */}
+      <EconomicNewsSection />
 
       {/* ── 코인 카드 섹션 ── */}
       <section>
@@ -397,6 +427,13 @@ export function Dashboard() {
           />
         )}
       </Modal>
+
+      {/* 지수 차트 모달 */}
+      <StockIndexModal
+        ticker={activeIndex?.ticker ?? null}
+        name={activeIndex?.name ?? ''}
+        onClose={() => setActiveIndex(null)}
+      />
 
       <style>{`.coin-card:hover { border-color: #60a5fa !important; }`}</style>
     </div>
