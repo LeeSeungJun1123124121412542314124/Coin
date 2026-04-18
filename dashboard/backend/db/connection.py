@@ -50,6 +50,22 @@ def get_connection() -> sqlite3.Connection:
 def _init_schema(conn: sqlite3.Connection) -> None:
     schema = _SCHEMA_PATH.read_text(encoding="utf-8")
     conn.executescript(schema)
+    # 기본 주식 슬롯 초기화 (이미 존재하면 무시)
+    conn.executemany(
+        "INSERT OR IGNORE INTO stock_slots (market, position, ticker, name, tv_symbol) VALUES (?,?,?,?,?)",
+        [
+            ('kr', 1, '005930.KS', '삼성전자', 'KRX:005930'),
+            ('kr', 2, '000660.KS', 'SK하이닉스', 'KRX:000660'),
+            ('kr', 3, '035720.KS', '카카오', 'KRX:035720'),
+            ('kr', 4, '005380.KS', '현대차', 'KRX:005380'),
+            ('kr', 5, '035420.KS', 'NAVER', 'KRX:035420'),
+            ('us', 1, 'AAPL', 'Apple', 'NASDAQ:AAPL'),
+            ('us', 2, 'MSFT', 'Microsoft', 'NASDAQ:MSFT'),
+            ('us', 3, 'NVDA', 'NVIDIA', 'NASDAQ:NVDA'),
+            ('us', 4, 'TSLA', 'Tesla', 'NASDAQ:TSLA'),
+            ('us', 5, 'GOOGL', 'Alphabet', 'NASDAQ:GOOGL'),
+        ]
+    )
     conn.commit()
 
 

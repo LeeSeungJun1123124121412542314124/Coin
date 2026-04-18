@@ -146,3 +146,14 @@ INSERT OR IGNORE INTO dashboard_coin_slots (position, coin_id, symbol, tv_symbol
   (3,'hyperliquid','HYPE','BYBIT:HYPEUSDT'),
   (4,'injective-protocol','INJ','BINANCE:INJUSDT'),
   (5,'ondo-finance','ONDO','BINANCE:ONDOUSDT');
+
+-- 주식 슬롯 (한국/미국 시장별 5개 고정 위치)
+CREATE TABLE IF NOT EXISTS stock_slots (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    market    TEXT NOT NULL,
+    position  INTEGER NOT NULL,
+    ticker    TEXT NOT NULL,
+    name      TEXT NOT NULL,
+    tv_symbol TEXT,
+    UNIQUE(market, position)
+);

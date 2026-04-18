@@ -16,6 +16,8 @@ import { fmt } from '../../lib/format'
 import { toTvSymbol } from '../../lib/tvSymbolMap'
 import { StockIndexCard } from '../shared/StockIndexCard'
 import { StockIndexModal } from '../shared/StockIndexModal'
+import { StockCard } from '../shared/StockCard'
+import { StockSlotEditor } from '../shared/StockSlotEditor'
 import { EconomicNewsSection } from '../shared/EconomicNewsSection'
 
 interface DashboardData {
@@ -70,6 +72,24 @@ interface StockIndexItem {
   low: number | null
 }
 
+interface StockSlot {
+  position: number
+  ticker: string
+  name: string
+  tv_symbol: string | null
+}
+
+interface StockItem {
+  ticker: string
+  name: string
+  tv_symbol: string | null
+  price: number | null
+  change_pct: number | null
+  sparkline: number[]
+  high: number | null
+  low: number | null
+}
+
 /** MVRV 값(0~5+)을 게이지(0~100)에 매핑 */
 function mvrvToGauge(mvrv: number): number {
   return Math.min(100, Math.round((mvrv / 5) * 100))
@@ -89,6 +109,14 @@ export function Dashboard() {
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
   const { data: stockIndices } = useApi<StockIndexItem[]>('/api/stock-indices', 300_000)
   const [activeIndex, setActiveIndex] = useState<{ ticker: string; name: string } | null>(null)
+
+  const { data: krStocks, refetch: refetchKr } = useApi<StockItem[]>('/api/stock-prices/kr', 300_000)
+  const { data: usStocks, refetch: refetchUs } = useApi<StockItem[]>('/api/stock-prices/us', 300_000)
+  const { data: krSlots, refetch: refetchKrSlots } = useApi<StockSlot[]>('/api/stock-slots/kr', 0)
+  const { data: usSlots, refetch: refetchUsSlots } = useApi<StockSlot[]>('/api/stock-slots/us', 0)
+  const [activeTvStock, setActiveTvStock] = useState<{ tv_symbol: string; name: string } | null>(null)
+  const [editingKr, setEditingKr] = useState(false)
+  const [editingUs, setEditingUs] = useState(false)
 
   // 편집 모드 상태
   const [editMode, setEditMode] = useState(false)
@@ -306,6 +334,94 @@ export function Dashboard() {
         </div>
       </section>
 
+      {/* ── 한국주식 섹션 ── */}
+      <section>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 10px' }}>
+          <h2 style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>한국주식</h2>
+          <button
+            onClick={() => setEditingKr(prev => !prev)}
+            style={{
+              background: editingKr ? '#1e3a5f' : 'transparent',
+              border: `1px solid ${editingKr ? '#60a5fa' : '#475569'}`,
+              borderRadius: 4,
+              color: editingKr ? '#60a5fa' : '#94a3b8',
+              cursor: 'pointer',
+              fontSize: '0.7rem',
+              padding: '2px 8px',
+            }}
+          >
+            {editingKr ? '완료' : '편집'}
+          </button>
+        </div>
+        {editingKr && krSlots && (
+          <StockSlotEditor
+            market="kr"
+            slots={krSlots}
+            onUpdate={() => { refetchKr(); refetchKrSlots() }}
+          />
+        )}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
+          {krStocks?.map(s => (
+            <StockCard
+              key={s.ticker}
+              ticker={s.ticker}
+              name={s.name}
+              tv_symbol={s.tv_symbol}
+              price={s.price}
+              change_pct={s.change_pct}
+              sparkline={s.sparkline ?? []}
+              high={s.high}
+              low={s.low}
+              onOpenModal={(sym, name) => setActiveTvStock({ tv_symbol: sym, name })}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* ── 미국주식 섹션 ── */}
+      <section>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 10px' }}>
+          <h2 style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>미국주식</h2>
+          <button
+            onClick={() => setEditingUs(prev => !prev)}
+            style={{
+              background: editingUs ? '#1e3a5f' : 'transparent',
+              border: `1px solid ${editingUs ? '#60a5fa' : '#475569'}`,
+              borderRadius: 4,
+              color: editingUs ? '#60a5fa' : '#94a3b8',
+              cursor: 'pointer',
+              fontSize: '0.7rem',
+              padding: '2px 8px',
+            }}
+          >
+            {editingUs ? '완료' : '편집'}
+          </button>
+        </div>
+        {editingUs && usSlots && (
+          <StockSlotEditor
+            market="us"
+            slots={usSlots}
+            onUpdate={() => { refetchUs(); refetchUsSlots() }}
+          />
+        )}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
+          {usStocks?.map(s => (
+            <StockCard
+              key={s.ticker}
+              ticker={s.ticker}
+              name={s.name}
+              tv_symbol={s.tv_symbol}
+              price={s.price}
+              change_pct={s.change_pct}
+              sparkline={s.sparkline ?? []}
+              high={s.high}
+              low={s.low}
+              onOpenModal={(sym, name) => setActiveTvStock({ tv_symbol: sym, name })}
+            />
+          ))}
+        </div>
+      </section>
+
       {/* ── 미국 시장 + 파생상품 ── */}
       <div className="grid-2" style={{ gap: 16 }}>
         {/* 미국 시장 */}
@@ -452,6 +568,11 @@ export function Dashboard() {
             )}
           />
         )}
+      </Modal>
+
+      {/* 주식 종목 TradingView 모달 */}
+      <Modal open={!!activeTvStock} onClose={() => setActiveTvStock(null)}>
+        {activeTvStock && <TradingViewChart symbol={activeTvStock.tv_symbol} />}
       </Modal>
 
       {/* 지수 차트 모달 */}

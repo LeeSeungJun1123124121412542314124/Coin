@@ -114,6 +114,50 @@ async def fetch_us_market() -> list | None:
     return [r for _, r in final] if final else None
 
 
+async def _fetch_single_yahoo_stock(
+    client: httpx.AsyncClient, ticker: str, name: str, tv_symbol: str | None
+) -> dict | None:
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+    try:
+        resp = await client.get(url, params={"interval": "1d", "range": "5d"})
+        resp.raise_for_status()
+        data = resp.json()
+        result = data["chart"]["result"][0]
+        quote = result["indicators"]["quote"][0]
+        closes = [c for c in quote.get("close", []) if c is not None]
+        highs = [h for h in quote.get("high", []) if h is not None]
+        lows = [l for l in quote.get("low", []) if l is not None]
+        if not closes:
+            return None
+        current = closes[-1]
+        prev = closes[-2] if len(closes) >= 2 else closes[-1]
+        change_pct = (current - prev) / prev * 100 if prev else 0
+        return {
+            "ticker": ticker,
+            "name": name,
+            "tv_symbol": tv_symbol,
+            "price": round(current, 4),
+            "change_pct": round(change_pct, 2),
+            "sparkline": [round(c, 4) for c in closes[-5:]],
+            "high": round(highs[-1], 4) if highs else None,
+            "low": round(lows[-1], 4) if lows else None,
+        }
+    except Exception:
+        return None
+
+
+@cached(ttl=300, key_prefix="stock_prices")
+async def fetch_stock_prices(slots: tuple[tuple[str, str, str | None], ...]) -> list[dict]:
+    """개별 주식 현재가 + 스파크라인 (5분 캐시). slots: ((ticker, name, tv_symbol), ...)"""
+    import asyncio
+
+    async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+        results = await asyncio.gather(
+            *[_fetch_single_yahoo_stock(client, ticker, name, tv_symbol) for ticker, name, tv_symbol in slots]
+        )
+    return [r for r in results if r is not None]
+
+
 @cached(ttl=3600, key_prefix="yahoo_history")
 async def fetch_index_history(ticker: str, days: int = 30) -> list[dict] | None:
     """지수 30일 종가 히스토리 — 모달 차트용."""
