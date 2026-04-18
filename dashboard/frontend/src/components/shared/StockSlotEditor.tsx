@@ -4,8 +4,6 @@ import { apiFetch } from '../../lib/api'
 interface Slot {
   position: number
   ticker: string
-  name: string
-  tv_symbol: string | null
 }
 
 interface StockSlotEditorProps {
@@ -16,8 +14,6 @@ interface StockSlotEditorProps {
 
 interface RowState {
   ticker: string
-  name: string
-  tv_symbol: string
   loading: boolean
   error: string | null
   saved: boolean
@@ -27,8 +23,6 @@ export function StockSlotEditor({ market, slots, onUpdate }: StockSlotEditorProp
   const [rows, setRows] = useState<RowState[]>(
     slots.map(s => ({
       ticker: s.ticker,
-      name: s.name,
-      tv_symbol: s.tv_symbol ?? '',
       loading: false,
       error: null,
       saved: false,
@@ -40,8 +34,8 @@ export function StockSlotEditor({ market, slots, onUpdate }: StockSlotEditorProp
 
   const handleSave = async (i: number, position: number) => {
     const row = rows[i]
-    if (!row.ticker.trim() || !row.name.trim()) {
-      setRow(i, { error: '티커와 이름은 필수입니다.' })
+    if (!row.ticker.trim()) {
+      setRow(i, { error: '티커를 입력해주세요.' })
       return
     }
     setRow(i, { loading: true, error: null, saved: false })
@@ -49,11 +43,7 @@ export function StockSlotEditor({ market, slots, onUpdate }: StockSlotEditorProp
       await apiFetch(`/api/stock-slots/${market}/${position}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ticker: row.ticker.trim(),
-          name: row.name.trim(),
-          tv_symbol: row.tv_symbol.trim() || null,
-        }),
+        body: JSON.stringify({ ticker: row.ticker.trim() }),
       })
       setRow(i, { loading: false, saved: true })
       onUpdate()
@@ -68,76 +58,78 @@ export function StockSlotEditor({ market, slots, onUpdate }: StockSlotEditorProp
       {slots.map((slot, i) => {
         const row = rows[i]
         return (
-          <div key={slot.position} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ color: '#64748b', fontSize: '0.7rem', minWidth: 24 }}>#{slot.position}</span>
-            <input
-              value={row.ticker}
-              disabled={row.loading}
-              placeholder="티커 (예: 005930.KS)"
-              onChange={e => setRow(i, { ticker: e.target.value, saved: false })}
-              style={inputStyle(!!row.error)}
-            />
-            <input
-              value={row.name}
-              disabled={row.loading}
-              placeholder="이름 (예: 삼성전자)"
-              onChange={e => setRow(i, { name: e.target.value, saved: false })}
-              style={inputStyle(!!row.error)}
-            />
-            <input
-              value={row.tv_symbol}
-              disabled={row.loading}
-              placeholder="TV 심볼 (예: KRX:005930)"
-              onChange={e => setRow(i, { tv_symbol: e.target.value, saved: false })}
-              style={{ ...inputStyle(false), minWidth: 130 }}
-            />
-            <button
-              onClick={() => handleSave(i, slot.position)}
-              disabled={row.loading}
-              style={btnStyle('#60a5fa')}
-            >
-              {row.loading ? <Spinner /> : row.saved ? '✓' : '저장'}
-            </button>
-            {row.error && <span style={{ color: '#f87171', fontSize: '0.7rem' }}>{row.error}</span>}
+          <div key={slot.position} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {/* 슬롯 번호 라벨 */}
+            <div style={{ color: '#94a3b8', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              슬롯 #{slot.position}
+            </div>
+
+            {/* 입력 + 버튼 행 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input
+                value={row.ticker}
+                disabled={row.loading}
+                placeholder="티커 (예: 005930.KS)"
+                onChange={e => setRow(i, { ticker: e.target.value, saved: false })}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleSave(i, slot.position)
+                }}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  background: '#0f172a',
+                  border: `1px solid ${row.error ? '#f87171' : '#334155'}`,
+                  borderRadius: 4,
+                  color: '#e2e8f0',
+                  fontSize: '0.85rem',
+                  padding: '3px 6px',
+                  outline: 'none',
+                }}
+              />
+
+              {/* 확인 버튼 */}
+              <button
+                onClick={() => handleSave(i, slot.position)}
+                disabled={row.loading}
+                title="저장"
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #60a5fa',
+                  borderRadius: 4,
+                  color: '#60a5fa',
+                  cursor: row.loading ? 'not-allowed' : 'pointer',
+                  fontSize: '0.85rem',
+                  padding: '2px 6px',
+                  lineHeight: 1.4,
+                }}
+              >
+                {row.loading ? (
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: 10,
+                      height: 10,
+                      border: '2px solid #60a5fa',
+                      borderTopColor: 'transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 0.6s linear infinite',
+                      verticalAlign: 'middle',
+                    }}
+                  />
+                ) : row.saved ? '✓' : '저장'}
+              </button>
+            </div>
+
+            {/* 에러 텍스트 */}
+            {row.error && (
+              <div style={{ color: '#f87171', fontSize: '0.7rem' }}>{row.error}</div>
+            )}
           </div>
         )
       })}
+
+      {/* 스피너 keyframe 인젝션 */}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
-}
-
-function Spinner() {
-  return (
-    <>
-      <span style={{ display: 'inline-block', width: 10, height: 10, border: '2px solid #60a5fa', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite', verticalAlign: 'middle' }} />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </>
-  )
-}
-
-function inputStyle(hasError: boolean): React.CSSProperties {
-  return {
-    flex: 1,
-    minWidth: 80,
-    background: '#0f172a',
-    border: `1px solid ${hasError ? '#f87171' : '#334155'}`,
-    borderRadius: 4,
-    color: '#e2e8f0',
-    fontSize: '0.8rem',
-    padding: '3px 6px',
-    outline: 'none',
-  }
-}
-
-function btnStyle(borderColor: string): React.CSSProperties {
-  return {
-    background: 'transparent',
-    border: `1px solid ${borderColor}`,
-    borderRadius: 4,
-    color: borderColor,
-    cursor: 'pointer',
-    fontSize: '0.8rem',
-    padding: '3px 8px',
-    whiteSpace: 'nowrap',
-  }
 }
