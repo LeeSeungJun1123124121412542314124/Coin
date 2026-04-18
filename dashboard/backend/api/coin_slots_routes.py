@@ -6,7 +6,7 @@ import logging
 
 from fastapi import APIRouter, Path
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from dashboard.backend import cache
 from dashboard.backend.collectors.coingecko import search_coin, verify_price
@@ -19,7 +19,7 @@ router = APIRouter()
 
 class SlotUpdateRequest(BaseModel):
     """슬롯 교체 요청 바디."""
-    query: str
+    query: str = Field(..., min_length=1)
 
 
 @router.get("/coin-slots")
@@ -58,7 +58,10 @@ async def put_coin_slot(
     tv_symbol = f"BINANCE:{symbol.upper()}USDT"
 
     # 4. 슬롯 업데이트
-    update_slot(position, coin_id, symbol, tv_symbol)
+    try:
+        update_slot(position, coin_id, symbol, tv_symbol)
+    except ValueError:
+        return api_error(400, "INVALID_POSITION", f"유효하지 않은 슬롯 위치: {position}")
 
     # 5. 가격 캐시 무효화
     cache.delete_prefix("coingecko_prices")
