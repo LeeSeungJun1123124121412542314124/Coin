@@ -180,8 +180,42 @@ async def fetch_global() -> dict | None:
         return {
             "total_market_cap_usd": data.get("total_market_cap", {}).get("usd"),
             "btc_dominance": data.get("market_cap_percentage", {}).get("btc"),
+            "eth_dominance": data.get("market_cap_percentage", {}).get("eth"),
             "market_cap_change_24h": data.get("market_cap_change_percentage_24h_usd"),
         }
     except Exception as e:
         logger.error("CoinGecko 글로벌 조회 실패: %s", e)
+        return None
+
+
+@cached(ttl=900, key_prefix="coingecko_marketcap_chart")
+async def fetch_market_cap_chart(days: int = 1) -> list[dict] | None:
+    """전체 시총 1일 시계열. Pro 전용일 경우 BTC 기반 근사 폴백."""
+    params = {"vs_currency": "usd", "days": days, "x_cg_demo_api_key": _API_KEY}
+    # 1차: /global/market_cap_chart (Pro일 수도)
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(f"{_BASE}/global/market_cap_chart", params=params)
+            if resp.status_code == 200:
+                pairs = resp.json().get("market_cap_chart", {}).get("market_cap", [])
+                return [{"t": int(t), "v": float(v)} for t, v in pairs]
+    except Exception as e:
+        logger.warning("전체 시총 차트 직접 조회 실패(폴백 시도): %s", e)
+
+    # 2차 폴백: BTC 시총 / btc_dominance × 100
+    try:
+        g = await fetch_global()
+        btc_dom = g.get("btc_dominance") if g else None
+        if not btc_dom:
+            return None
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                f"{_BASE}/coins/bitcoin/market_chart",
+                params={"vs_currency": "usd", "days": days, "x_cg_demo_api_key": _API_KEY},
+            )
+            resp.raise_for_status()
+            caps = resp.json().get("market_caps", [])
+        return [{"t": int(t), "v": float(v) * 100.0 / btc_dom} for t, v in caps]
+    except Exception as e:
+        logger.error("전체 시총 차트 폴백 실패: %s", e)
         return None
