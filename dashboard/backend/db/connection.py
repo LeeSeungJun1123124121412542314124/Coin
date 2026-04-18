@@ -56,9 +56,9 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         [
             ('kr', 1, '005930.KS', '삼성전자', 'KRX:005930'),
             ('kr', 2, '000660.KS', 'SK하이닉스', 'KRX:000660'),
-            ('kr', 3, '035720.KS', '카카오', 'KRX:035720'),
+            ('kr', 3, '035720.KS', '카카오', 'KOSDAQ:035720'),
             ('kr', 4, '005380.KS', '현대차', 'KRX:005380'),
-            ('kr', 5, '035420.KS', 'NAVER', 'KRX:035420'),
+            ('kr', 5, '035420.KS', 'NAVER', 'KOSDAQ:035420'),
             ('us', 1, 'AAPL', 'Apple', 'NASDAQ:AAPL'),
             ('us', 2, 'MSFT', 'Microsoft', 'NASDAQ:MSFT'),
             ('us', 3, 'NVDA', 'NVIDIA', 'NASDAQ:NVDA'),
