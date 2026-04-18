@@ -11,6 +11,7 @@ import { TradingViewChart } from '../shared/TradingViewChart'
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
+import { GlobalMarketCard } from '../shared/GlobalMarketCard'
 import { fmt } from '../../lib/format'
 import { toTvSymbol } from '../../lib/tvSymbolMap'
 
@@ -26,7 +27,9 @@ interface DashboardData {
   global: {
     total_market_cap_usd: number | null
     btc_dominance: number | null
+    eth_dominance: number | null
     market_cap_change_24h: number | null
+    market_cap_chart: Array<{ t: number; v: number }> | null
   } | null
   us_market: Array<{
     name: string
@@ -182,6 +185,9 @@ export function Dashboard() {
             </div>
           </Card>
         )}
+        {data.global && (
+          <GlobalMarketCard data={data.global} />
+        )}
       </div>
 
       {/* ── 코인 카드 섹션 ── */}
@@ -328,12 +334,6 @@ export function Dashboard() {
               </>
             ) : (
               <div style={{ color: '#64748b', fontSize: '0.8rem' }}>데이터 없음</div>
-            )}
-            {data.global && (
-              <>
-                <StatRow label="BTC 도미넌스" value={`${data.global.btc_dominance?.toFixed(1) ?? '—'}%`} />
-                <StatRow label="전체 시총" value={fmt(data.global.total_market_cap_usd)} change={data.global.market_cap_change_24h} />
-              </>
             )}
             {data.coinbase_btc && btc?.price && (
               <StatRow
