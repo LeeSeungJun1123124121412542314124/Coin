@@ -64,10 +64,10 @@ export function TradingViewChart({ symbol }: TradingViewChartProps) {
           allow_symbol_change: true,
           hide_side_toolbar: false,
           studies: [
+            'Volume@tv-basicstudies',
             'RSI@tv-basicstudies',
             'StochasticRSI@tv-basicstudies',
             'MACD@tv-basicstudies',
-            'Volume@tv-basicstudies',
           ],
         })
         if (!cancelled) setState('ready')

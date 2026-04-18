@@ -11,7 +11,6 @@ export function GaugeChart({ value, label, size = 120 }: GaugeChartProps) {
   const cx = size / 2
   const cy = size / 2
 
-  // 반원 arc
   const toRad = (deg: number) => (deg * Math.PI) / 180
   const arcX = (deg: number) => cx + r * Math.cos(toRad(deg - 90))
   const arcY = (deg: number) => cy + r * Math.sin(toRad(deg - 90))
@@ -24,7 +23,6 @@ export function GaugeChart({ value, label, size = 120 }: GaugeChartProps) {
     : value <= 75 ? '#22c55e'
     : '#a855f7'
 
-  // 바늘
   const needleRad = toRad(angle)
   const needleLen = r - 6
   const nx = cx + needleLen * Math.cos(needleRad)
@@ -32,10 +30,9 @@ export function GaugeChart({ value, label, size = 120 }: GaugeChartProps) {
 
   return (
     <div style={{ textAlign: 'center' }}>
-      <svg width={size} height={size / 2 + 20} style={{ overflow: 'visible' }}>
-        {/* 배경 반원 */}
+      {/* 게이지 arc + 바늘만 SVG로 */}
+      <svg width={size} height={size / 2 + 8} style={{ display: 'block', margin: '0 auto' }}>
         <path d={arcPath} fill="none" stroke="#334155" strokeWidth={12} strokeLinecap="round" />
-        {/* 색상 반원 */}
         <path
           d={arcPath}
           fill="none"
@@ -44,15 +41,15 @@ export function GaugeChart({ value, label, size = 120 }: GaugeChartProps) {
           strokeLinecap="round"
           strokeDasharray={`${pct * Math.PI * r} ${Math.PI * r}`}
         />
-        {/* 바늘 */}
         <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="#e2e8f0" strokeWidth={2} strokeLinecap="round" />
         <circle cx={cx} cy={cy} r={4} fill="#e2e8f0" />
-        {/* 값 */}
-        <text x={cx} y={cy + 24} textAnchor="middle" fill={color} fontSize={18} fontWeight="bold">
-          {value}
-        </text>
       </svg>
-      <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: 2 }}>{label}</div>
+
+      {/* 수치 + 레이블 — SVG 아래 별도 블록 */}
+      <div style={{ marginTop: 6 }}>
+        <span style={{ fontSize: '1.6rem', fontWeight: 700, color }}>{value}</span>
+      </div>
+      <div style={{ color: '#94a3b8', fontSize: '0.8rem', marginTop: 2 }}>{label}</div>
     </div>
   )
 }

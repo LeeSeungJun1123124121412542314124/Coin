@@ -33,10 +33,12 @@ async def _fetch_single_yahoo(client: httpx.AsyncClient, ticker: str) -> dict | 
         resp.raise_for_status()
         data = resp.json()
         result = data["chart"]["result"][0]
-        closes = result["indicators"]["quote"][0]["close"]
-        closes = [c for c in closes if c is not None]
+        quote = result["indicators"]["quote"][0]
+        closes = [c for c in quote.get("close", []) if c is not None]
         if not closes:
             return None
+        highs = [h for h in quote.get("high", []) if h is not None]
+        lows = [l for l in quote.get("low", []) if l is not None]
         current = closes[-1]
         prev = closes[-2] if len(closes) >= 2 else closes[-1]
         change_pct = (current - prev) / prev * 100 if prev else 0
@@ -47,6 +49,8 @@ async def _fetch_single_yahoo(client: httpx.AsyncClient, ticker: str) -> dict | 
             "price": round(current, 4),
             "change_pct": round(change_pct, 2),
             "sparkline": [round(c, 4) for c in closes[-5:]],
+            "high": round(highs[-1], 4) if highs else None,
+            "low": round(lows[-1], 4) if lows else None,
         }
     except Exception:
         return None
@@ -64,6 +68,8 @@ async def _fetch_single_yfinance(ticker: str) -> dict | None:
         current = closes[-1]
         prev = closes[-2] if len(closes) >= 2 else closes[-1]
         change_pct = (current - prev) / prev * 100 if prev else 0
+        highs = hist["High"].tolist()
+        lows = hist["Low"].tolist()
         return {
             "ticker": ticker,
             "name": _TICKERS[ticker]["name"],
@@ -71,6 +77,8 @@ async def _fetch_single_yfinance(ticker: str) -> dict | None:
             "price": round(current, 4),
             "change_pct": round(change_pct, 2),
             "sparkline": [round(c, 4) for c in closes[-5:]],
+            "high": round(highs[-1], 4) if highs else None,
+            "low": round(lows[-1], 4) if lows else None,
         }
     except Exception as e:
         logger.error("yfinance 폴백 실패 (%s): %s", ticker, e)

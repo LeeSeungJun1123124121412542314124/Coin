@@ -1,4 +1,4 @@
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { Modal } from './Modal'
 import { useApi } from '../../hooks/useApi'
 
@@ -57,6 +57,7 @@ export function StockIndexModal({ ticker, name, onClose }: StockIndexModalProps)
         {!loading && chartData.length > 0 && (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 10, left: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis
                 dataKey="date"
                 tick={{ fill: '#64748b', fontSize: 10 }}

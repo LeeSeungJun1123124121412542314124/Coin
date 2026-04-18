@@ -66,6 +66,8 @@ interface StockIndexItem {
   price: number | null
   change_pct: number | null
   sparkline: number[]
+  high: number | null
+  low: number | null
 }
 
 /** MVRV 값(0~5+)을 게이지(0~100)에 매핑 */
@@ -183,27 +185,6 @@ export function Dashboard() {
           })()}
         </Card>
 
-        {/* 공포탐욕 게이지 */}
-        {data.fear_greed && (
-          <Card>
-            <GaugeChart value={data.fear_greed.value} label={data.fear_greed.label} size={130} />
-          </Card>
-        )}
-
-        {/* MVRV 게이지 */}
-        {mvrv !== null && (
-          <Card>
-            <div style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>MVRV Ratio</div>
-            <GaugeChart
-              value={mvrvToGauge(mvrv)}
-              label={mvrvLabel(mvrvSignal, mvrv)}
-              size={130}
-            />
-            <div style={{ textAlign: 'center', marginTop: 4, color: '#94a3b8', fontSize: '0.75rem' }}>
-              원값: <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{mvrv.toFixed(2)}</span>
-            </div>
-          </Card>
-        )}
         {data.global && (
           <GlobalMarketCard data={data.global} />
         )}
@@ -215,12 +196,35 @@ export function Dashboard() {
             price={idx.price}
             change_pct={idx.change_pct}
             sparkline={idx.sparkline ?? []}
+            high={idx.high ?? null}
+            low={idx.low ?? null}
             onOpenModal={(ticker) => {
               const found = stockIndices.find(i => i.ticker === ticker)
               setActiveIndex(found ? { ticker: found.ticker, name: found.name } : null)
             }}
           />
         ))}
+
+        {/* 공포탐욕 게이지 */}
+        {data.fear_greed && (
+          <Card>
+            <div style={{ color: '#94a3b8', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+              가상자산 공포 및 탐욕 지수
+            </div>
+            <GaugeChart value={data.fear_greed.value} label={data.fear_greed.label} size={130} />
+          </Card>
+        )}
+
+        {/* MVRV 게이지 */}
+        {mvrv !== null && (
+          <Card>
+            <div style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>MVRV Ratio</div>
+            <GaugeChart value={mvrvToGauge(mvrv)} label={mvrvLabel(mvrvSignal, mvrv)} size={130} />
+            <div style={{ textAlign: 'center', marginTop: 4, color: '#94a3b8', fontSize: '0.75rem' }}>
+              원값: <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{mvrv.toFixed(2)}</span>
+            </div>
+          </Card>
+        )}
       </div>
 
       {/* ── 경제 뉴스 ── */}
@@ -307,9 +311,21 @@ export function Dashboard() {
         {/* 미국 시장 */}
         <Card>
           <h3 style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>미국 시장</h3>
-          {data.us_market?.map(m => (
-            <StatRow key={m.name} label={m.name} value={fmt(m.price, 2)} change={m.change_pct} />
-          )) ?? <div style={{ color: '#64748b' }}>데이터 없음</div>}
+          {data.us_market?.map((m, i, arr) => {
+            const isFirstKorea = m.category === 'korea' && (i === 0 || arr[i - 1].category !== 'korea')
+            const isNotFirst = i > 0 && !isFirstKorea
+            return (
+              <div key={m.name}>
+                {isFirstKorea && (
+                  <h3 style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '14px 0 10px', paddingTop: 14, borderTop: '1px solid #1e293b' }}>한국 시장</h3>
+                )}
+                {isNotFirst && (
+                  <div style={{ borderTop: '1px solid #2d3f55', margin: '0' }} />
+                )}
+                <StatRow label={m.name} value={fmt(m.price, 2)} change={m.change_pct} />
+              </div>
+            )
+          }) ?? <div style={{ color: '#64748b' }}>데이터 없음</div>}
         </Card>
 
         {/* 파생상품 + 온체인 */}
@@ -317,9 +333,9 @@ export function Dashboard() {
           <Card>
             <h3 style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>파생상품</h3>
             <StatRow label="미결제약정 (OI)" value={fmt(data.derivatives.open_interest?.open_interest)} />
-            {/* OI 변화율 */}
             {data.derivatives.oi_change && (
               <>
+                <div style={{ borderTop: '1px solid #2d3f55' }} />
                 <StatRow
                   label="OI 변화 (1h)"
                   value={data.derivatives.oi_change.change_1h_pct != null
@@ -344,6 +360,7 @@ export function Dashboard() {
                 />
               </>
             )}
+            <div style={{ borderTop: '1px solid #2d3f55' }} />
             <StatRow
               label="펀딩레이트"
               value={`${data.derivatives.funding_rate?.funding_rate_pct?.toFixed(4) ?? '—'}%`}
@@ -354,10 +371,13 @@ export function Dashboard() {
               }
             />
             {data.derivatives.long_short && (
-              <StatRow
-                label="롱/숏 비율"
-                value={`${(data.derivatives.long_short.long_account * 100).toFixed(1)}% / ${(data.derivatives.long_short.short_account * 100).toFixed(1)}%`}
-              />
+              <>
+                <div style={{ borderTop: '1px solid #2d3f55' }} />
+                <StatRow
+                  label="롱/숏 비율"
+                  value={`${(data.derivatives.long_short.long_account * 100).toFixed(1)}% / ${(data.derivatives.long_short.short_account * 100).toFixed(1)}%`}
+                />
+              </>
             )}
           </Card>
 
@@ -366,17 +386,21 @@ export function Dashboard() {
             {data.onchain ? (
               <>
                 <StatRow label="거래소 유입" value={`${data.onchain.exchange_inflow.toFixed(0)} BTC`} highlight="down" />
+                <div style={{ borderTop: '1px solid #2d3f55' }} />
                 <StatRow label="거래소 유출" value={`${data.onchain.exchange_outflow.toFixed(0)} BTC`} highlight="up" />
               </>
             ) : (
               <div style={{ color: '#64748b', fontSize: '0.8rem' }}>데이터 없음</div>
             )}
             {data.coinbase_btc && btc?.price && (
-              <StatRow
-                label="코인베이스 프리미엄"
-                value={`${((data.coinbase_btc / btc.price - 1) * 100).toFixed(3)}%`}
-                highlight={(data.coinbase_btc / btc.price - 1) > 0 ? 'up' : 'down'}
-              />
+              <>
+                <div style={{ borderTop: '1px solid #2d3f55' }} />
+                <StatRow
+                  label="코인베이스 프리미엄"
+                  value={`${((data.coinbase_btc / btc.price - 1) * 100).toFixed(3)}%`}
+                  highlight={(data.coinbase_btc / btc.price - 1) > 0 ? 'up' : 'down'}
+                />
+              </>
             )}
           </Card>
         </div>
@@ -391,13 +415,15 @@ export function Dashboard() {
               <h3 style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>
                 시장 유동성
               </h3>
-              {data.stablecoins.map(sc => (
-                <StatRow
-                  key={sc.symbol}
-                  label={`${sc.symbol} 시총`}
-                  value={sc.market_cap ? `$${(sc.market_cap / 1e9).toFixed(1)}B` : '—'}
-                  change={sc.change_24h}
-                />
+              {data.stablecoins.map((sc, i) => (
+                <div key={sc.symbol}>
+                  {i > 0 && <div style={{ borderTop: '1px solid #2d3f55' }} />}
+                  <StatRow
+                    label={`${sc.symbol} 시총`}
+                    value={sc.market_cap ? `$${(sc.market_cap / 1e9).toFixed(1)}B` : '—'}
+                    change={sc.change_24h}
+                  />
+                </div>
               ))}
             </Card>
           )}

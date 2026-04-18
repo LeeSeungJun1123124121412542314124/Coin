@@ -1,4 +1,4 @@
-import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip } from 'recharts'
+import { AreaChart, Area, ResponsiveContainer, XAxis, ReferenceLine } from 'recharts'
 import { useId } from 'react'
 import { Card } from './Card'
 
@@ -8,10 +8,12 @@ interface StockIndexCardProps {
   price: number | null
   change_pct: number | null
   sparkline: number[]
+  high: number | null
+  low: number | null
   onOpenModal: (ticker: string) => void
 }
 
-export function StockIndexCard({ name, ticker, price, change_pct, sparkline, onOpenModal }: StockIndexCardProps) {
+export function StockIndexCard({ name, ticker, price, change_pct, sparkline, high, low, onOpenModal }: StockIndexCardProps) {
   const uid = useId()
   const gradId = `stockGrad-${uid.replace(/:/g, '')}`
 
@@ -39,11 +41,29 @@ export function StockIndexCard({ name, ticker, price, change_pct, sparkline, onO
         )}
       </div>
 
-      {/* 스파크라인 */}
-      {chartData.length >= 2 && (
-        <div style={{ marginTop: 10, height: 48 }}>
+      {/* 고가/저가 */}
+      {(high != null || low != null) && (
+        <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: '0.72rem' }}>
+          {high != null && (
+            <span>
+              <span style={{ color: '#f87171' }}>H </span>
+              <span style={{ color: '#94a3b8' }}>{high.toLocaleString()}</span>
+            </span>
+          )}
+          {low != null && (
+            <span>
+              <span style={{ color: '#4ade80' }}>L </span>
+              <span style={{ color: '#94a3b8' }}>{low.toLocaleString()}</span>
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* 스파크라인 + 기준선 */}
+      {chartData.length >= 2 && price != null && (
+        <div style={{ marginTop: 8, height: 60 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+            <AreaChart data={chartData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={color} stopOpacity={0.35} />
@@ -51,10 +71,7 @@ export function StockIndexCard({ name, ticker, price, change_pct, sparkline, onO
                 </linearGradient>
               </defs>
               <XAxis dataKey="i" hide />
-              <Tooltip
-                contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 6, fontSize: '0.7rem' }}
-                formatter={(v) => [Number(v).toLocaleString(), name]}
-              />
+              <ReferenceLine y={price} stroke={color} strokeDasharray="4 3" strokeOpacity={0.5} strokeWidth={1} />
               <Area type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} fill={`url(#${gradId})`} dot={false} />
             </AreaChart>
           </ResponsiveContainer>
