@@ -21,7 +21,11 @@ export function StockCard({ name, tv_symbol, price, change_pct, high, low, onOpe
   }
 
   return (
-    <Card onClick={tv_symbol ? handleClick : undefined} style={{ cursor: tv_symbol ? 'pointer' : 'default' }}>
+    <Card
+      onClick={tv_symbol ? handleClick : undefined}
+      className={tv_symbol ? 'stock-card' : ''}
+      style={{ cursor: tv_symbol ? 'pointer' : 'default', transition: 'border-color 0.15s' }}
+    >
       <div style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
         {name}
       </div>

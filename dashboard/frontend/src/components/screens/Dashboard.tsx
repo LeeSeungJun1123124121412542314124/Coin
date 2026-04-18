@@ -594,7 +594,7 @@ export function Dashboard() {
         onClose={() => setActiveIndex(null)}
       />
 
-      <style>{`.coin-card:hover { border-color: #60a5fa !important; }`}</style>
+      <style>{`.coin-card:hover { border-color: #60a5fa !important; } .stock-card:hover { border-color: #60a5fa !important; }`}</style>
     </div>
   )
 }
