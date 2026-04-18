@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
+
 import httpx
 
 from dashboard.backend.cache import cached
@@ -20,6 +22,7 @@ _TICKERS = {
     "GC=F":     {"name": "Gold",       "category": "commodity"},
     "SI=F":     {"name": "Silver",     "category": "commodity"},
     "^KS11":    {"name": "KOSPI",      "category": "korea"},
+    "^KQ11":    {"name": "KOSDAQ",    "category": "korea"},
 }
 
 
@@ -101,3 +104,24 @@ async def fetch_us_market() -> list | None:
 
     final.sort(key=lambda x: x[0])
     return [r for _, r in final] if final else None
+
+
+@cached(ttl=3600, key_prefix="yahoo_history")
+async def fetch_index_history(ticker: str, days: int = 30) -> list[dict] | None:
+    """지수 30일 종가 히스토리 — 모달 차트용."""
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+    try:
+        async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+            resp = await client.get(url, params={"interval": "1d", "range": f"{days}d"})
+            resp.raise_for_status()
+            result = resp.json()["chart"]["result"][0]
+            timestamps = result.get("timestamp", [])
+            closes = result["indicators"]["quote"][0].get("close", [])
+            return [
+                {"date": datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%d"), "close": round(c, 4)}
+                for t, c in zip(timestamps, closes)
+                if c is not None
+            ]
+    except Exception as e:
+        logger.warning("지수 히스토리 조회 실패 (%s): %s", ticker, e)
+        return None
