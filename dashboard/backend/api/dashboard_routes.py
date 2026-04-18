@@ -91,7 +91,8 @@ async def get_dashboard():
     # 김치 프리미엄 히스토리 (최근 7일, DB에서 조회)
     kimchi_history = _get_kimchi_history(days=7)
 
-    # 글로벌 데이터에 시총 차트 병합
+    # 글로벌 데이터에 시총 차트 병합 (market_cap_chart가 None이면 null로 직렬화됨 — 프론트에서 null 처리 필요)
+    # global_data가 None(fetch 실패)이면 market_cap_chart도 응답에서 누락되는 것은 의도된 동작
     if global_data:
         global_data["market_cap_chart"] = market_cap_chart
 
