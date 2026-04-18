@@ -19,6 +19,7 @@ import { StockIndexModal } from '../shared/StockIndexModal'
 import { StockCard } from '../shared/StockCard'
 import { StockSlotEditor } from '../shared/StockSlotEditor'
 import { EconomicNewsSection } from '../shared/EconomicNewsSection'
+import { AltcoinSeasonCard } from '../shared/AltcoinSeasonCard'
 
 interface DashboardData {
   coins: Array<{
@@ -62,6 +63,13 @@ interface DashboardData {
   } | null
   stablecoins: Array<{ symbol: string; market_cap: number | null; change_24h: number | null }> | null
   hashrate: { hashrate_eh: number } | null
+  altcoin_season: {
+    index_value: number
+    season_label: 'altcoin_season' | 'neutral' | 'bitcoin_season'
+    history: Array<{ date: string; value: number }>
+    cached_at: string
+    is_stale: boolean
+  } | null
 }
 
 interface StockIndexItem {
@@ -345,6 +353,19 @@ export function Dashboard() {
           })}
         </div>
       </section>
+
+      {/* ── 알트코인 시즌 지수 ── */}
+      {data.altcoin_season && (
+        <section>
+          <AltcoinSeasonCard
+            index_value={data.altcoin_season.index_value}
+            season_label={data.altcoin_season.season_label}
+            history={data.altcoin_season.history}
+            cached_at={data.altcoin_season.cached_at}
+            is_stale={data.altcoin_season.is_stale}
+          />
+        </section>
+      )}
 
       {/* ── 한국주식 섹션 ── */}
       <section>
