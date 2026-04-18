@@ -11,7 +11,6 @@ from pydantic import BaseModel, Field
 from dashboard.backend import cache
 from dashboard.backend.collectors.yahoo_finance import fetch_stock_prices, lookup_stock_info
 from dashboard.backend.db.connection import get_db
-from dashboard.backend.utils.errors import api_error
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -22,6 +21,8 @@ _EXCHANGE_MAP = {
     "NasdaqCM": "NASDAQ",
     "NasdaqGM": "NASDAQ",
     "NYQ": "NYSE",
+    "NYSEArca": "NYSE",
+    "NYSEAmerican": "AMEX",
 }
 
 
@@ -66,7 +67,8 @@ async def put_stock_slot(
 
     # TradingView 심볼 자동 생성
     if market == "kr":
-        tv_symbol = f"KRX:{request.ticker}"
+        base_ticker = request.ticker.split(".")[0]  # "005930.KS" → "005930"
+        tv_symbol = f"KRX:{base_ticker}"
     else:
         exchange_raw = info["exchange"]
         exchange = _EXCHANGE_MAP.get(exchange_raw, exchange_raw)
