@@ -36,7 +36,8 @@ async def get_stock_indices():
 @router.get("/stock-index-history/{ticker}")
 async def get_stock_index_history(ticker: str):
     """지수 30일 종가 히스토리."""
-    # ticker URL 인코딩 처리: %5EIXIC → ^IXIC
+    if ticker not in _INDEX_TICKERS:
+        return JSONResponse({"ticker": ticker, "history": []})
     history = await fetch_index_history(ticker)
     return JSONResponse({"ticker": ticker, "history": history or []})
 

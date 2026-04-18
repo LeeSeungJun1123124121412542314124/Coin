@@ -22,7 +22,7 @@ export function EconomicNewsSection() {
         {data.map((item, idx) => (
           <div key={idx} style={{ borderBottom: idx < data.length - 1 ? '1px solid #1e293b' : 'none', paddingBottom: idx < data.length - 1 ? 10 : 0 }}>
             <a
-              href={item.link}
+              href={/^https?:\/\//i.test(item.link) ? item.link : '#'}
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: '#e2e8f0', fontSize: '0.85rem', lineHeight: 1.4, textDecoration: 'none', display: 'block' }}

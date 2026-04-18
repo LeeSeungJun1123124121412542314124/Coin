@@ -44,7 +44,8 @@ async def _fetch_feed(client: httpx.AsyncClient, source: str, url: str) -> list[
             pub_date = ""
             if pubdate_el is not None and pubdate_el.text:
                 try:
-                    pub_date = parsedate_to_datetime(pubdate_el.text).isoformat()
+                    from datetime import timezone as _tz
+                    pub_date = parsedate_to_datetime(pubdate_el.text).astimezone(_tz.utc).isoformat()
                 except Exception:
                     pub_date = pubdate_el.text.strip()
             if title and link:
