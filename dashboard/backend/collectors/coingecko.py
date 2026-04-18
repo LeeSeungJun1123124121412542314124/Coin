@@ -32,33 +32,30 @@ async def fetch_prices() -> list | None:
         ids_param = ",".join(s["coin_id"] for s in slots)
 
         params = {
+            "vs_currency": "usd",
             "ids": ids_param,
-            "vs_currencies": "usd",
-            "include_24hr_change": "true",
-            "include_market_cap": "true",
-            "include_24hr_high": "true",
-            "include_24hr_low": "true",
             "x_cg_demo_api_key": _API_KEY,
         }
         async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(f"{_BASE}/simple/price", params=params)
+            resp = await client.get(f"{_BASE}/coins/markets", params=params)
             resp.raise_for_status()
             data = resp.json()
 
+        by_id = {item["id"]: item for item in data}
         result = []
         for slot in slots:
             coin_id = slot["coin_id"]
-            d = data.get(coin_id, {})
+            d = by_id.get(coin_id, {})
             result.append({
                 "id": coin_id,
                 "symbol": slot["symbol"],
                 "position": slot["position"],
                 "tv_symbol": slot.get("tv_symbol"),
-                "price": d.get("usd"),
-                "change_24h": d.get("usd_24h_change"),
-                "market_cap": d.get("usd_market_cap"),
-                "high_24h": d.get("usd_24h_high"),
-                "low_24h": d.get("usd_24h_low"),
+                "price": d.get("current_price"),
+                "change_24h": d.get("price_change_percentage_24h"),
+                "market_cap": d.get("market_cap"),
+                "high_24h": d.get("high_24h"),
+                "low_24h": d.get("low_24h"),
             })
         return result
     except Exception as e:
