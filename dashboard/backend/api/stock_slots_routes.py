@@ -27,7 +27,7 @@ _EXCHANGE_MAP = {
 
 
 class StockSlotUpdateRequest(BaseModel):
-    ticker: str = Field(..., min_length=1)
+    ticker: str = Field(..., min_length=1, max_length=20)
 
 
 def _get_slots(market: str) -> list[dict]:
@@ -58,25 +58,32 @@ async def put_stock_slot(
     market: str = Path(..., pattern="^(kr|us)$"),
     position: int = Path(..., ge=1, le=5),
 ):
+    # ticker 정규화 (공백 제거 + 대문자)
+    ticker = request.ticker.strip().upper()
+
     # 종목 정보 자동 조회
-    info = await lookup_stock_info(request.ticker)
+    info = await lookup_stock_info(ticker)
     if info is None:
-        raise HTTPException(status_code=422, detail=f"종목을 찾을 수 없습니다: {request.ticker}")
+        raise HTTPException(status_code=422, detail=f"종목을 찾을 수 없습니다: {ticker}")
 
     name = info["name"]
 
     # TradingView 심볼 자동 생성
     if market == "kr":
-        base_ticker = request.ticker.split(".")[0]  # "005930.KS" → "005930"
-        tv_symbol = f"KRX:{base_ticker}"
+        base_ticker = ticker.split(".")[0]  # "005930.KS" → "005930"
+        # Yahoo Finance exchange 코드로 TradingView prefix 결정
+        # KOE=코스닥, KSC=코스피, KPQ=코넥스
+        kr_exchange_map = {"KOE": "KOSDAQ", "KSC": "KRX", "KPQ": "KONEX"}
+        tv_prefix = kr_exchange_map.get(info["exchange"], "KRX")
+        tv_symbol = f"{tv_prefix}:{base_ticker}"
     else:
         exchange_raw = info["exchange"]
         exchange = _EXCHANGE_MAP.get(exchange_raw, exchange_raw)
-        tv_symbol = f"{exchange}:{request.ticker}"
+        tv_symbol = f"{exchange}:{ticker}"
 
-    _update_slot(market, position, request.ticker, name, tv_symbol)
+    _update_slot(market, position, ticker, name, tv_symbol)
     cache.delete_prefix("stock_prices")
-    return JSONResponse({"market": market, "position": position, "ticker": request.ticker, "name": name, "tv_symbol": tv_symbol})
+    return JSONResponse({"market": market, "position": position, "ticker": ticker, "name": name, "tv_symbol": tv_symbol})
 
 
 @router.get("/stock-prices/{market}")

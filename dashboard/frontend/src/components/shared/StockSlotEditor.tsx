@@ -70,7 +70,7 @@ export function StockSlotEditor({ market, slots, onUpdate }: StockSlotEditorProp
                 value={row.ticker}
                 disabled={row.loading}
                 placeholder="티커 (예: 005930.KS)"
-                onChange={e => setRow(i, { ticker: e.target.value, saved: false })}
+                onChange={e => setRow(i, { ticker: e.target.value.toUpperCase(), saved: false })}
                 onKeyDown={e => {
                   if (e.key === 'Enter') handleSave(i, slot.position)
                 }}
