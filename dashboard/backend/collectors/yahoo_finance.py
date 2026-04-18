@@ -22,7 +22,7 @@ _TICKERS = {
     "GC=F":     {"name": "Gold",       "category": "commodity"},
     "SI=F":     {"name": "Silver",     "category": "commodity"},
     "^KS11":    {"name": "KOSPI",      "category": "korea"},
-    "^KQ11":    {"name": "KOSDAQ",    "category": "korea"},
+    "^KQ11":    {"name": "KOSDAQ",     "category": "korea"},
 }
 
 
@@ -79,7 +79,7 @@ async def _fetch_single_yfinance(ticker: str) -> dict | None:
 
 @cached(ttl=300, key_prefix="yahoo_market")
 async def fetch_us_market() -> list | None:
-    """10개 미국 시장 지표 조회."""
+    """미국·한국 시장 지표 조회."""
     import asyncio
 
     async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
@@ -114,9 +114,13 @@ async def fetch_index_history(ticker: str, days: int = 30) -> list[dict] | None:
         async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
             resp = await client.get(url, params={"interval": "1d", "range": f"{days}d"})
             resp.raise_for_status()
-            result = resp.json()["chart"]["result"][0]
+            chart_result = resp.json().get("chart", {}).get("result")
+            if not chart_result:
+                logger.warning("Yahoo 빈 응답 (%s)", ticker)
+                return None
+            result = chart_result[0]
             timestamps = result.get("timestamp", [])
-            closes = result["indicators"]["quote"][0].get("close", [])
+            closes = result.get("indicators", {}).get("quote", [{}])[0].get("close", [])
             return [
                 {"date": datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%d"), "close": round(c, 4)}
                 for t, c in zip(timestamps, closes)
