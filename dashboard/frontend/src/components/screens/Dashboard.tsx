@@ -6,10 +6,13 @@ import { Card } from '../shared/Card'
 import { StatRow } from '../shared/StatRow'
 import { GaugeChart } from '../shared/GaugeChart'
 import { CoinSlotEditor } from '../shared/CoinSlotEditor'
+import { Modal } from '../shared/Modal'
+import { TradingViewChart } from '../shared/TradingViewChart'
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
 import { fmt } from '../../lib/format'
+import { toTvSymbol } from '../../lib/tvSymbolMap'
 
 interface DashboardData {
   coins: Array<{
@@ -67,6 +70,7 @@ function mvrvLabel(signal: string | null | undefined, mvrv: number): string {
 
 export function Dashboard() {
   const { data, loading, error, refetch, lastUpdated } = useApi<DashboardData>('/api/dashboard', 60_000)
+  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
 
   // 편집 모드 상태
   const [editMode, setEditMode] = useState(false)
@@ -116,7 +120,7 @@ export function Dashboard() {
       {/* ── Hero — BTC + 공포탐욕 + MVRV ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
         {/* BTC 카드 + 김프 */}
-        <Card>
+        <Card onClick={() => setSelectedSymbol('BTC')} style={{ cursor: 'pointer' }}>
           <div style={{ color: '#94a3b8', fontSize: '0.8rem', marginBottom: 4 }}>BTC / USDT</div>
           <div style={{ fontSize: '2rem', fontWeight: 700, color: '#e2e8f0' }}>
             {btc?.price ? `$${btc.price.toLocaleString()}` : '—'}
@@ -208,7 +212,6 @@ export function Dashboard() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
           {data.coins?.map(coin => {
             const isEditing = editMode && editingPosition === coin.position
-
             return (
               <Card
                 key={coin.position ?? coin.symbol}
@@ -216,43 +219,31 @@ export function Dashboard() {
                   if (editMode) {
                     setEditingPosition(coin.position)
                     setEditError(null)
+                  } else {
+                    setSelectedSymbol(coin.symbol)
                   }
                 }}
                 style={{
-                  cursor: editMode ? 'pointer' : 'default',
-                  borderColor: editMode ? '#f59e0b' : '#60a5fa',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.15s',
                   position: 'relative',
+                  ...(editMode && { borderColor: '#f59e0b' }),
                 }}
+                className={editMode ? '' : 'coin-card'}
               >
                 {isEditing ? (
-                  /* 인라인 편집 UI */
                   <CoinSlotEditor
                     position={coin.position}
                     currentSymbol={coin.symbol}
                     onSave={(query) => handleSlotSave(coin.position, query)}
-                    onCancel={() => {
-                      setEditingPosition(null)
-                      setEditError(null)
-                    }}
+                    onCancel={() => { setEditingPosition(null); setEditError(null) }}
                     loading={editLoading}
                     error={editError}
                   />
                 ) : (
                   <>
-                    {/* 편집 모드에서 연필 아이콘 표시 */}
                     {editMode && (
-                      <span
-                        style={{
-                          position: 'absolute',
-                          top: 6,
-                          right: 8,
-                          fontSize: '0.7rem',
-                          color: '#f59e0b',
-                          pointerEvents: 'none',
-                        }}
-                      >
-                        ✏️
-                      </span>
+                      <span style={{ position: 'absolute', top: 6, right: 8, fontSize: '0.7rem', color: '#f59e0b', pointerEvents: 'none' }}>✏️</span>
                     )}
                     <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>{coin.symbol}</div>
                     <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#e2e8f0', margin: '4px 0' }}>
@@ -390,6 +381,18 @@ export function Dashboard() {
           )}
         </div>
       )}
+      <Modal open={!!selectedSymbol} onClose={() => setSelectedSymbol(null)}>
+        {selectedSymbol && (
+          <TradingViewChart
+            symbol={toTvSymbol(
+              selectedSymbol,
+              data.coins?.find(c => c.symbol === selectedSymbol)?.tv_symbol
+            )}
+          />
+        )}
+      </Modal>
+
+      <style>{`.coin-card:hover { border-color: #60a5fa !important; }`}</style>
     </div>
   )
 }
