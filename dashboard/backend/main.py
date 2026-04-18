@@ -173,9 +173,22 @@ def _build_app() -> FastAPI:
         logger.info("스케줄러 종료")
 
     # ── 프론트엔드 정적 파일 서빙 ──────────────────────────────
+    # StaticFiles(html=True)는 SPA 라우팅을 지원하지 않음 — /volume 같은 React Router
+    # 경로를 브라우저가 직접 요청하면 dist/volume 파일이 없어 404를 반환함.
+    # catch-all 라우트로 실제 파일은 그대로 서빙하고, 나머지는 index.html 반환.
     if _FRONTEND_DIST.exists():
-        app.mount("/", StaticFiles(directory=str(_FRONTEND_DIST), html=True), name="frontend")
-        logger.info("프론트엔드 서빙: %s", _FRONTEND_DIST)
+        from fastapi.responses import FileResponse as _FileResponse
+
+        _index_html = str(_FRONTEND_DIST / "index.html")
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def spa_fallback(full_path: str):
+            candidate = _FRONTEND_DIST / full_path
+            if candidate.is_file():
+                return _FileResponse(str(candidate))
+            return _FileResponse(_index_html)
+
+        logger.info("프론트엔드 서빙 (SPA): %s", _FRONTEND_DIST)
     else:
         logger.warning("프론트엔드 빌드 없음 (npm run build 필요): %s", _FRONTEND_DIST)
 
