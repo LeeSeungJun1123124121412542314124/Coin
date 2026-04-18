@@ -22,23 +22,22 @@ _STABLECOIN_SYMBOLS = {"tether": "USDT", "usd-coin": "USDC"}
 @cached(ttl=60, key_prefix="coingecko_prices")
 async def fetch_prices() -> list | None:
     """DB 슬롯 기반 코인 가격 + 24h 변동률 + 시총 조회."""
-    # DB에서 현재 슬롯 목록 동적 조회
-    slots = get_slots()
-    if not slots:
-        logger.warning("coin_slots 테이블이 비어있음 — 가격 조회 스킵")
-        return []
-
-    coin_id_to_slot = {s["coin_id"]: s for s in slots}
-    ids_param = ",".join(coin_id_to_slot.keys())
-
-    params = {
-        "ids": ids_param,
-        "vs_currencies": "usd",
-        "include_24hr_change": "true",
-        "include_market_cap": "true",
-        "x_cg_demo_api_key": _API_KEY,
-    }
     try:
+        # DB에서 현재 슬롯 목록 동적 조회
+        slots = get_slots()
+        if not slots:
+            logger.warning("coin_slots 테이블이 비어있음 — 가격 조회 스킵")
+            return []
+
+        ids_param = ",".join(s["coin_id"] for s in slots)
+
+        params = {
+            "ids": ids_param,
+            "vs_currencies": "usd",
+            "include_24hr_change": "true",
+            "include_market_cap": "true",
+            "x_cg_demo_api_key": _API_KEY,
+        }
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(f"{_BASE}/simple/price", params=params)
             resp.raise_for_status()
@@ -72,6 +71,9 @@ async def search_coin(query: str) -> dict | None:
     Returns:
         {"id": ..., "symbol": ..., "name": ...} 또는 None
     """
+    if not query or not query.strip():
+        return None
+
     params = {
         "query": query,
         "x_cg_demo_api_key": _API_KEY,
