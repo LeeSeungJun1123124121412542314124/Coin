@@ -72,7 +72,7 @@ export function StockIndexModal({ ticker, name, onClose }: StockIndexModalProps)
               <Tooltip
                 contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: '0.8rem' }}
                 labelStyle={{ color: '#94a3b8' }}
-                formatter={(v: number) => [v.toLocaleString(), name]}
+                formatter={(v) => [Number(v).toLocaleString(), name]}
               />
               <Line type="monotone" dataKey="close" stroke="#60a5fa" strokeWidth={2} dot={false} name={name} />
             </LineChart>
