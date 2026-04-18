@@ -190,15 +190,24 @@ async def fetch_global() -> dict | None:
 
 @cached(ttl=900, key_prefix="coingecko_marketcap_chart")
 async def fetch_market_cap_chart(days: int = 1) -> list[dict] | None:
-    """전체 시총 1일 시계열. Pro 전용일 경우 BTC 기반 근사 폴백."""
+    """전체 시총 시계열. Pro 전용일 경우 BTC 기반 근사 폴백.
+
+    폴백은 btc_dominance를 현재 단일값으로 전체 구간에 적용하므로 days > 1 구간에서는 오차가 커질 수 있음.
+    """
     params = {"vs_currency": "usd", "days": days, "x_cg_demo_api_key": _API_KEY}
     # 1차: /global/market_cap_chart (Pro일 수도)
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(f"{_BASE}/global/market_cap_chart", params=params)
+            # raise_for_status() 대신 수동 체크 — Pro 전용(401/403) 시 폴백 진행, 429 시 즉시 종료
             if resp.status_code == 200:
                 pairs = resp.json().get("market_cap_chart", {}).get("market_cap", [])
-                return [{"t": int(t), "v": float(v)} for t, v in pairs]
+                if pairs:  # 빈 배열이면 폴백 시도
+                    return [{"t": int(t), "v": float(v)} for t, v in pairs]
+            elif resp.status_code == 429:
+                logger.warning("전체 시총 차트 rate limit — 폴백 스킵")
+                return None
+            logger.info("전체 시총 차트 비-200 응답 %d, 폴백 시도", resp.status_code)
     except Exception as e:
         logger.warning("전체 시총 차트 직접 조회 실패(폴백 시도): %s", e)
 
@@ -206,7 +215,10 @@ async def fetch_market_cap_chart(days: int = 1) -> list[dict] | None:
     try:
         g = await fetch_global()
         btc_dom = g.get("btc_dominance") if g else None
-        if not btc_dom:
+        if btc_dom is None:
+            return None
+        if btc_dom == 0.0:
+            logger.warning("btc_dominance가 0 — 폴백 계산 불가")
             return None
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(
