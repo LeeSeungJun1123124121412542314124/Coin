@@ -220,6 +220,7 @@ def _mount_dashboard_routers(app: FastAPI) -> None:
     from dashboard.backend.api.whale_routes import router as whale_router
     from dashboard.backend.api.research_routes import router as research_router
     from dashboard.backend.api.visitor_routes import router as visitor_router
+    from dashboard.backend.api.coin_slots_routes import router as coin_slots_router
     from dashboard.backend.middleware.auth import require_auth
 
     # 인증 불필요 — PIN 검증 엔드포인트
@@ -237,6 +238,7 @@ def _mount_dashboard_routers(app: FastAPI) -> None:
     app.include_router(research_router, prefix="/api", dependencies=_auth_dep)
     app.include_router(visitor_router, prefix="/api", dependencies=_auth_dep)
     app.include_router(alert_router, prefix="/api", dependencies=_auth_dep)
+    app.include_router(coin_slots_router, prefix="/api", dependencies=_auth_dep)
 
 
 def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
