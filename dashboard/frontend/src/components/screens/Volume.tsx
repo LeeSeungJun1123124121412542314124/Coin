@@ -177,43 +177,43 @@ export function Volume() {
         </Card>
       </div>
 
-      {/* 60일 일별 거래대금 바 차트 */}
+      {/* 일별 거래대금 — 가로 막대 */}
       {histChart.length > 0 && (
         <Card>
           <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>
             일별 거래대금 (최근 {histChart.length}일, 단위: 조원)
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={histChart} barSize={6}>
-              <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 9 }} interval="preserveStartEnd" />
-              <YAxis tick={{ fill: '#64748b', fontSize: 10 }} width={35} />
+          <ResponsiveContainer width="100%" height={Math.max(160, histChart.length * 22)}>
+            <BarChart data={histChart} layout="vertical" barSize={14} margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
+              <XAxis type="number" tick={{ fill: '#64748b', fontSize: 9 }} tickFormatter={(v) => `${(v as number).toFixed(1)}`} />
+              <YAxis type="category" dataKey="date" tick={{ fill: '#64748b', fontSize: 9 }} width={42} />
               <Tooltip
                 contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
                 labelStyle={{ color: '#94a3b8' }}
                 formatter={(v) => [`${(v as number).toFixed(2)}조`, '']}
               />
-              <Bar dataKey="upbit" stackId="a" fill="#f97316" name="업비트" />
               <Bar dataKey="bithumb" stackId="a" fill="#60a5fa" name="빗썸" />
+              <Bar dataKey="upbit" stackId="a" fill="#f97316" name="업비트" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
       )}
 
-      {/* 주간 거래량 차트 */}
+      {/* 주간 거래대금 — 가로 막대 */}
       {weeklyChart.length > 0 && (
         <Card>
           <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>주간 거래대금 (최근 12주)</div>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={weeklyChart} barSize={14}>
-              <XAxis dataKey="week" tick={{ fill: '#64748b', fontSize: 10 }} />
-              <YAxis tick={{ fill: '#64748b', fontSize: 10 }} width={35} />
+          <ResponsiveContainer width="100%" height={Math.max(160, weeklyChart.length * 28)}>
+            <BarChart data={weeklyChart} layout="vertical" barSize={16} margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
+              <XAxis type="number" tick={{ fill: '#64748b', fontSize: 9 }} tickFormatter={(v) => `${(v as number).toFixed(1)}`} />
+              <YAxis type="category" dataKey="week" tick={{ fill: '#64748b', fontSize: 10 }} width={42} />
               <Tooltip
                 contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
                 formatter={(v) => [`${(v as number).toFixed(2)}조`, '']}
               />
               <Legend wrapperStyle={{ fontSize: '0.75rem', color: '#94a3b8' }} />
-              <Bar dataKey="upbit" stackId="a" fill="#f97316" name="업비트" />
               <Bar dataKey="bithumb" stackId="a" fill="#60a5fa" name="빗썸" />
+              <Bar dataKey="upbit" stackId="a" fill="#f97316" name="업비트" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
