@@ -78,7 +78,7 @@ export function AltcoinSeasonCard({ index_value, season_label, history, cached_a
             contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 6, fontSize: '0.75rem' }}
             labelStyle={{ color: '#94a3b8' }}
             itemStyle={{ color: '#60a5fa' }}
-            formatter={(v: number) => v}
+            formatter={(v) => (v != null ? Number(v) : '')}
           />
           <ReferenceLine y={75} stroke="#4ade80" strokeDasharray="3 3" strokeOpacity={0.6} />
           <ReferenceLine y={25} stroke="#f87171" strokeDasharray="3 3" strokeOpacity={0.6} />
