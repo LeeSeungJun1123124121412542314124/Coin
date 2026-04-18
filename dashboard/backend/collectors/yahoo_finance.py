@@ -175,8 +175,11 @@ async def lookup_stock_info(ticker: str) -> dict | None:
             resp.raise_for_status()
             data = resp.json()
             result = data.get("quoteSummary", {}).get("result")
+            if result is None:
+                logger.warning("lookup_stock_info: result=null, 존재하지 않는 티커일 수 있음 (%s)", ticker)
+                return None
             if not result:
-                logger.warning("lookup_stock_info: 빈 결과 (%s)", ticker)
+                logger.warning("lookup_stock_info: result 빈 배열 (%s)", ticker)
                 return None
             price_module = result[0].get("price", {})
             name = price_module.get("shortName") or price_module.get("longName")
@@ -185,6 +188,12 @@ async def lookup_stock_info(ticker: str) -> dict | None:
                 logger.warning("lookup_stock_info: name/exchange 누락 (%s) data=%s", ticker, price_module)
                 return None
             return {"name": name, "exchange": exchange}
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            logger.info("lookup_stock_info: 존재하지 않는 티커 (%s)", ticker)
+        else:
+            logger.warning("lookup_stock_info HTTP 오류 (%s) %s", ticker, e.response.status_code)
+        return None
     except Exception as e:
         logger.warning("lookup_stock_info 조회 실패 (%s): %s", ticker, e)
         return None
