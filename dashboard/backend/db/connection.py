@@ -56,15 +56,32 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         [
             ('kr', 1, '005930.KS', '삼성전자', 'KRX:005930'),
             ('kr', 2, '000660.KS', 'SK하이닉스', 'KRX:000660'),
-            ('kr', 3, '035720.KS', '카카오', 'KOSDAQ:035720'),
+            ('kr', 3, '035720.KS', '카카오', 'KRX:035720'),
             ('kr', 4, '005380.KS', '현대차', 'KRX:005380'),
-            ('kr', 5, '035420.KS', 'NAVER', 'KOSDAQ:035420'),
+            ('kr', 5, '035420.KS', 'NAVER', 'KRX:035420'),
             ('us', 1, 'AAPL', 'Apple', 'NASDAQ:AAPL'),
             ('us', 2, 'MSFT', 'Microsoft', 'NASDAQ:MSFT'),
             ('us', 3, 'NVDA', 'NVIDIA', 'NASDAQ:NVDA'),
             ('us', 4, 'TSLA', 'Tesla', 'NASDAQ:TSLA'),
             ('us', 5, 'GOOGL', 'Alphabet', 'NASDAQ:GOOGL'),
         ]
+    )
+    # 기존 슬롯의 tv_symbol 변경 반영 (INSERT OR IGNORE는 기존 행 갱신 불가)
+    tv_symbol_updates = [
+        ('KRX:005930', 'kr', 1),
+        ('KRX:000660', 'kr', 2),
+        ('KRX:035720', 'kr', 3),
+        ('KRX:005380', 'kr', 4),
+        ('KRX:035420', 'kr', 5),
+        ('NASDAQ:AAPL', 'us', 1),
+        ('NASDAQ:MSFT', 'us', 2),
+        ('NASDAQ:NVDA', 'us', 3),
+        ('NASDAQ:TSLA', 'us', 4),
+        ('NASDAQ:GOOGL', 'us', 5),
+    ]
+    conn.executemany(
+        "UPDATE stock_slots SET tv_symbol=? WHERE market=? AND position=?",
+        tv_symbol_updates
     )
     conn.commit()
 
