@@ -36,9 +36,11 @@ def update_slot(
         tv_symbol: TradingView 심볼 (예: BINANCE:BTCUSDT)
     """
     with get_db() as conn:
-        conn.execute(
+        cursor = conn.execute(
             "UPDATE dashboard_coin_slots "
             "SET coin_id = ?, symbol = ?, tv_symbol = ?, updated_at = datetime('now') "
             "WHERE position = ?",
             (coin_id, symbol, tv_symbol, position)
         )
+        if cursor.rowcount == 0:
+            raise ValueError(f"유효하지 않은 슬롯 위치: {position}")
