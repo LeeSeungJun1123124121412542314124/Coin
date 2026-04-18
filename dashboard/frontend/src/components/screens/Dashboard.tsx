@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis } from 'recharts'
+import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis, YAxis, ReferenceLine } from 'recharts'
 import { useApi } from '../../hooks/useApi'
 import { apiFetch } from '../../lib/api'
 import { Card } from '../shared/Card'
@@ -141,27 +141,33 @@ export function Dashboard() {
             </div>
           )}
           {/* 김프 히스토리 미니 차트 */}
-          {kimchiHistory.length > 1 && (
-            <div style={{ marginTop: 10, height: 48 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={kimchiHistory} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                  <defs>
-                    <linearGradient id="kimchiGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#60a5fa" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="t" hide />
-                  <Tooltip
-                    contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 6, fontSize: '0.7rem' }}
-                    labelStyle={{ color: '#94a3b8' }}
-                    formatter={(v) => [`${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`, '김프']}
-                  />
-                  <Area type="monotone" dataKey="v" stroke="#60a5fa" strokeWidth={1.5} fill="url(#kimchiGrad)" dot={false} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          {kimchiHistory.length > 1 && (() => {
+            const isPositive = (data.kimchi?.kimchi_premium_pct ?? 0) >= 0
+            const chartColor = isPositive ? '#4ade80' : '#f87171'
+            return (
+              <div style={{ marginTop: 10, height: 64 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={kimchiHistory} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                    <defs>
+                      <linearGradient id="kimchiGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={chartColor} stopOpacity={0.5} />
+                        <stop offset="95%" stopColor={chartColor} stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="t" hide />
+                    <YAxis hide domain={['auto', 'auto']} />
+                    <ReferenceLine y={0} stroke="#64748b" strokeDasharray="3 3" strokeWidth={1} />
+                    <Tooltip
+                      contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 6, fontSize: '0.7rem' }}
+                      labelStyle={{ color: '#94a3b8' }}
+                      formatter={(v) => [`${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`, '김프']}
+                    />
+                    <Area type="monotone" dataKey="v" stroke={chartColor} strokeWidth={2} fill="url(#kimchiGrad)" dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )
+          })()}
         </Card>
 
         {/* 공포탐욕 게이지 */}
