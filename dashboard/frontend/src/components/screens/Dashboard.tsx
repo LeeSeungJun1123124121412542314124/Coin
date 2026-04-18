@@ -28,6 +28,8 @@ interface DashboardData {
     change_24h: number | null
     market_cap: number | null
     tv_symbol: string | null
+    high_24h: number | null
+    low_24h: number | null
   }>
   global: {
     total_market_cap_usd: number | null
@@ -326,6 +328,16 @@ export function Dashboard() {
                     <div style={{ fontSize: '0.8rem', color: (coin.change_24h ?? 0) >= 0 ? '#4ade80' : '#f87171' }}>
                       {coin.change_24h != null ? `${coin.change_24h >= 0 ? '+' : ''}${coin.change_24h.toFixed(2)}%` : '—'}
                     </div>
+                    {(coin.high_24h != null || coin.low_24h != null) && (
+                      <div style={{ display: 'flex', gap: 8, marginTop: 4, fontSize: '0.7rem' }}>
+                        {coin.high_24h != null && (
+                          <span><span style={{ color: '#f87171' }}>H </span><span style={{ color: '#94a3b8' }}>${coin.high_24h.toLocaleString()}</span></span>
+                        )}
+                        {coin.low_24h != null && (
+                          <span><span style={{ color: '#4ade80' }}>L </span><span style={{ color: '#94a3b8' }}>${coin.low_24h.toLocaleString()}</span></span>
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
               </Card>

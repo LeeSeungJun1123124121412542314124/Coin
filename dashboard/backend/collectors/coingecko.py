@@ -36,6 +36,8 @@ async def fetch_prices() -> list | None:
             "vs_currencies": "usd",
             "include_24hr_change": "true",
             "include_market_cap": "true",
+            "include_24hr_high": "true",
+            "include_24hr_low": "true",
             "x_cg_demo_api_key": _API_KEY,
         }
         async with httpx.AsyncClient(timeout=10) as client:
@@ -55,6 +57,8 @@ async def fetch_prices() -> list | None:
                 "price": d.get("usd"),
                 "change_24h": d.get("usd_24h_change"),
                 "market_cap": d.get("usd_market_cap"),
+                "high_24h": d.get("usd_24h_high"),
+                "low_24h": d.get("usd_24h_low"),
             })
         return result
     except Exception as e:
