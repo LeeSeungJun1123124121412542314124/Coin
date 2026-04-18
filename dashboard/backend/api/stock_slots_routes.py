@@ -4,23 +4,29 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Path
+from fastapi import APIRouter, HTTPException, Path
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from dashboard.backend import cache
-from dashboard.backend.collectors.yahoo_finance import fetch_stock_prices
+from dashboard.backend.collectors.yahoo_finance import fetch_stock_prices, lookup_stock_info
 from dashboard.backend.db.connection import get_db
 from dashboard.backend.utils.errors import api_error
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Yahoo Finance exchangeName → TradingView 거래소 코드 매핑
+_EXCHANGE_MAP = {
+    "NasdaqGS": "NASDAQ",
+    "NasdaqCM": "NASDAQ",
+    "NasdaqGM": "NASDAQ",
+    "NYQ": "NYSE",
+}
+
 
 class StockSlotUpdateRequest(BaseModel):
     ticker: str = Field(..., min_length=1)
-    name: str = Field(..., min_length=1)
-    tv_symbol: str | None = None
 
 
 def _get_slots(market: str) -> list[dict]:
@@ -51,9 +57,24 @@ async def put_stock_slot(
     market: str = Path(..., pattern="^(kr|us)$"),
     position: int = Path(..., ge=1, le=5),
 ):
-    _update_slot(market, position, request.ticker, request.name, request.tv_symbol)
+    # 종목 정보 자동 조회
+    info = await lookup_stock_info(request.ticker)
+    if info is None:
+        raise HTTPException(status_code=422, detail=f"종목을 찾을 수 없습니다: {request.ticker}")
+
+    name = info["name"]
+
+    # TradingView 심볼 자동 생성
+    if market == "kr":
+        tv_symbol = f"KRX:{request.ticker}"
+    else:
+        exchange_raw = info["exchange"]
+        exchange = _EXCHANGE_MAP.get(exchange_raw, exchange_raw)
+        tv_symbol = f"{exchange}:{request.ticker}"
+
+    _update_slot(market, position, request.ticker, name, tv_symbol)
     cache.delete_prefix("stock_prices")
-    return JSONResponse({"market": market, "position": position, "ticker": request.ticker, "name": request.name, "tv_symbol": request.tv_symbol})
+    return JSONResponse({"market": market, "position": position, "ticker": request.ticker, "name": name, "tv_symbol": tv_symbol})
 
 
 @router.get("/stock-prices/{market}")
