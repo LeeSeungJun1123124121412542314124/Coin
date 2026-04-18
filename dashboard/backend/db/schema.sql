@@ -129,3 +129,20 @@ CREATE TABLE IF NOT EXISTS alert_cooldowns (
     last_alerted  TEXT NOT NULL,
     cooldown_type TEXT NOT NULL
 );
+
+-- 대시보드 코인 슬롯 (6개 고정 위치)
+CREATE TABLE IF NOT EXISTS dashboard_coin_slots (
+    position    INTEGER PRIMARY KEY CHECK (position BETWEEN 0 AND 5),
+    coin_id     TEXT NOT NULL,
+    symbol      TEXT NOT NULL,
+    tv_symbol   TEXT,
+    updated_at  TEXT DEFAULT (datetime('now'))
+);
+
+INSERT OR IGNORE INTO dashboard_coin_slots (position, coin_id, symbol, tv_symbol) VALUES
+  (0,'bitcoin','BTC','BINANCE:BTCUSDT'),
+  (1,'ethereum','ETH','BINANCE:ETHUSDT'),
+  (2,'solana','SOL','BINANCE:SOLUSDT'),
+  (3,'hyperliquid','HYPE','BYBIT:HYPEUSDT'),
+  (4,'injective-protocol','INJ','BINANCE:INJUSDT'),
+  (5,'ondo-finance','ONDO','BINANCE:ONDOUSDT');

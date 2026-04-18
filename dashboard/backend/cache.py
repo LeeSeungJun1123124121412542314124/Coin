@@ -32,6 +32,13 @@ def delete(key: str) -> None:
     _store.pop(key, None)
 
 
+def delete_prefix(prefix: str) -> None:
+    """prefix로 시작하는 모든 캐시 키 삭제."""
+    for k in list(_store.keys()):
+        if k.startswith(prefix):
+            del _store[k]
+
+
 def cached(ttl: int, key_prefix: str = ""):
     """비동기 함수용 TTL 캐시 데코레이터.
 
