@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis } from 'recharts'
 import { useApi } from '../../hooks/useApi'
+import { apiFetch } from '../../lib/api'
 import { Card } from '../shared/Card'
 import { StatRow } from '../shared/StatRow'
 import { GaugeChart } from '../shared/GaugeChart'
+import { CoinSlotEditor } from '../shared/CoinSlotEditor'
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
@@ -10,10 +13,12 @@ import { fmt } from '../../lib/format'
 
 interface DashboardData {
   coins: Array<{
+    position: number
     symbol: string
     price: number | null
     change_24h: number | null
     market_cap: number | null
+    tv_symbol: string | null
   }>
   global: {
     total_market_cap_usd: number | null
@@ -62,6 +67,33 @@ function mvrvLabel(signal: string | null | undefined, mvrv: number): string {
 
 export function Dashboard() {
   const { data, loading, error, refetch, lastUpdated } = useApi<DashboardData>('/api/dashboard', 60_000)
+
+  // 편집 모드 상태
+  const [editMode, setEditMode] = useState(false)
+  const [editingPosition, setEditingPosition] = useState<number | null>(null)
+  const [editLoading, setEditLoading] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+
+  /** 코인 슬롯 교체 API 호출 */
+  const handleSlotSave = async (position: number, query: string) => {
+    setEditLoading(true)
+    setEditError(null)
+    try {
+      await apiFetch(`/api/coin-slots/${position}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      })
+      await refetch()
+      setEditingPosition(null)
+      setEditMode(false)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '교체에 실패했습니다'
+      setEditError(msg)
+    } finally {
+      setEditLoading(false)
+    }
+  }
 
   if (loading && !data) return <Skeleton />
   if (error) return <ErrorState error={error} onRetry={refetch} />
@@ -148,21 +180,92 @@ export function Dashboard() {
         )}
       </div>
 
-      {/* ── 코인 카드 6개 ── */}
+      {/* ── 코인 카드 섹션 ── */}
       <section>
-        <h2 style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>코인 가격</h2>
+        {/* 헤더: 제목 + 편집 토글 버튼 */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 10px' }}>
+          <h2 style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>코인 가격</h2>
+          <button
+            onClick={() => {
+              setEditMode(prev => !prev)
+              setEditingPosition(null)
+              setEditError(null)
+            }}
+            style={{
+              background: editMode ? '#1e3a5f' : 'transparent',
+              border: `1px solid ${editMode ? '#60a5fa' : '#475569'}`,
+              borderRadius: 4,
+              color: editMode ? '#60a5fa' : '#94a3b8',
+              cursor: 'pointer',
+              fontSize: '0.7rem',
+              padding: '2px 8px',
+            }}
+          >
+            {editMode ? '완료' : '편집'}
+          </button>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
-          {data.coins?.map(coin => (
-            <Card key={coin.symbol}>
-              <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>{coin.symbol}</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#e2e8f0', margin: '4px 0' }}>
-                {coin.price ? `$${coin.price.toLocaleString()}` : '—'}
-              </div>
-              <div style={{ fontSize: '0.8rem', color: (coin.change_24h ?? 0) >= 0 ? '#4ade80' : '#f87171' }}>
-                {coin.change_24h != null ? `${coin.change_24h >= 0 ? '+' : ''}${coin.change_24h.toFixed(2)}%` : '—'}
-              </div>
-            </Card>
-          ))}
+          {data.coins?.map(coin => {
+            const isEditing = editMode && editingPosition === coin.position
+
+            return (
+              <Card
+                key={coin.position ?? coin.symbol}
+                onClick={() => {
+                  if (editMode) {
+                    setEditingPosition(coin.position)
+                    setEditError(null)
+                  }
+                }}
+                style={{
+                  cursor: editMode ? 'pointer' : 'default',
+                  borderColor: editMode ? '#f59e0b' : '#60a5fa',
+                  position: 'relative',
+                }}
+              >
+                {isEditing ? (
+                  /* 인라인 편집 UI */
+                  <CoinSlotEditor
+                    position={coin.position}
+                    currentSymbol={coin.symbol}
+                    onSave={(query) => handleSlotSave(coin.position, query)}
+                    onCancel={() => {
+                      setEditingPosition(null)
+                      setEditError(null)
+                    }}
+                    loading={editLoading}
+                    error={editError}
+                  />
+                ) : (
+                  <>
+                    {/* 편집 모드에서 연필 아이콘 표시 */}
+                    {editMode && (
+                      <span
+                        style={{
+                          position: 'absolute',
+                          top: 6,
+                          right: 8,
+                          fontSize: '0.7rem',
+                          color: '#f59e0b',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        ✏️
+                      </span>
+                    )}
+                    <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>{coin.symbol}</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#e2e8f0', margin: '4px 0' }}>
+                      {coin.price ? `$${coin.price.toLocaleString()}` : '—'}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: (coin.change_24h ?? 0) >= 0 ? '#4ade80' : '#f87171' }}>
+                      {coin.change_24h != null ? `${coin.change_24h >= 0 ? '+' : ''}${coin.change_24h.toFixed(2)}%` : '—'}
+                    </div>
+                  </>
+                )}
+              </Card>
+            )
+          })}
         </div>
       </section>
 
