@@ -199,6 +199,37 @@ async def lookup_stock_info(ticker: str) -> dict | None:
         return None
 
 
+async def search_stocks(query: str, market: str) -> list[dict]:
+    """Yahoo Finance /v1/finance/search로 종목 검색. 결과를 market에 맞게 필터링.
+
+    Returns: [{"ticker": str, "name": str}, ...] (최대 5개)
+    """
+    _KR_EXCHANGES = {"KSE", "KOE", "KPQ"}  # 코스피, 코스닥, 코넥스
+    _US_EXCHANGES = {"NasdaqGS", "NasdaqCM", "NasdaqGM", "NYQ", "NYSEArca", "NYSEAmerican", "NGM"}
+
+    url = "https://query1.finance.yahoo.com/v1/finance/search"
+    try:
+        async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+            resp = await client.get(url, params={"q": query, "quotesCount": 10, "newsCount": 0, "listsCount": 0})
+            resp.raise_for_status()
+            quotes = resp.json().get("quotes", [])
+
+            allowed = _KR_EXCHANGES if market == "kr" else _US_EXCHANGES
+            results = []
+            for q in quotes:
+                exchange = q.get("exchange", "")
+                ticker = q.get("symbol", "")
+                name = q.get("shortname") or q.get("longname") or ticker
+                if exchange in allowed and ticker:
+                    results.append({"ticker": ticker, "name": name})
+                if len(results) >= 5:
+                    break
+            return results
+    except Exception as e:
+        logger.warning("search_stocks 실패 (%s, %s): %s", query, market, e)
+        return []
+
+
 @cached(ttl=3600, key_prefix="yahoo_history")
 async def fetch_index_history(ticker: str, days: int = 30) -> list[dict] | None:
     """지수 30일 종가 히스토리 — 모달 차트용."""

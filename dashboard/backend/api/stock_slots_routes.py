@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from dashboard.backend import cache
-from dashboard.backend.collectors.yahoo_finance import fetch_stock_prices, lookup_stock_info
+from dashboard.backend.collectors.yahoo_finance import fetch_stock_prices, lookup_stock_info, search_stocks
 from dashboard.backend.db.connection import get_db
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,16 @@ def _update_slot(market: str, position: int, ticker: str, name: str, tv_symbol: 
             "UPDATE stock_slots SET ticker=?, name=?, tv_symbol=? WHERE market=? AND position=?",
             (ticker, name, tv_symbol, market, position),
         )
+
+
+@router.get("/stock-search")
+async def get_stock_search(q: str, market: str):
+    if market not in ("kr", "us"):
+        raise HTTPException(status_code=400, detail="market must be kr or us")
+    if not q or not q.strip():
+        return []
+    results = await search_stocks(q.strip(), market)
+    return results
 
 
 @router.get("/stock-slots/{market}")
