@@ -1,4 +1,5 @@
 import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis } from 'recharts'
+import { useId } from 'react'
 import { Card } from './Card'
 import { fmt } from '../../lib/format'
 
@@ -13,6 +14,9 @@ interface GlobalMarketCardProps {
 }
 
 export function GlobalMarketCard({ data }: GlobalMarketCardProps) {
+  const uid = useId()
+  const gradId = `mcapGrad-${uid.replace(/:/g, '')}`
+
   const {
     total_market_cap_usd,
     market_cap_change_24h,
@@ -34,9 +38,9 @@ export function GlobalMarketCard({ data }: GlobalMarketCardProps) {
       ? `${changePositive ? '+' : ''}${market_cap_change_24h.toFixed(2)}%`
       : null
 
-  const hasChart =
-    market_cap_chart != null && market_cap_chart.length >= 2
-  const hasDominance = btc_dominance != null
+  const chartData = market_cap_chart ?? []
+  const hasChart = chartData.length >= 2
+  const hasDominance = btc_dominance != null && eth_dominance != null
 
   return (
     <Card>
@@ -82,11 +86,11 @@ export function GlobalMarketCard({ data }: GlobalMarketCardProps) {
         <div style={{ marginTop: 10, height: 48 }}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
-              data={market_cap_chart!}
+              data={chartData}
               margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
             >
               <defs>
-                <linearGradient id="mcapGrad" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="#a78bfa" stopOpacity={0} />
                 </linearGradient>
@@ -106,7 +110,7 @@ export function GlobalMarketCard({ data }: GlobalMarketCardProps) {
                 dataKey="v"
                 stroke="#a78bfa"
                 strokeWidth={1.5}
-                fill="url(#mcapGrad)"
+                fill={`url(#${gradId})`}
                 dot={false}
               />
             </AreaChart>
