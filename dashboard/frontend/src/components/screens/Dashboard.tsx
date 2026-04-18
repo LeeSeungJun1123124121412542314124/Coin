@@ -264,7 +264,7 @@ export function Dashboard() {
       <section>
         {/* 헤더: 제목 + 편집 토글 버튼 */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 10px' }}>
-          <h2 style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>코인 가격</h2>
+          <h2 style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>코인가격</h2>
           <button
             onClick={() => {
               setEditMode(prev => !prev)
