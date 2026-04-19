@@ -89,10 +89,12 @@ function NewPredictionForm({ market, onSubmit, onClose }: NewPredictionFormProps
   const [assetSymbol, setAssetSymbol] = useState('')
   const [direction, setDirection] = useState<'long' | 'short'>('long')
   const [entryPrice, setEntryPrice] = useState('')
+  const [entryTime, setEntryTime] = useState('')
   const [expiryTime, setExpiryTime] = useState('')
   const [targetPrice, setTargetPrice] = useState('')
   const [quantity, setQuantity] = useState('')
   const [leverage, setLeverage] = useState(1)
+  const [instrumentType, setInstrumentType] = useState<'spot' | 'futures'>('spot')
   const [stopLoss, setStopLoss] = useState('')
   const [takeProfit, setTakeProfit] = useState('')
   const [indicators, setIndicators] = useState<string[]>([])
@@ -157,17 +159,25 @@ function NewPredictionForm({ market, onSubmit, onClose }: NewPredictionFormProps
       setSubmitError('진입 가격을 입력해주세요.')
       return
     }
+    if (!entryTime) {
+      setSubmitError('진입 시간을 입력해주세요.')
+      return
+    }
     if (!expiryTime) {
       setSubmitError('만료 시간을 입력해주세요.')
       return
     }
+
+    // datetime-local 값을 ISO 형식으로 변환 (초 단위 없으면 ':00' 추가)
+    const toISOWithSeconds = (dt: string) => dt.length === 16 ? dt + ':00' : dt
 
     const body: Record<string, unknown> = {
       market,
       asset_symbol: assetSymbol.trim(),
       mode,
       entry_price: parseFloat(entryPrice),
-      expiry_time: new Date(expiryTime).toISOString(),
+      entry_time: toISOWithSeconds(entryTime),
+      expiry_time: toISOWithSeconds(expiryTime),
       indicator_tags: indicators,
       note: note || null,
     }
@@ -181,6 +191,7 @@ function NewPredictionForm({ market, onSubmit, onClose }: NewPredictionFormProps
     }
 
     if (mode === 'portfolio') {
+      body.instrument_type = instrumentType
       body.quantity = quantity ? parseFloat(quantity) : null
       body.leverage = leverage
       body.stop_loss = stopLoss ? parseFloat(stopLoss) : null
@@ -432,6 +443,20 @@ function NewPredictionForm({ market, onSubmit, onClose }: NewPredictionFormProps
           />
         </div>
 
+        {/* 진입 시간 */}
+        <div style={fieldWrap}>
+          <label style={labelStyle}>진입 시간</label>
+          <input
+            type="datetime-local"
+            value={entryTime}
+            onChange={e => setEntryTime(e.target.value)}
+            style={{
+              ...inputStyle,
+              colorScheme: 'dark',
+            }}
+          />
+        </div>
+
         {/* 만료 시간 */}
         <div style={fieldWrap}>
           <label style={labelStyle}>만료 시간</label>
@@ -463,6 +488,31 @@ function NewPredictionForm({ market, onSubmit, onClose }: NewPredictionFormProps
         {/* 포트폴리오 전용 필드 */}
         {mode === 'portfolio' && (
           <>
+            {/* 종목 유형 */}
+            <div style={fieldWrap}>
+              <label style={labelStyle}>종목 유형</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {(['spot', 'futures'] as const).map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setInstrumentType(t)}
+                    style={{
+                      padding: '6px 20px',
+                      borderRadius: 6,
+                      border: '1px solid #1e293b',
+                      background: instrumentType === t ? '#2563eb' : '#0f1117',
+                      color: instrumentType === t ? '#fff' : '#94a3b8',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: instrumentType === t ? 600 : 400,
+                    }}
+                  >
+                    {t === 'spot' ? '현물' : '선물'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div style={fieldWrap}>
               <label style={labelStyle}>수량</label>
               <input
@@ -680,7 +730,7 @@ export function Simulator() {
   const handleResetAccount = async () => {
     if (!currentAccount) return
     const confirmed = window.confirm(
-      `${MARKET_LABELS[activeMarket]} 계좌를 리셋하시겠습니까?\n현재 예측이 모두 삭제됩니다.`
+      '계좌 자본금을 리셋합니다. 기존 예측은 유지됩니다.'
     )
     if (!confirmed) return
 

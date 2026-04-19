@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from dashboard.backend.db.connection import get_db
 from dashboard.backend.services.sim_engine import calc_liquidation_price
+from dashboard.backend.services.sim_scorecard import get_scorecard, get_scorecard_by_indicator
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -412,49 +413,7 @@ async def get_sim_scorecard(
     """전체 성과 스코어카드 집계."""
     if market and market not in _VALID_MARKETS:
         raise HTTPException(status_code=400, detail=f"market은 {_VALID_MARKETS} 중 하나여야 합니다.")
-
-    conditions = []
-    params: list = []
-
-    if market:
-        conditions.append("a.market = ?")
-        params.append(market)
-    if horizon_days:
-        conditions.append("s.settled_at >= datetime('now', ?)")
-        params.append(f"-{horizon_days} days")
-
-    where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
-
-    query = f"""
-        SELECT
-            COUNT(*) AS total_count,
-            SUM(s.direction_hit) AS hit_count,
-            AVG(s.pnl_pct) AS avg_pnl_pct,
-            AVG(s.price_error) AS avg_mae,
-            SUM(s.pnl) AS total_pnl
-        FROM sim_settlements AS s
-        JOIN sim_predictions AS p ON p.id = s.prediction_id
-        JOIN sim_accounts AS a ON a.id = p.account_id
-        {where_clause}
-    """
-
-    with get_db() as conn:
-        row = conn.execute(query, params).fetchone()
-
-    total_count = row["total_count"] or 0
-    hit_count = row["hit_count"] or 0
-    hit_rate = (hit_count / total_count * 100) if total_count > 0 else 0.0
-
-    return {
-        "total_count": total_count,
-        "hit_count": hit_count,
-        "hit_rate": round(hit_rate, 2),
-        "avg_pnl_pct": round(row["avg_pnl_pct"], 4) if row["avg_pnl_pct"] is not None else None,
-        "avg_mae": round(row["avg_mae"], 4) if row["avg_mae"] is not None else None,
-        "total_pnl": round(row["total_pnl"], 4) if row["total_pnl"] is not None else None,
-        "market": market,
-        "horizon_days": horizon_days,
-    }
+    return get_scorecard(market=market, horizon_days=horizon_days)
 
 
 # ============================================================
@@ -464,79 +423,12 @@ async def get_sim_scorecard(
 @router.get("/sim/scorecard/by-indicator")
 async def get_sim_scorecard_by_indicator(
     market: Optional[str] = Query(default=None),
+    horizon_days: Optional[int] = Query(default=None, ge=1),
 ):
-    """인디케이터 태그별 성과 집계.
-
-    SQLite JSON_EACH가 버전에 따라 미지원될 수 있으므로
-    Python에서 indicator_tags를 직접 파싱해 집계한다.
-    """
+    """인디케이터 태그별 성과 집계."""
     if market and market not in _VALID_MARKETS:
         raise HTTPException(status_code=400, detail=f"market은 {_VALID_MARKETS} 중 하나여야 합니다.")
-
-    conditions = ["s.id IS NOT NULL"]
-    params: list = []
-
-    if market:
-        conditions.append("a.market = ?")
-        params.append(market)
-
-    where_clause = "WHERE " + " AND ".join(conditions)
-
-    query = f"""
-        SELECT
-            p.indicator_tags,
-            s.direction_hit,
-            s.pnl_pct
-        FROM sim_settlements AS s
-        JOIN sim_predictions AS p ON p.id = s.prediction_id
-        JOIN sim_accounts AS a ON a.id = p.account_id
-        {where_clause}
-    """
-
-    with get_db() as conn:
-        rows = conn.execute(query, params).fetchall()
-
-    # 인디케이터별 집계
-    indicator_map: dict[str, dict] = {}
-
-    for r in rows:
-        tags_raw = r["indicator_tags"]
-        try:
-            tags = json.loads(tags_raw) if tags_raw else []
-        except (json.JSONDecodeError, TypeError):
-            tags = []
-
-        direction_hit = r["direction_hit"] or 0
-        pnl_pct = r["pnl_pct"]
-
-        for tag in tags:
-            if tag not in indicator_map:
-                indicator_map[tag] = {"count": 0, "hit_count": 0, "pnl_pct_sum": 0.0, "pnl_pct_count": 0}
-            indicator_map[tag]["count"] += 1
-            indicator_map[tag]["hit_count"] += direction_hit
-            if pnl_pct is not None:
-                indicator_map[tag]["pnl_pct_sum"] += pnl_pct
-                indicator_map[tag]["pnl_pct_count"] += 1
-
-    result = []
-    for tag, data in sorted(indicator_map.items()):
-        count = data["count"]
-        hit_count = data["hit_count"]
-        hit_rate = (hit_count / count * 100) if count > 0 else 0.0
-        avg_pnl_pct = (
-            round(data["pnl_pct_sum"] / data["pnl_pct_count"], 4)
-            if data["pnl_pct_count"] > 0
-            else None
-        )
-        result.append({
-            "indicator": tag,
-            "count": count,
-            "hit_count": hit_count,
-            "hit_rate": round(hit_rate, 2),
-            "avg_pnl_pct": avg_pnl_pct,
-        })
-
-    return result
+    return get_scorecard_by_indicator(market=market, horizon_days=horizon_days)
 
 
 # ============================================================

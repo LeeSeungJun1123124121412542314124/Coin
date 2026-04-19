@@ -9,18 +9,21 @@ import { apiFetch } from '../../lib/api'
 // ────────────────────────────────────────
 
 interface ScorecardSummary {
-  total: number
-  hits: number
+  total_count: number
+  hit_count: number
   hit_rate: number
-  avg_pnl: number | null
-  liquidations: number
+  avg_pnl_pct: number | null
+  avg_mae: number | null
+  total_pnl: number | null
+  liquidation_count?: number
 }
 
 interface IndicatorStat {
   indicator: string
   count: number
-  hits: number
+  hit_count: number
   hit_rate: number
+  avg_pnl_pct: number | null
 }
 
 interface SettledPrediction {
@@ -76,7 +79,7 @@ function BarTooltip({ active, payload }: { active?: boolean; payload?: Array<{ p
     }}>
       <div style={{ fontWeight: 600, marginBottom: 4 }}>{d.indicator}</div>
       <div style={{ color: '#94a3b8' }}>적중률: <span style={{ color: '#60a5fa' }}>{d.hit_rate.toFixed(1)}%</span></div>
-      <div style={{ color: '#94a3b8' }}>건수: {d.hits}/{d.count}</div>
+      <div style={{ color: '#94a3b8' }}>건수: {d.hit_count}/{d.count}</div>
     </div>
   )
 }
@@ -132,7 +135,7 @@ export function SimScorecard({ market }: SimScorecardProps) {
     )
   }
 
-  const hasSummary = summary && summary.total > 0
+  const hasSummary = summary !== null && summary.total_count > 0
   const hasIndicators = indicators.length > 0
   const hasPredictions = predictions.length > 0
 
@@ -176,7 +179,7 @@ export function SimScorecard({ market }: SimScorecardProps) {
                 {summary.hit_rate.toFixed(0)}%
               </span>
               <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
-                ({summary.hits}/{summary.total}건)
+                ({summary.hit_count}/{summary.total_count}건)
               </span>
             </div>
           </div>
@@ -192,13 +195,13 @@ export function SimScorecard({ market }: SimScorecardProps) {
             <div style={{
               fontSize: '1.1rem',
               fontWeight: 700,
-              color: summary.avg_pnl == null
+              color: summary.avg_pnl_pct == null
                 ? '#94a3b8'
-                : summary.avg_pnl >= 0 ? '#4ade80' : '#f87171',
+                : summary.avg_pnl_pct >= 0 ? '#4ade80' : '#f87171',
             }}>
-              {summary.avg_pnl == null
+              {summary.avg_pnl_pct == null
                 ? '-'
-                : (summary.avg_pnl >= 0 ? '+' : '') + summary.avg_pnl.toFixed(1) + '%'}
+                : (summary.avg_pnl_pct >= 0 ? '+' : '') + summary.avg_pnl_pct.toFixed(1) + '%'}
             </div>
           </div>
 
@@ -213,9 +216,9 @@ export function SimScorecard({ market }: SimScorecardProps) {
             <div style={{
               fontSize: '1.1rem',
               fontWeight: 700,
-              color: summary.liquidations > 0 ? '#f87171' : '#94a3b8',
+              color: (summary.liquidation_count ?? 0) > 0 ? '#f87171' : '#94a3b8',
             }}>
-              {summary.liquidations}건
+              {summary.liquidation_count ?? 0}건
             </div>
           </div>
         </div>
