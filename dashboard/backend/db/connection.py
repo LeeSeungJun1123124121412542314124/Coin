@@ -50,6 +50,17 @@ def get_connection() -> sqlite3.Connection:
 def _init_schema(conn: sqlite3.Connection) -> None:
     schema = _SCHEMA_PATH.read_text(encoding="utf-8")
     conn.executescript(schema)
+    # 시뮬레이터 초기 계좌 생성 (이미 존재하면 무시)
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    conn.executemany(
+        "INSERT OR IGNORE INTO sim_accounts (id, market, currency, capital, initial_capital, created_at, updated_at) VALUES (?,?,?,?,?,?,?)",
+        [
+            (1, 'crypto',   'USDT', 10000.0, 10000.0, now, now),
+            (2, 'kr_stock', 'KRW',  10000000.0, 10000000.0, now, now),
+            (3, 'us_stock', 'USD',  10000.0, 10000.0, now, now),
+        ]
+    )
     # 기본 주식 슬롯 초기화 (이미 존재하면 무시)
     conn.executemany(
         "INSERT OR IGNORE INTO stock_slots (market, position, ticker, name, tv_symbol) VALUES (?,?,?,?,?)",

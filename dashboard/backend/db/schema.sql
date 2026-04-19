@@ -157,3 +157,100 @@ CREATE TABLE IF NOT EXISTS stock_slots (
     tv_symbol TEXT,
     UNIQUE(market, position)
 );
+
+-- ============================================================
+-- 시뮬레이터 테이블
+-- ============================================================
+
+-- 시뮬레이터 가상 계좌 (시장별 3개)
+CREATE TABLE IF NOT EXISTS sim_accounts (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    market          TEXT NOT NULL CHECK(market IN ('crypto','kr_stock','us_stock')),
+    currency        TEXT NOT NULL,
+    capital         REAL NOT NULL,
+    initial_capital REAL NOT NULL,
+    reset_count     INTEGER DEFAULT 0,
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL
+);
+
+-- 예측 레코드
+CREATE TABLE IF NOT EXISTS sim_predictions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id      INTEGER NOT NULL REFERENCES sim_accounts(id),
+    asset_symbol    TEXT NOT NULL,
+    mode            TEXT NOT NULL CHECK(mode IN ('direction','target_price','portfolio')),
+    direction       TEXT CHECK(direction IN ('long','short')),
+    target_price    REAL,
+    entry_price     REAL NOT NULL,
+    entry_time      TEXT NOT NULL,
+    expiry_time     TEXT NOT NULL,
+    status          TEXT DEFAULT 'pending' CHECK(status IN ('pending','settled','liquidated','cancelled')),
+    indicator_tags  TEXT,   -- JSON 배열
+    note            TEXT,
+    created_at      TEXT NOT NULL
+);
+
+-- 페이퍼 포지션 상세
+CREATE TABLE IF NOT EXISTS sim_positions (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    prediction_id       INTEGER NOT NULL REFERENCES sim_predictions(id),
+    instrument_type     TEXT NOT NULL CHECK(instrument_type IN ('spot','futures')),
+    quantity            REAL NOT NULL,
+    leverage            INTEGER DEFAULT 1,
+    stop_loss           REAL,
+    take_profit         REAL,
+    liquidation_price   REAL,
+    funding_fee_accrued REAL DEFAULT 0
+);
+
+-- 채점 결과
+CREATE TABLE IF NOT EXISTS sim_settlements (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    prediction_id   INTEGER NOT NULL REFERENCES sim_predictions(id),
+    settled_at      TEXT NOT NULL,
+    actual_price    REAL NOT NULL,
+    direction_hit   INTEGER,
+    price_error     REAL,
+    pnl             REAL,
+    pnl_pct         REAL,
+    mdd             REAL,
+    sharpe          REAL,
+    liquidated      INTEGER DEFAULT 0
+);
+
+-- 펀딩비 차감 이력
+CREATE TABLE IF NOT EXISTS sim_funding_events (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    position_id     INTEGER NOT NULL REFERENCES sim_positions(id),
+    funding_time    TEXT NOT NULL,
+    fr_value        REAL NOT NULL,
+    funding_amount  REAL NOT NULL
+);
+
+-- 계좌 리셋 이력 (히스토리 영구 보존)
+CREATE TABLE IF NOT EXISTS sim_account_resets (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id      INTEGER NOT NULL REFERENCES sim_accounts(id),
+    reset_at        TEXT NOT NULL,
+    capital_before  REAL NOT NULL,
+    new_capital     REAL NOT NULL
+);
+
+-- 코인 1시간봉 OHLCV
+CREATE TABLE IF NOT EXISTS coin_ohlcv_1h (
+    symbol      TEXT NOT NULL,
+    timestamp   INTEGER NOT NULL,
+    open        REAL,
+    high        REAL,
+    low         REAL,
+    close       REAL,
+    volume      REAL,
+    PRIMARY KEY (symbol, timestamp)
+);
+
+-- 시뮬레이터 인덱스
+CREATE INDEX IF NOT EXISTS idx_sim_predictions_account ON sim_predictions(account_id, status);
+CREATE INDEX IF NOT EXISTS idx_sim_predictions_expiry ON sim_predictions(expiry_time, status);
+CREATE INDEX IF NOT EXISTS idx_sim_settlements_pred ON sim_settlements(prediction_id);
+CREATE INDEX IF NOT EXISTS idx_coin_ohlcv_1h_symbol_ts ON coin_ohlcv_1h(symbol, timestamp DESC);
