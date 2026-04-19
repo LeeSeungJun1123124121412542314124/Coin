@@ -9,7 +9,7 @@ from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Path, Query
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from dashboard.backend.db.connection import get_db
 from dashboard.backend.services.sim_engine import calc_liquidation_price
@@ -48,6 +48,15 @@ class PredictionCreate(BaseModel):
     leverage: Optional[int] = Field(default=1, ge=1, le=64)
     stop_loss: Optional[float] = None
     take_profit: Optional[float] = None
+
+    @field_validator('entry_time', 'expiry_time')
+    @classmethod
+    def validate_iso_datetime(cls, v):
+        try:
+            datetime.fromisoformat(v)
+        except ValueError:
+            raise ValueError('ISO 8601 형식이어야 합니다 (예: 2026-04-19T12:00:00+00:00)')
+        return v
 
 
 # ============================================================
@@ -124,14 +133,14 @@ async def reset_sim_account(
             (account_id, capital_before, body.new_capital, now),
         )
 
-        # 계좌 업데이트
+        # 계좌 업데이트 (initial_capital도 갱신해 ROI가 0%로 리셋되도록)
         conn.execute(
             """
             UPDATE sim_accounts
-            SET capital = ?, reset_count = reset_count + 1, updated_at = ?
+            SET capital = ?, initial_capital = ?, reset_count = reset_count + 1, updated_at = ?
             WHERE id = ?
             """,
-            (body.new_capital, now, account_id),
+            (body.new_capital, body.new_capital, now, account_id),
         )
 
         # 업데이트된 계좌 반환
@@ -267,6 +276,9 @@ async def get_sim_predictions(
 @router.post("/sim/predictions")
 async def create_sim_prediction(body: PredictionCreate):
     """예측 생성 (포트폴리오 모드는 포지션도 함께 생성)."""
+    # 심볼 정규화 (공백 제거 + 대문자)
+    asset_symbol = body.asset_symbol.strip().upper()
+
     # 유효성 검사
     if body.mode == "direction" and not body.direction:
         raise HTTPException(status_code=400, detail="mode='direction'이면 direction 필드가 필요합니다.")
@@ -318,7 +330,7 @@ async def create_sim_prediction(body: PredictionCreate):
             """,
             (
                 account_id,
-                body.asset_symbol,
+                asset_symbol,
                 body.mode,
                 body.direction,
                 body.target_price,
