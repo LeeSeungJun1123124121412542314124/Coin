@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch } from '../../lib/api'
 import { Modal } from '../shared/Modal'
 import { SimScorecard } from '../shared/SimScorecard'
+import { AutoBacktest } from '../shared/AutoBacktest'
 
 // ────────────────────────────────────────
 // 타입 정의
@@ -46,7 +47,7 @@ const MARKET_LABELS: Record<MarketTab, string> = {
   us_stock: '미국주식 (USD)',
 }
 
-const INDICATOR_OPTIONS = ['OI', 'FR', 'F&G', '알트시즌', 'VIX', 'DXY', 'US10Y', '금', '은']
+const INDICATOR_OPTIONS = ['RSI', 'MACD', '볼린저밴드', 'MA', 'EMA', '거래량', '지지/저항', '피보나치', '일목균형표', '스토캐스틱', '추세선', 'ADX', 'ATR']
 
 const MODE_LABELS: Record<string, string> = {
   direction: '방향성',
@@ -996,6 +997,9 @@ export function Simulator() {
           </div>
         )}
       </div>
+
+      {/* ── 자동 백테스트 ── */}
+      <AutoBacktest />
 
       {/* ── 스코어카드 ── */}
       <SimScorecard market={activeMarket} />
