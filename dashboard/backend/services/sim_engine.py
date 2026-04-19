@@ -124,7 +124,6 @@ async def apply_funding_fees(funding_time: str) -> None:
                 sp.prediction_id,
                 sp.quantity,
                 sp.leverage,
-                sp.funding_fee_accrued,
                 pred.entry_price,
                 pred.direction,
                 pred.asset_symbol,
@@ -148,8 +147,6 @@ async def apply_funding_fees(funding_time: str) -> None:
         direction = row["direction"]
         asset_symbol = row["asset_symbol"]
         account_id = row["account_id"]
-        current_accrued = row["funding_fee_accrued"] or 0.0
-
         # 펀딩 레이트 조회 (플레이스홀더)
         fr = await _fetch_funding_rate(asset_symbol)
 
@@ -177,10 +174,12 @@ async def apply_funding_fees(funding_time: str) -> None:
             )
 
             # 포지션 누적 펀딩비 업데이트
-            new_accrued = current_accrued + funding_amount
+            # C-2: 롱은 FR>0일 때 비용 발생(음수), 숏은 수취(양수)
+            fee_accrued_delta = -funding_amount if direction == "long" else funding_amount
+            # C-1: SQL 자기 참조로 원자 업데이트 (스냅샷 누적 제거)
             conn.execute(
-                "UPDATE sim_positions SET funding_fee_accrued = ? WHERE id = ?",
-                (new_accrued, position_id),
+                "UPDATE sim_positions SET funding_fee_accrued = funding_fee_accrued + ? WHERE id = ?",
+                (fee_accrued_delta, position_id),
             )
 
             # 계좌 자본 업데이트
