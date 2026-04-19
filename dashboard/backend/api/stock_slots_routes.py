@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from dashboard.backend import cache
-from dashboard.backend.collectors.naver_finance import fetch_naver_ohlcv
+from dashboard.backend.collectors.naver_finance import fetch_naver_ohlcv, search_naver_stocks
 from dashboard.backend.collectors.yahoo_finance import (
     fetch_stock_ohlcv,
     fetch_stock_prices,
@@ -60,7 +60,11 @@ async def get_stock_search(q: str, market: str):
         raise HTTPException(status_code=400, detail="market must be kr or us")
     if not q or not q.strip():
         return []
-    results = await search_stocks(q.strip(), market)
+    # kr 마켓은 네이버 검색(한글 지원), us 마켓은 Yahoo 검색
+    if market == "kr":
+        results = await search_naver_stocks(q.strip())
+    else:
+        results = await search_stocks(q.strip(), market)
     return results
 
 

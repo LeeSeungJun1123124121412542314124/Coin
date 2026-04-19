@@ -1,4 +1,4 @@
-"""네이버 파이낸스 fchart API — 한국 주식 OHLCV 히스토리."""
+"""네이버 파이낸스 fchart API — 한국 주식 OHLCV 히스토리 및 종목 검색."""
 
 from __future__ import annotations
 
@@ -27,6 +27,52 @@ def _strip_suffix(ticker: str) -> str:
 def _parse_date(raw: str) -> str:
     """'20260413' → '2026-04-13'"""
     return f"{raw[:4]}-{raw[4:6]}-{raw[6:8]}"
+
+
+# KOSPI/KOSDAQ → Yahoo Finance 티커 suffix 매핑
+_MARKET_SUFFIX: dict[str, str] = {
+    "KOSPI": ".KS",
+    "KOSDAQ": ".KQ",
+}
+
+# 네이버 자동완성 API — 응답은 UTF-8 JSON
+_NAVER_AC_URL = "https://ac.stock.naver.com/ac"
+
+
+async def search_naver_stocks(query: str) -> list[dict]:
+    """네이버 금융 자동완성 API로 한국 주식 검색.
+
+    Args:
+        query: 검색어 (한글/영문 종목명 또는 종목코드)
+
+    Returns:
+        [{"ticker": "005930.KS", "name": "삼성전자"}, ...] (최대 5개)
+        실패 시 빈 리스트 반환.
+    """
+    try:
+        async with httpx.AsyncClient(
+            timeout=5,
+            headers={"User-Agent": "Mozilla/5.0"},
+        ) as client:
+            resp = await client.get(_NAVER_AC_URL, params={
+                "q": query,
+                "target": "stock",
+            })
+            resp.raise_for_status()
+            data = resp.json()
+
+        results = []
+        for item in data.get("items", [])[:5]:
+            code = item.get("code", "")
+            name = item.get("name", "")
+            type_code = item.get("typeCode", "")  # "KOSPI" or "KOSDAQ"
+            suffix = _MARKET_SUFFIX.get(type_code, ".KS")  # 알 수 없는 시장은 .KS로 기본 처리
+            if code and name:
+                results.append({"ticker": f"{code}{suffix}", "name": name})
+        return results
+    except Exception as e:
+        logger.warning("네이버 종목 검색 실패 (%s): %s", query, e)
+        return []
 
 
 @cached(ttl=3600, key_prefix="naver_ohlcv")
