@@ -187,7 +187,7 @@ async def settle_expired_predictions() -> None:
                 with get_db() as conn:
                     position = conn.execute(
                         """
-                        SELECT quantity, leverage, instrument_type, liquidation_price
+                        SELECT id, quantity, leverage, instrument_type, liquidation_price
                         FROM sim_positions
                         WHERE prediction_id = ?
                         LIMIT 1
@@ -195,24 +195,21 @@ async def settle_expired_predictions() -> None:
                         (pred_id,),
                     ).fetchone()
 
+            # Fix I-5: 포트폴리오 모드인데 포지션이 없으면 건너뜀
+            if mode == "portfolio" and position is None:
+                logger.warning("포트폴리오 예측 %s: sim_positions 없음, 채점 건너뜀", pred_id)
+                continue
+
             quantity       = float(position["quantity"])   if position and position["quantity"]   is not None else None
             leverage       = int(position["leverage"])     if position and position["leverage"]   is not None else None
             liq_price_db   = float(position["liquidation_price"]) if position and position["liquidation_price"] is not None else None
-            position_id    = None
-
-            # position_id 가져오기 (청산 판정에 필요)
-            if position is not None:
-                with get_db() as conn:
-                    pos_row = conn.execute(
-                        "SELECT id FROM sim_positions WHERE prediction_id = ? LIMIT 1",
-                        (pred_id,),
-                    ).fetchone()
-                    if pos_row:
-                        position_id = pos_row["id"]
+            # Fix C-1: 첫 번째 SELECT에 id 포함 후 중복 쿼리 제거
+            position_id    = position["id"] if position else None
 
             # 2-c. SL/TP/청산 판정
             liquidated = 0
-            if position_id is not None:
+            # Fix I-6: crypto 마켓이고 position_id 있을 때만 SL/TP/청산 판정
+            if market == "crypto" and position_id is not None:
                 from dashboard.backend.services.sim_engine import check_sl_tp_liquidation
 
                 trigger = await check_sl_tp_liquidation(position_id)
@@ -221,12 +218,19 @@ async def settle_expired_predictions() -> None:
                     # 청산가를 실제 가격으로 사용
                     if liq_price_db is not None:
                         actual_price = liq_price_db
+            else:
+                trigger = None
 
             # 채점 지표 계산
-            direction_hit = _calc_direction_hit(direction, actual_price, entry_price) if entry_price else None
+            # Fix C-3: entry_price is not None 명시적 체크
+            direction_hit = _calc_direction_hit(direction, actual_price, entry_price) if entry_price is not None else None
             price_error   = _calc_price_error(actual_price, target_price)
+            # Fix C-2: entry_price None 명시적 처리
+            if entry_price is None and mode == "portfolio":
+                logger.warning("포트폴리오 예측 %s: entry_price 없음, 채점 건너뜀", pred_id)
+                continue
             pnl, pnl_pct  = _calc_pnl(
-                actual_price, entry_price or 0.0,
+                actual_price, entry_price,
                 direction, quantity, leverage, mode,
             )
             # mdd, sharpe: 플레이스홀더 (향후 구현)
