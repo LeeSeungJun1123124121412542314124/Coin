@@ -230,6 +230,63 @@ async def search_stocks(query: str, market: str) -> list[dict]:
         return []
 
 
+@cached(ttl=3600, key_prefix="yahoo_ohlcv")
+async def fetch_stock_ohlcv(ticker: str, period: str = "3m") -> list[dict] | None:
+    """개별 종목 OHLCV 히스토리 — 차트 모달용.
+
+    Args:
+        ticker: 종목 티커 (예: "AAPL", "005930.KS")
+        period: 조회 기간 ("3m", "6m", "1y")
+
+    Returns:
+        성공 시 [{"date": "YYYY-MM-DD", "open": float, "high": float, "low": float, "close": float, "volume": int}],
+        실패 시 None
+    """
+    # period → Yahoo Finance range 파라미터 매핑
+    _PERIOD_MAP: dict[str, str] = {
+        "1w": "5d",
+        "1m": "1mo",
+        "3m": "3mo",
+        "6m": "6mo",
+        "1y": "1y",
+    }
+    yahoo_range = _PERIOD_MAP.get(period, "3mo")
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+    try:
+        async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+            resp = await client.get(url, params={"interval": "1d", "range": yahoo_range})
+            resp.raise_for_status()
+            chart_result = resp.json().get("chart", {}).get("result")
+            if not chart_result:
+                logger.warning("Yahoo OHLCV 빈 응답 (%s)", ticker)
+                return None
+            result = chart_result[0]
+            timestamps = result.get("timestamp", [])
+            quote = result.get("indicators", {}).get("quote", [{}])[0]
+            opens = quote.get("open", [])
+            highs = quote.get("high", [])
+            lows = quote.get("low", [])
+            closes = quote.get("close", [])
+            volumes = quote.get("volume", [])
+            rows = []
+            for t, o, h, l, c, v in zip(timestamps, opens, highs, lows, closes, volumes):
+                # close가 None인 행 제외
+                if c is None:
+                    continue
+                rows.append({
+                    "date": datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%d"),
+                    "open": round(o, 4) if o is not None else None,
+                    "high": round(h, 4) if h is not None else None,
+                    "low": round(l, 4) if l is not None else None,
+                    "close": round(c, 4),
+                    "volume": int(v) if v is not None else 0,
+                })
+            return rows
+    except Exception as e:
+        logger.warning("OHLCV 히스토리 조회 실패 (%s): %s", ticker, e)
+        return None
+
+
 @cached(ttl=3600, key_prefix="yahoo_history")
 async def fetch_index_history(ticker: str, days: int = 30) -> list[dict] | None:
     """지수 30일 종가 히스토리 — 모달 차트용."""
