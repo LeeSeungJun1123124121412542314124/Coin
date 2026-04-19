@@ -253,4 +253,7 @@ CREATE TABLE IF NOT EXISTS coin_ohlcv_1h (
 CREATE INDEX IF NOT EXISTS idx_sim_predictions_account ON sim_predictions(account_id, status);
 CREATE INDEX IF NOT EXISTS idx_sim_predictions_expiry ON sim_predictions(expiry_time, status);
 CREATE INDEX IF NOT EXISTS idx_sim_settlements_pred ON sim_settlements(prediction_id);
+CREATE INDEX IF NOT EXISTS idx_sim_positions_prediction ON sim_positions(prediction_id);
+CREATE INDEX IF NOT EXISTS idx_sim_funding_position ON sim_funding_events(position_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sim_accounts_market ON sim_accounts(market);
 CREATE INDEX IF NOT EXISTS idx_coin_ohlcv_1h_symbol_ts ON coin_ohlcv_1h(symbol, timestamp DESC);
