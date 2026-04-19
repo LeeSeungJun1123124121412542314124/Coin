@@ -248,23 +248,23 @@ def signals_macd(closes: np.ndarray) -> list[tuple[int, str]]:
     return result
 
 
-def signals_bollinger(
-    closes: np.ndarray,
-    highs: np.ndarray,
-    lows: np.ndarray,
-) -> list[tuple[int, str]]:
-    """볼린저 밴드 20/2σ. close < lower → 'long', close > upper → 'short'."""
+def signals_bollinger(closes: np.ndarray) -> list[tuple[int, str]]:
+    """볼린저 밴드 20/2σ. 밴드 재진입 시 시그널: lower 재진입 → 'long', upper 재진입 → 'short'."""
     MIN_LEN = 21
     if len(closes) < MIN_LEN:
         return []
+    n = len(closes)
     upper, mid, lower = _bollinger(closes, 20, 2.0)
     result: list[tuple[int, str]] = []
-    for i in range(len(closes)):
+    # 올바른 재진입 로직
+    for i in range(MIN_LEN, n):
         if np.isnan(upper[i]) or np.isnan(lower[i]):
             continue
-        if closes[i] < lower[i]:
+        if np.isnan(upper[i - 1]) or np.isnan(lower[i - 1]):
+            continue
+        if closes[i - 1] < lower[i - 1] and closes[i] >= lower[i]:
             result.append((i, "long"))
-        elif closes[i] > upper[i]:
+        elif closes[i - 1] > upper[i - 1] and closes[i] <= upper[i]:
             result.append((i, "short"))
     return result
 
@@ -374,10 +374,10 @@ def signals_fibonacci(
         diff = swing_high - swing_low
         if diff == 0:
             continue
-        # 상승 추세 지지 레벨 (38.2% 되돌림 = 61.8% 상승 유지)
-        level_up = swing_low + diff * 0.382
+        # 상승 추세 지지 레벨 (61.8% 되돌림 = 38.2% 상승 유지)
+        level_up = swing_low + diff * 0.618
         # 하락 추세 저항 레벨 (61.8% 되돌림)
-        level_dn = swing_high - diff * 0.382
+        level_dn = swing_high - diff * 0.618
         c = closes[i]
         pc = closes[i - 1]
         tol_up = level_up * 0.005
@@ -395,7 +395,7 @@ def signals_ichimoku(
     lows: np.ndarray,
 ) -> list[tuple[int, str]]:
     """일목균형표. 텐칸(9), 기준(26), 선행스팬A/B(26/52). 구름 위/아래 + 텐칸/기준 교차 시그널."""
-    MIN_LEN = 53
+    MIN_LEN = 78
     if len(closes) < MIN_LEN:
         return []
     n = len(closes)
@@ -404,15 +404,17 @@ def signals_ichimoku(
         return (np.max(h[start:end]) + np.min(l[start:end])) / 2.0
 
     result: list[tuple[int, str]] = []
-    for i in range(52, n):
+    for i in range(MIN_LEN - 1, n):
         tenkan = mid_val(highs, lows, i - 8, i + 1)       # 9기간
         kijun = mid_val(highs, lows, i - 25, i + 1)       # 26기간
         # 선행스팬은 현재 기준 26 미래로 이동되지만,
         # 신호 판단 시에는 현재 시점의 cloud (과거 26기간 선행스팬)를 사용
         # 여기서는 과거 26바 시점의 선행스팬 A/B를 현재 cloud로 간주
+        # span_a: 과거 26바 시점의 (텐칸+기준)/2
         span_a = (mid_val(highs, lows, i - 34, i - 25) + mid_val(highs, lows, i - 51, i - 25)) / 2.0 \
             if i >= 51 else np.nan
-        span_b = mid_val(highs, lows, i - 51, i - 25) if i >= 51 else np.nan
+        # span_b: 과거 26바 시점의 52기간 고/저 중간값 = bars [i-77, i-26) (52개)
+        span_b = mid_val(highs, lows, i - 77, i - 26) if i >= 77 else np.nan
         if np.isnan(span_a) or np.isnan(span_b):
             continue
         cloud_top = max(span_a, span_b)
@@ -477,19 +479,23 @@ def signals_adx(
     highs: np.ndarray,
     lows: np.ndarray,
 ) -> list[tuple[int, str]]:
-    """ADX 14. ADX > 25 AND +DI > -DI → 'long'. ADX > 25 AND -DI > +DI → 'short'."""
+    """ADX 14. ADX > 25 조건에서 +DI/-DI 크로스오버 시 시그널. +DI 상향돌파 → 'long', -DI 상향돌파 → 'short'."""
     MIN_LEN = 29
     if len(closes) < MIN_LEN:
         return []
     adx_arr, plus_di, minus_di = _adx(highs, lows, closes, 14)
     result: list[tuple[int, str]] = []
-    for i in range(len(closes)):
+    for i in range(1, len(closes)):
         if np.isnan(adx_arr[i]) or np.isnan(plus_di[i]) or np.isnan(minus_di[i]):
             continue
+        if np.isnan(plus_di[i - 1]) or np.isnan(minus_di[i - 1]):
+            continue
         if adx_arr[i] > 25:
-            if plus_di[i] > minus_di[i]:
+            # +DI 상향돌파 → long
+            if plus_di[i] > minus_di[i] and plus_di[i - 1] <= minus_di[i - 1]:
                 result.append((i, "long"))
-            elif minus_di[i] > plus_di[i]:
+            # -DI 상향돌파 → short
+            elif minus_di[i] > plus_di[i] and minus_di[i - 1] <= plus_di[i - 1]:
                 result.append((i, "short"))
     return result
 
@@ -500,7 +506,7 @@ def signals_atr(
     lows: np.ndarray,
 ) -> list[tuple[int, str]]:
     """ATR 14. ATR 스파이크(20기간 평균 × 1.5) 시 방향 기반 시그널."""
-    MIN_LEN = 15
+    MIN_LEN = 21
     if len(closes) < MIN_LEN:
         return []
     atr = _atr(highs, lows, closes, 14)
@@ -547,7 +553,7 @@ if __name__ == "__main__":
     tests = [
         ("signals_rsi",               signals_rsi(closes)),
         ("signals_macd",              signals_macd(closes)),
-        ("signals_bollinger",         signals_bollinger(closes, highs, lows)),
+        ("signals_bollinger",         signals_bollinger(closes)),
         ("signals_ma",                signals_ma(closes)),
         ("signals_ema",               signals_ema(closes)),
         ("signals_volume",            signals_volume(closes, volumes)),
@@ -578,7 +584,7 @@ if __name__ == "__main__":
     short_vols = np.ones(10) * 1000
     assert signals_rsi(short_closes) == [], "RSI 최소 데이터 미달 시 [] 반환 실패"
     assert signals_macd(short_closes) == [], "MACD 최소 데이터 미달 시 [] 반환 실패"
-    assert signals_bollinger(short_closes, short_highs, short_lows) == [], "BB 최소 데이터 미달 시 [] 반환 실패"
+    assert signals_bollinger(short_closes) == [], "BB 최소 데이터 미달 시 [] 반환 실패"
     print("  OK  최소 데이터 미달 케이스 모두 [] 반환")
 
     print("\n모든 sanity check 통과!")
