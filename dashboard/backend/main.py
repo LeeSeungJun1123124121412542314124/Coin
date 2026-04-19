@@ -166,6 +166,13 @@ def _build_app() -> FastAPI:
             logger.info("시작 시 SPF 초기 수집 완료")
         except Exception as e:
             logger.error("시작 시 SPF 초기 수집 실패: %s", e, exc_info=True)
+        try:
+            from dashboard.backend.collectors.bybit_ohlcv import collect_coin_ohlcv_1h
+
+            await collect_coin_ohlcv_1h()
+            logger.info("시작 시 1시간봉 초기 수집 완료")
+        except Exception as e:
+            logger.error("시작 시 1시간봉 초기 수집 실패: %s", e, exc_info=True)
 
     @app.on_event("shutdown")
     async def on_shutdown():
@@ -265,6 +272,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     from dashboard.backend.jobs.collect_whales import collect_whales
     from dashboard.backend.jobs.collect_kimchi import collect_kimchi
     from dashboard.backend.jobs.update_predictions import update_predictions
+    from dashboard.backend.collectors.bybit_ohlcv import collect_coin_ohlcv_1h
 
     # SPF 데이터 수집 — 매일 00:10 UTC
     scheduler.add_job(collect_spf, CronTrigger(hour=0, minute=10))
@@ -280,6 +288,9 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
 
     # 김치 프리미엄 히스토리 — 2시간마다
     scheduler.add_job(collect_kimchi, IntervalTrigger(hours=2))
+
+    # 코인 1시간봉 수집 — 매 정각
+    scheduler.add_job(collect_coin_ohlcv_1h, IntervalTrigger(hours=1))
 
     # 봇 분석 — 매시간 이벤트 알림 (긴급/고래)
     @async_retry(max_retries=3, backoff_base=2.0, on_failure=notify_job_failure)
