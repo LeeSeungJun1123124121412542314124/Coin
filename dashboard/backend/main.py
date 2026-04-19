@@ -274,6 +274,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     from dashboard.backend.jobs.collect_whales import collect_whales
     from dashboard.backend.jobs.collect_kimchi import collect_kimchi
     from dashboard.backend.jobs.update_predictions import update_predictions
+    from dashboard.backend.jobs.settle_predictions import settle_expired_predictions
     from dashboard.backend.collectors.bybit_ohlcv import collect_coin_ohlcv_1h
 
     # SPF 데이터 수집 — 매일 00:10 UTC
@@ -293,6 +294,9 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
 
     # 코인 1시간봉 수집 — 매 시간 1분 (1시간 봉 마감 후)
     scheduler.add_job(collect_coin_ohlcv_1h, CronTrigger(minute=1))
+
+    # 만료 예측 자동 채점 — 매 시간 5분 (OHLCV 수집 완료 후)
+    scheduler.add_job(settle_expired_predictions, CronTrigger(minute=5), id="settle_predictions")
 
     # 봇 분석 — 매시간 이벤트 알림 (긴급/고래)
     @async_retry(max_retries=3, backoff_base=2.0, on_failure=notify_job_failure)
