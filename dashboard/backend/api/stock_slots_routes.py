@@ -114,13 +114,13 @@ async def get_stock_prices(market: str = Path(..., pattern="^(kr|us)$")):
 @router.get("/stock-chart/{ticker}")
 async def get_stock_chart(
     ticker: str = Path(...),
-    period: Literal["1w", "1m", "3m", "6m", "1y"] = Query(default="3m"),
+    interval: Literal["1d", "1wk", "1mo"] = Query(default="1d"),
 ):
     """종목 OHLCV 차트 데이터 조회.
 
     Args:
         ticker: 종목 티커 (예: "AAPL", "005930.KS")
-        period: 조회 기간 ("3m", "6m", "1y"), 기본값 "3m"
+        interval: 조회 간격 ("1d", "1wk", "1mo"), 기본값 "1d"
 
     Returns:
         [{"date": str, "open": float, "high": float, "low": float, "close": float, "volume": int}]
@@ -128,9 +128,11 @@ async def get_stock_chart(
     # 한국 티커(.KS, .KQ)는 네이버 파이낸스, 그 외는 Yahoo Finance
     is_korean = ticker.endswith(".KS") or ticker.endswith(".KQ")
     if is_korean:
-        result = await fetch_naver_ohlcv(ticker, period)
+        result = await fetch_naver_ohlcv(ticker, interval)
+        if result is None:
+            result = await fetch_stock_ohlcv(ticker, interval)
     else:
-        result = await fetch_stock_ohlcv(ticker, period)
+        result = await fetch_stock_ohlcv(ticker, interval)
     if result is None:
-        raise HTTPException(status_code=503, detail="데이터를 가져올 수 없습니다")
+        return []
     return result
