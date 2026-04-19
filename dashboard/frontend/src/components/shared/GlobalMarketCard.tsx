@@ -44,7 +44,7 @@ export function GlobalMarketCard({ data }: GlobalMarketCardProps) {
   const hasDominance = btc_dominance != null
 
   return (
-    <Card>
+    <Card style={{ display: 'flex', flexDirection: 'column' }}>
       {/* 상단 배지 */}
       <div
         style={{
@@ -60,36 +60,41 @@ export function GlobalMarketCard({ data }: GlobalMarketCardProps) {
 
       {/* 시총 + 24h 변화 */}
       <div style={{ display: 'flex', alignItems: 'baseline' }}>
-        <span
-          style={{
-            fontSize: '1.6rem',
-            fontWeight: 700,
-            color: '#e2e8f0',
-          }}
-        >
+        <span style={{ fontSize: '1.6rem', fontWeight: 700, color: '#e2e8f0' }}>
           {fmt(total_market_cap_usd)}
         </span>
         {changeText != null && (
-          <span
-            style={{
-              color: changeColor,
-              fontSize: '0.85rem',
-              marginLeft: 8,
-            }}
-          >
+          <span style={{ color: changeColor, fontSize: '0.85rem', marginLeft: 8 }}>
             {changeText}
           </span>
         )}
       </div>
 
-      {/* Area 차트 */}
+      {/* 도미넌스 가로 바 */}
+      {hasDominance && (
+        <div style={{ marginTop: 10, display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{ flex: btcDom, background: '#3b82f6' }} />
+          {eth_dominance != null && <div style={{ flex: ethDom, background: '#10b981' }} />}
+          <div style={{ flex: othersDom, background: '#ef4444' }} />
+        </div>
+      )}
+
+      {/* 도미넌스 범례 */}
+      {hasDominance && (
+        <div style={{ marginTop: 6, display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: '0.7rem', color: '#94a3b8' }}>
+          <span><span style={{ color: '#3b82f6' }}>●</span> BTC {btcDom.toFixed(1)}%</span>
+          {eth_dominance != null && (
+            <span><span style={{ color: '#10b981' }}>●</span> ETH {ethDom.toFixed(1)}%</span>
+          )}
+          <span><span style={{ color: '#ef4444' }}>●</span> 기타 {othersDom.toFixed(1)}%</span>
+        </div>
+      )}
+
+      {/* Area 차트 — 항상 카드 하단 고정 */}
       {hasChart && (
-        <div style={{ marginTop: 10, height: 64 }}>
+        <div style={{ marginTop: 'auto', paddingTop: 10, height: 64 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={chartData}
-              margin={{ top: 4, right: 0, bottom: 0, left: 0 }}
-            >
+            <AreaChart data={chartData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.5} />
@@ -99,71 +104,13 @@ export function GlobalMarketCard({ data }: GlobalMarketCardProps) {
               <XAxis dataKey="t" hide />
               <YAxis hide domain={['auto', 'auto']} />
               <Tooltip
-                contentStyle={{
-                  background: '#1e293b',
-                  border: '1px solid #334155',
-                  borderRadius: 6,
-                  fontSize: '0.7rem',
-                }}
+                contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 6, fontSize: '0.7rem' }}
                 formatter={(v) => [fmt(Number(v)), '시총']}
                 labelFormatter={() => ''}
               />
-              <Area
-                type="monotone"
-                dataKey="v"
-                stroke="#a78bfa"
-                strokeWidth={2}
-                fill={`url(#${gradId})`}
-                dot={false}
-              />
+              <Area type="monotone" dataKey="v" stroke="#a78bfa" strokeWidth={2} fill={`url(#${gradId})`} dot={false} />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* 도미넌스 가로 바 */}
-      {hasDominance && (
-        <div
-          style={{
-            marginTop: 10,
-            display: 'flex',
-            height: 6,
-            borderRadius: 3,
-            overflow: 'hidden',
-          }}
-        >
-          <div style={{ flex: btcDom, background: '#3b82f6' }} />
-          {eth_dominance != null && <div style={{ flex: ethDom, background: '#10b981' }} />}
-          <div style={{ flex: othersDom, background: '#ef4444' }} />
-        </div>
-      )}
-
-      {/* 도미넌스 범례 */}
-      {hasDominance && (
-        <div
-          style={{
-            marginTop: 6,
-            display: 'flex',
-            gap: 10,
-            flexWrap: 'wrap',
-            fontSize: '0.7rem',
-            color: '#94a3b8',
-          }}
-        >
-          <span>
-            <span style={{ color: '#3b82f6' }}>●</span> BTC{' '}
-            {btcDom.toFixed(1)}%
-          </span>
-          {eth_dominance != null && (
-            <span>
-              <span style={{ color: '#10b981' }}>●</span> ETH{' '}
-              {ethDom.toFixed(1)}%
-            </span>
-          )}
-          <span>
-            <span style={{ color: '#ef4444' }}>●</span> 기타{' '}
-            {othersDom.toFixed(1)}%
-          </span>
         </div>
       )}
     </Card>

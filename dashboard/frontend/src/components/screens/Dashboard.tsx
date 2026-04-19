@@ -183,7 +183,7 @@ export function Dashboard() {
       {/* ── Hero — BTC + 공포탐욕 + MVRV ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
         {/* BTC 카드 + 김프 */}
-        <Card onClick={() => setSelectedSymbol('BTC')} style={{ cursor: 'pointer' }}>
+        <Card onClick={() => setSelectedSymbol('BTC')} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}>
           <div style={{ color: '#94a3b8', fontSize: '0.8rem', marginBottom: 4 }}>BTC / USDT</div>
           <div style={{ fontSize: '2rem', fontWeight: 700, color: '#e2e8f0' }}>
             {btc?.price ? `$${btc.price.toLocaleString()}` : '—'}
@@ -205,7 +205,7 @@ export function Dashboard() {
             const isPositive = (data.kimchi?.kimchi_premium_pct ?? 0) >= 0
             const chartColor = isPositive ? '#4ade80' : '#f87171'
             return (
-              <div style={{ marginTop: 10, height: 64 }}>
+              <div style={{ marginTop: 'auto', paddingTop: 10, height: 64 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={kimchiHistory} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
                     <defs>

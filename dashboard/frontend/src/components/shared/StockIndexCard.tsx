@@ -23,7 +23,7 @@ export function StockIndexCard({ name, ticker, price, change_pct, sparkline, hig
   const chartData = sparkline.map((v, i) => ({ i, v }))
 
   return (
-    <Card onClick={() => onOpenModal(ticker)} style={{ cursor: 'pointer' }}>
+    <Card onClick={() => onOpenModal(ticker)} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}>
       {/* 배지 */}
       <div style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
         {name}
@@ -59,9 +59,9 @@ export function StockIndexCard({ name, ticker, price, change_pct, sparkline, hig
         </div>
       )}
 
-      {/* 스파크라인 + 기준선 */}
+      {/* 스파크라인 + 기준선 — 항상 카드 하단 고정 */}
       {chartData.length >= 2 && price != null && (
-        <div style={{ marginTop: 8, height: 64 }}>
+        <div style={{ marginTop: 'auto', paddingTop: 8, height: 64 }}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
               <defs>
