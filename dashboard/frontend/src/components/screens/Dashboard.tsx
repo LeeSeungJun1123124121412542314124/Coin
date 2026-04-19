@@ -20,6 +20,7 @@ import { StockCard } from '../shared/StockCard'
 import { StockSlotEditor } from '../shared/StockSlotEditor'
 import { EconomicNewsSection } from '../shared/EconomicNewsSection'
 import { AltcoinSeasonCard } from '../shared/AltcoinSeasonCard'
+import { KrStockChart } from '../shared/KrStockChart'
 
 interface DashboardData {
   coins: Array<{
@@ -66,9 +67,14 @@ interface DashboardData {
   altcoin_season: {
     index_value: number
     season_label: 'altcoin_season' | 'neutral' | 'bitcoin_season'
-    history: Array<{ date: string; value: number }>
+    history: Array<{ date: string; value: number; market_cap: number }>
     cached_at: string
     is_stale: boolean
+    yesterday_value: number | null
+    last_week_value: number | null
+    last_month_value: number | null
+    yearly_high: { value: number; date: string; season_label: string } | null
+    yearly_low: { value: number; date: string; season_label: string } | null
   } | null
 }
 
@@ -125,6 +131,7 @@ export function Dashboard() {
   const { data: krSlots, refetch: refetchKrSlots } = useApi<StockSlot[]>('/api/stock-slots/kr', 0)
   const { data: usSlots, refetch: refetchUsSlots } = useApi<StockSlot[]>('/api/stock-slots/us', 0)
   const [activeTvStock, setActiveTvStock] = useState<{ tv_symbol: string; name: string } | null>(null)
+  const [activeKrStock, setActiveKrStock] = useState<{ ticker: string; name: string } | null>(null)
   const [editingKr, setEditingKr] = useState(false)
   const [editingUs, setEditingUs] = useState(false)
 
@@ -357,13 +364,7 @@ export function Dashboard() {
       {/* ── 알트코인 시즌 지수 ── */}
       {data.altcoin_season && (
         <section>
-          <AltcoinSeasonCard
-            index_value={data.altcoin_season.index_value}
-            season_label={data.altcoin_season.season_label}
-            history={data.altcoin_season.history}
-            cached_at={data.altcoin_season.cached_at}
-            is_stale={data.altcoin_season.is_stale}
-          />
+          <AltcoinSeasonCard {...data.altcoin_season} />
         </section>
       )}
 
@@ -405,7 +406,7 @@ export function Dashboard() {
               sparkline={s.sparkline ?? []}
               high={s.high}
               low={s.low}
-              onOpenModal={(sym, name) => setActiveTvStock({ tv_symbol: sym, name })}
+              onOpenModal={(_, name) => setActiveKrStock({ ticker: s.ticker, name })}
             />
           ))}
         </div>
@@ -606,6 +607,11 @@ export function Dashboard() {
       {/* 주식 종목 TradingView 모달 */}
       <Modal open={!!activeTvStock} onClose={() => setActiveTvStock(null)}>
         {activeTvStock && <TradingViewChart symbol={activeTvStock.tv_symbol} />}
+      </Modal>
+
+      {/* 한국 주식 Recharts 차트 모달 */}
+      <Modal open={!!activeKrStock} onClose={() => setActiveKrStock(null)}>
+        {activeKrStock && <KrStockChart ticker={activeKrStock.ticker} name={activeKrStock.name} />}
       </Modal>
 
       {/* 지수 차트 모달 */}
