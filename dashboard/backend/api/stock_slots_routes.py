@@ -3,13 +3,20 @@
 from __future__ import annotations
 
 import logging
+from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Path
+from fastapi import APIRouter, HTTPException, Path, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from dashboard.backend import cache
-from dashboard.backend.collectors.yahoo_finance import fetch_stock_prices, lookup_stock_info, search_stocks
+from dashboard.backend.collectors.naver_finance import fetch_naver_ohlcv
+from dashboard.backend.collectors.yahoo_finance import (
+    fetch_stock_ohlcv,
+    fetch_stock_prices,
+    lookup_stock_info,
+    search_stocks,
+)
 from dashboard.backend.db.connection import get_db
 
 logger = logging.getLogger(__name__)
@@ -102,3 +109,28 @@ async def get_stock_prices(market: str = Path(..., pattern="^(kr|us)$")):
     slot_tuples = tuple((s["ticker"], s["name"], s["tv_symbol"]) for s in slots)
     results = await fetch_stock_prices(slot_tuples)
     return results
+
+
+@router.get("/stock-chart/{ticker}")
+async def get_stock_chart(
+    ticker: str = Path(...),
+    period: Literal["1w", "1m", "3m", "6m", "1y"] = Query(default="3m"),
+):
+    """종목 OHLCV 차트 데이터 조회.
+
+    Args:
+        ticker: 종목 티커 (예: "AAPL", "005930.KS")
+        period: 조회 기간 ("3m", "6m", "1y"), 기본값 "3m"
+
+    Returns:
+        [{"date": str, "open": float, "high": float, "low": float, "close": float, "volume": int}]
+    """
+    # 한국 티커(.KS, .KQ)는 네이버 파이낸스, 그 외는 Yahoo Finance
+    is_korean = ticker.endswith(".KS") or ticker.endswith(".KQ")
+    if is_korean:
+        result = await fetch_naver_ohlcv(ticker, period)
+    else:
+        result = await fetch_stock_ohlcv(ticker, period)
+    if result is None:
+        raise HTTPException(status_code=503, detail="데이터를 가져올 수 없습니다")
+    return result
