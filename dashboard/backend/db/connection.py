@@ -53,6 +53,11 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(schema)
     # 코인 슬롯 CHECK 제약 마이그레이션: BETWEEN 0 AND 5 → BETWEEN 0 AND 6
     _migrate_coin_slots_constraint(conn)
+    # 마이그레이션 후 position 6 기본값 삽입 (schema.sql의 INSERT OR IGNORE는 구 제약 때문에 실패)
+    conn.execute(
+        "INSERT OR IGNORE INTO dashboard_coin_slots (position, coin_id, symbol, tv_symbol) VALUES (?,?,?,?)",
+        (6, 'ripple', 'XRP', 'BINANCE:XRPUSDT'),
+    )
     # 시뮬레이터 초기 계좌 생성 (이미 존재하면 무시)
     now = datetime.now(timezone.utc).isoformat()
     conn.executemany(
