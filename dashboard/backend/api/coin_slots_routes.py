@@ -1,4 +1,4 @@
-"""코인 슬롯 관리 API 라우터 — 6개 슬롯 조회 및 교체."""
+"""코인 슬롯 관리 API 라우터 — 7개 슬롯 조회 및 교체."""
 
 from __future__ import annotations
 
@@ -24,14 +24,14 @@ class SlotUpdateRequest(BaseModel):
 
 @router.get("/coin-slots")
 async def get_coin_slots():
-    """현재 6개 슬롯 반환."""
+    """현재 7개 슬롯 반환."""
     return get_slots()
 
 
 @router.put("/coin-slots/{position}")
 async def put_coin_slot(
     request: SlotUpdateRequest,
-    position: int = Path(..., ge=0, le=5),
+    position: int = Path(..., ge=0, le=6),
 ):
     """슬롯 교체.
 

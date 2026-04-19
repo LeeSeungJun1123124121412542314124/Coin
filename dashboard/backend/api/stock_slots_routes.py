@@ -66,7 +66,7 @@ async def get_stock_slots(market: str = Path(..., pattern="^(kr|us)$")):
 async def put_stock_slot(
     request: StockSlotUpdateRequest,
     market: str = Path(..., pattern="^(kr|us)$"),
-    position: int = Path(..., ge=1, le=5),
+    position: int = Path(..., ge=1, le=7),
 ):
     # ticker 정규화 (공백 제거 + 대문자)
     ticker = request.ticker.strip().upper()
