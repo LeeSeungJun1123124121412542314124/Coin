@@ -79,12 +79,18 @@ async def fetch_bybit_ohlcv_1h(symbol: str, limit: int = 200) -> list[dict] | No
         ]
         return bars
 
-    except Exception as e:
-        logger.error("1시간봉 조회 실패 (%s): %s", symbol, e)
+    except httpx.HTTPStatusError as e:
+        logger.error("HTTP 오류 (%s): %s", symbol, e)
+        return None
+    except httpx.RequestError as e:
+        logger.error("네트워크 오류 (%s): %s", symbol, e)
+        return None
+    except (ValueError, KeyError, IndexError) as e:
+        logger.error("응답 파싱 오류 (%s): %s", symbol, e, exc_info=True)
         return None
 
 
-async def save_ohlcv_1h(symbol: str, bars: list[dict]) -> int:
+def save_ohlcv_1h(symbol: str, bars: list[dict]) -> int:
     """1시간봉 데이터를 coin_ohlcv_1h 테이블에 저장.
 
     Args:
@@ -140,9 +146,13 @@ async def collect_coin_ohlcv_1h(symbols: list[str] | None = None) -> None:
             fail_count += 1
             continue
 
-        saved = await save_ohlcv_1h(symbol, bars)
-        logger.info("1시간봉 저장 완료: %s — %d개", symbol, saved)
-        success_count += 1
+        try:
+            saved = save_ohlcv_1h(symbol, bars)
+            logger.info("1시간봉 저장 완료: %s — %d개", symbol, saved)
+            success_count += 1
+        except Exception as e:
+            logger.error("1시간봉 DB 저장 실패 (%s): %s", symbol, e)
+            fail_count += 1
 
     logger.info(
         "1시간봉 수집 완료 — 성공: %d, 실패: %d",

@@ -289,8 +289,8 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     # 김치 프리미엄 히스토리 — 2시간마다
     scheduler.add_job(collect_kimchi, IntervalTrigger(hours=2))
 
-    # 코인 1시간봉 수집 — 매 정각
-    scheduler.add_job(collect_coin_ohlcv_1h, IntervalTrigger(hours=1))
+    # 코인 1시간봉 수집 — 매 시간 1분 (1시간 봉 마감 후)
+    scheduler.add_job(collect_coin_ohlcv_1h, CronTrigger(minute=1))
 
     # 봇 분석 — 매시간 이벤트 알림 (긴급/고래)
     @async_retry(max_retries=3, backoff_base=2.0, on_failure=notify_job_failure)
