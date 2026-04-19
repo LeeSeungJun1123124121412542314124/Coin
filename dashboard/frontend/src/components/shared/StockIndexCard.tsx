@@ -1,4 +1,4 @@
-import { AreaChart, Area, ResponsiveContainer, XAxis, ReferenceLine } from 'recharts'
+import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, ReferenceLine, Tooltip } from 'recharts'
 import { useId } from 'react'
 import { Card } from './Card'
 
@@ -61,18 +61,24 @@ export function StockIndexCard({ name, ticker, price, change_pct, sparkline, hig
 
       {/* 스파크라인 + 기준선 */}
       {chartData.length >= 2 && price != null && (
-        <div style={{ marginTop: 8, height: 60 }}>
+        <div style={{ marginTop: 8, height: 64 }}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={color} stopOpacity={0.35} />
-                  <stop offset="95%" stopColor={color} stopOpacity={0} />
+                  <stop offset="5%" stopColor={color} stopOpacity={0.5} />
+                  <stop offset="95%" stopColor={color} stopOpacity={0.02} />
                 </linearGradient>
               </defs>
               <XAxis dataKey="i" hide />
-              <ReferenceLine y={price} stroke={color} strokeDasharray="4 3" strokeOpacity={0.5} strokeWidth={1} />
-              <Area type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} fill={`url(#${gradId})`} dot={false} />
+              <YAxis hide domain={['auto', 'auto']} />
+              <ReferenceLine y={price} stroke={color} strokeDasharray="4 3" strokeOpacity={0.4} strokeWidth={1} />
+              <Tooltip
+                contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 6, fontSize: '0.7rem' }}
+                formatter={(v) => [Number(v).toLocaleString(), name]}
+                labelFormatter={() => ''}
+              />
+              <Area type="monotone" dataKey="v" stroke={color} strokeWidth={2} fill={`url(#${gradId})`} dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
