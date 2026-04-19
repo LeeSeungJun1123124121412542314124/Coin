@@ -174,8 +174,8 @@ def get_scorecard_by_indicator(
 
             entry = indicator_map[tag]
             entry["count"] += 1
-            if row["direction_hit"] is not None:
-                entry["hit_list"].append(row["direction_hit"])
+            if row["direction_hit"] == 1:
+                entry["hit_list"].append(1)
             if row["pnl_pct"] is not None:
                 entry["pnl_pct_list"].append(row["pnl_pct"])
 
@@ -183,7 +183,7 @@ def get_scorecard_by_indicator(
     result: list[dict[str, Any]] = []
     for tag, data in indicator_map.items():
         count = data["count"]
-        hit_count = sum(data["hit_list"])
+        hit_count = len(data["hit_list"])
         result.append({
             "indicator": tag,
             "count": count,
