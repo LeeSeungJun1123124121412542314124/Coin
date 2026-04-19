@@ -64,7 +64,7 @@ export function StockSlotEditor({ market, slots, onUpdate }: StockSlotEditorProp
       await apiFetch(`/api/stock-slots/${market}/${position}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker: suggestion.ticker }),
+        body: JSON.stringify({ ticker: suggestion.ticker, name: suggestion.name }),
       })
       setRow(i, { loading: false, saved: true })
       onUpdate()

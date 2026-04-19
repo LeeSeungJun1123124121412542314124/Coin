@@ -35,6 +35,7 @@ _EXCHANGE_MAP = {
 
 class StockSlotUpdateRequest(BaseModel):
     ticker: str = Field(..., min_length=1, max_length=20)
+    name: str | None = Field(default=None, max_length=100)
 
 
 def _get_slots(market: str) -> list[dict]:
@@ -82,20 +83,23 @@ async def put_stock_slot(
     # ticker 정규화 (공백 제거 + 대문자)
     ticker = request.ticker.strip().upper()
 
-    # 종목 정보 자동 조회
-    info = await lookup_stock_info(ticker)
-    if info is None:
-        raise HTTPException(status_code=422, detail=f"종목을 찾을 수 없습니다: {ticker}")
-
-    name = info["name"]
-
     # TradingView 심볼 자동 생성
     if market == "kr":
         base_ticker = ticker.split(".")[0]  # "005930.KS" → "005930"
-        # 한국 거래소는 TradingView에서 거래소 구분 없이 모두 KRX: prefix 사용
-        tv_prefix = "KRX"
-        tv_symbol = f"{tv_prefix}:{base_ticker}"
+        tv_symbol = f"KRX:{base_ticker}"
+        # KR: 요청에 name이 있으면 Yahoo lookup 생략 (코스닥 티커가 Yahoo에 없는 경우 대비)
+        if request.name and request.name.strip():
+            name = request.name.strip()
+        else:
+            info = await lookup_stock_info(ticker)
+            if info is None:
+                raise HTTPException(status_code=422, detail=f"종목을 찾을 수 없습니다: {ticker}")
+            name = info["name"]
     else:
+        info = await lookup_stock_info(ticker)
+        if info is None:
+            raise HTTPException(status_code=422, detail=f"종목을 찾을 수 없습니다: {ticker}")
+        name = info["name"]
         exchange_raw = info["exchange"]
         exchange = _EXCHANGE_MAP.get(exchange_raw, exchange_raw)
         tv_symbol = f"{exchange}:{ticker}"
