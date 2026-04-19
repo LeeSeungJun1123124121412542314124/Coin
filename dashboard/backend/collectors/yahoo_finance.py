@@ -231,30 +231,28 @@ async def search_stocks(query: str, market: str) -> list[dict]:
 
 
 @cached(ttl=3600, key_prefix="yahoo_ohlcv")
-async def fetch_stock_ohlcv(ticker: str, period: str = "3m") -> list[dict] | None:
+async def fetch_stock_ohlcv(ticker: str, interval: str = "1d") -> list[dict] | None:
     """개별 종목 OHLCV 히스토리 — 차트 모달용.
 
     Args:
         ticker: 종목 티커 (예: "AAPL", "005930.KS")
-        period: 조회 기간 ("3m", "6m", "1y")
+        interval: 봉 단위 ("1d", "1wk", "1mo")
 
     Returns:
         성공 시 [{"date": "YYYY-MM-DD", "open": float, "high": float, "low": float, "close": float, "volume": int}],
         실패 시 None
     """
-    # period → Yahoo Finance range 파라미터 매핑
-    _PERIOD_MAP: dict[str, str] = {
-        "1w": "5d",
-        "1m": "1mo",
-        "3m": "3mo",
-        "6m": "6mo",
-        "1y": "1y",
+    # interval → Yahoo Finance range 파라미터 매핑
+    _INTERVAL_RANGE: dict[str, str] = {
+        "1d": "1y",
+        "1wk": "5y",
+        "1mo": "max",
     }
-    yahoo_range = _PERIOD_MAP.get(period, "3mo")
+    yahoo_range = _INTERVAL_RANGE.get(interval, "1y")
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
     try:
         async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
-            resp = await client.get(url, params={"interval": "1d", "range": yahoo_range})
+            resp = await client.get(url, params={"interval": interval, "range": yahoo_range})
             resp.raise_for_status()
             chart_result = resp.json().get("chart", {}).get("result")
             if not chart_result:
