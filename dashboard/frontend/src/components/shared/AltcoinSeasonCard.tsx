@@ -231,9 +231,10 @@ export function AltcoinSeasonCard(props: AltcoinSeasonProps) {
               <Tooltip
                 contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, fontSize: '0.75rem' }}
                 labelStyle={{ color: '#94a3b8' }}
-                formatter={(v: number, name: string) =>
-                  name === 'AMC' ? [formatMcap(v), '알트코인 시총'] : [v, '알트코인 시즌 지수']
-                }
+                formatter={(v, name) => {
+                  const num = typeof v === 'number' ? v : Number(Array.isArray(v) ? v[0] : (v ?? 0));
+                  return name === 'AMC' ? [formatMcap(num), '알트코인 시총'] : [num, '알트코인 시즌 지수'];
+                }}
               />
 
 
