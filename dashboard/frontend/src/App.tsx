@@ -10,6 +10,7 @@ import { Alt } from './components/screens/Alt'
 import { Whale } from './components/screens/Whale'
 import { Research } from './components/screens/Research'
 import { Alerts } from './components/screens/Alerts'
+import { Simulator } from './components/screens/Simulator'
 
 // 탭 정의
 const TABS = [
@@ -22,6 +23,7 @@ const TABS = [
   { path: '/cvd', label: 'CVD 스크리너' },
   { path: '/whale', label: '고래 추적' },
   { path: '/alerts', label: '알림 히스토리' },
+  { path: '/simulator', label: '시뮬레이터' },
 ] as const
 
 // PIN 인증 화면 — 서버 측 검증 후 토큰 발급
@@ -141,6 +143,7 @@ export default function App() {
           <Route path="/cvd" element={<Alt />} />
           <Route path="/whale" element={<Whale />} />
           <Route path="/alerts" element={<Alerts />} />
+          <Route path="/simulator" element={<Simulator />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
