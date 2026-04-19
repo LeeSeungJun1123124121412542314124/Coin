@@ -11,7 +11,12 @@ from dashboard.backend.cache import cached
 
 logger = logging.getLogger(__name__)
 
-_PERIOD_COUNT = {"1w": 10, "1m": 30, "3m": 90, "6m": 180, "1y": 365}
+# (timeframe, count) 매핑 — 네이버 fchart는 day/week/month 모두 지원
+_INTERVAL_MAP: dict[str, tuple[str, int]] = {
+    "1d":  ("day",   200),
+    "1wk": ("week",  200),
+    "1mo": ("month", 120),
+}
 
 
 def _strip_suffix(ticker: str) -> str:
@@ -25,18 +30,18 @@ def _parse_date(raw: str) -> str:
 
 
 @cached(ttl=3600, key_prefix="naver_ohlcv")
-async def fetch_naver_ohlcv(ticker: str, period: str = "3m") -> list[dict] | None:
-    """네이버 파이낸스에서 한국 주식 일봉 OHLCV 조회.
+async def fetch_naver_ohlcv(ticker: str, interval: str = "1d") -> list[dict] | None:
+    """네이버 파이낸스에서 한국 주식 OHLCV 히스토리 조회.
 
     Args:
-        ticker: 야후 형식 티커 ('005930.KS') 또는 6자리 코드 ('005930')
-        period: '3m' | '6m' | '1y'
+        ticker:   야후 형식 티커 ('005930.KS') 또는 6자리 코드 ('005930')
+        interval: '1d' (일봉) | '1wk' (주봉) | '1mo' (월봉). 기본값 '1d'.
 
     Returns:
         [{"date", "open", "high", "low", "close", "volume"}] 또는 None
     """
     code = _strip_suffix(ticker)
-    count = _PERIOD_COUNT.get(period, 90)
+    timeframe, count = _INTERVAL_MAP.get(interval, ("day", 200))
     url = "https://fchart.stock.naver.com/sise.nhn"
     try:
         async with httpx.AsyncClient(
@@ -45,7 +50,7 @@ async def fetch_naver_ohlcv(ticker: str, period: str = "3m") -> list[dict] | Non
         ) as client:
             resp = await client.get(url, params={
                 "symbol": code,
-                "timeframe": "day",
+                "timeframe": timeframe,
                 "count": count,
                 "requestType": "0",
             })
