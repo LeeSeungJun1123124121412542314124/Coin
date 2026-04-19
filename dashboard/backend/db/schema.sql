@@ -257,3 +257,14 @@ CREATE INDEX IF NOT EXISTS idx_sim_positions_prediction ON sim_positions(predict
 CREATE INDEX IF NOT EXISTS idx_sim_funding_position ON sim_funding_events(position_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_sim_accounts_market ON sim_accounts(market);
 CREATE INDEX IF NOT EXISTS idx_coin_ohlcv_1h_symbol_ts ON coin_ohlcv_1h(symbol, timestamp DESC);
+
+-- 자동 백테스트 캐시 (지표별 적중률 1시간 TTL)
+CREATE TABLE IF NOT EXISTS auto_backtest_cache (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol      TEXT NOT NULL,
+    horizon_h   INTEGER NOT NULL,
+    lookback    INTEGER NOT NULL,
+    computed_at TEXT NOT NULL,
+    result_json TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_abt_cache ON auto_backtest_cache(symbol, horizon_h, computed_at);
