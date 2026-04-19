@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch } from '../../lib/api'
 import { Modal } from '../shared/Modal'
+import { SimScorecard } from '../shared/SimScorecard'
 
 // ────────────────────────────────────────
 // 타입 정의
@@ -945,6 +946,9 @@ export function Simulator() {
           </div>
         )}
       </div>
+
+      {/* ── 스코어카드 ── */}
+      <SimScorecard market={activeMarket} />
 
       {/* ── 새 예측 모달 ── */}
       <Modal open={showNewPrediction} onClose={() => setShowNewPrediction(false)}>
