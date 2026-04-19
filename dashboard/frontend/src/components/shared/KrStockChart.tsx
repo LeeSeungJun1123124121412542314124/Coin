@@ -16,7 +16,13 @@ interface OhlcvPoint {
   volume: number
 }
 
-type Period = '1w' | '1m' | '3m' | '6m' | '1y'
+type Interval = '1d' | '1wk' | '1mo'
+
+const INTERVAL_LABELS: Record<Interval, string> = {
+  '1d':  '일',
+  '1wk': '주',
+  '1mo': '월',
+}
 
 export interface KrStockChartProps {
   ticker: string
@@ -29,7 +35,7 @@ export function KrStockChart({ ticker, name }: KrStockChartProps) {
   const candleRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const volRef = useRef<ISeriesApi<'Histogram'> | null>(null)
 
-  const [period, setPeriod] = useState<Period>('3m')
+  const [interval, setInterval] = useState<Interval>('1d')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
@@ -104,7 +110,7 @@ export function KrStockChart({ ticker, name }: KrStockChartProps) {
     setLoading(true)
     setError(false)
 
-    apiFetch<OhlcvPoint[]>(`/api/stock-chart/${encodeURIComponent(ticker)}?period=${period}`)
+    apiFetch<OhlcvPoint[]>(`/api/stock-chart/${encodeURIComponent(ticker)}?interval=${interval}`)
       .then(json => {
         if (cancelled || !candleRef.current || !volRef.current) return
 
@@ -134,7 +140,7 @@ export function KrStockChart({ ticker, name }: KrStockChartProps) {
       })
 
     return () => { cancelled = true }
-  }, [ticker, period])
+  }, [ticker, interval])
 
   return (
     <div style={{
@@ -150,14 +156,14 @@ export function KrStockChart({ ticker, name }: KrStockChartProps) {
       }}>
         <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: 600 }}>{name}</span>
         <div style={{ display: 'flex', gap: 4 }}>
-          {(['1w', '1m', '3m', '6m', '1y'] as Period[]).map(p => (
-            <button key={p} onClick={() => setPeriod(p)} style={{
-              background: period === p ? '#334155' : 'transparent',
-              color: period === p ? '#e2e8f0' : '#475569',
-              border: '1px solid ' + (period === p ? '#475569' : '#1e293b'),
+          {(['1d', '1wk', '1mo'] as Interval[]).map(i => (
+            <button key={i} onClick={() => setInterval(i)} style={{
+              background: interval === i ? '#334155' : 'transparent',
+              color: interval === i ? '#e2e8f0' : '#475569',
+              border: '1px solid ' + (interval === i ? '#475569' : '#1e293b'),
               borderRadius: 6, padding: '3px 10px', fontSize: '0.75rem', cursor: 'pointer',
             }}>
-              {p.toUpperCase()}
+              {INTERVAL_LABELS[i]}
             </button>
           ))}
         </div>
