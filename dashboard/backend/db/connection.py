@@ -51,6 +51,8 @@ def get_connection() -> sqlite3.Connection:
 def _init_schema(conn: sqlite3.Connection) -> None:
     schema = _SCHEMA_PATH.read_text(encoding="utf-8")
     conn.executescript(schema)
+    # 코인 슬롯 CHECK 제약 마이그레이션: BETWEEN 0 AND 5 → BETWEEN 0 AND 6
+    _migrate_coin_slots_constraint(conn)
     # 시뮬레이터 초기 계좌 생성 (이미 존재하면 무시)
     now = datetime.now(timezone.utc).isoformat()
     conn.executemany(
@@ -70,14 +72,40 @@ def _init_schema(conn: sqlite3.Connection) -> None:
             ('kr', 3, '035720.KS', '카카오', 'KRX:035720'),
             ('kr', 4, '005380.KS', '현대차', 'KRX:005380'),
             ('kr', 5, '035420.KS', 'NAVER', 'KRX:035420'),
+            ('kr', 6, '373220.KS', 'LG에너지솔루션', 'KRX:373220'),
+            ('kr', 7, '068270.KS', '셀트리온', 'KRX:068270'),
             ('us', 1, 'AAPL', 'Apple', 'NASDAQ:AAPL'),
             ('us', 2, 'MSFT', 'Microsoft', 'NASDAQ:MSFT'),
             ('us', 3, 'NVDA', 'NVIDIA', 'NASDAQ:NVDA'),
             ('us', 4, 'TSLA', 'Tesla', 'NASDAQ:TSLA'),
             ('us', 5, 'GOOGL', 'Alphabet', 'NASDAQ:GOOGL'),
+            ('us', 6, 'META', 'Meta', 'NASDAQ:META'),
+            ('us', 7, 'AMZN', 'Amazon', 'NASDAQ:AMZN'),
         ]
     )
     conn.commit()
+
+
+def _migrate_coin_slots_constraint(conn: sqlite3.Connection) -> None:
+    """dashboard_coin_slots의 CHECK 제약을 BETWEEN 0 AND 5 → BETWEEN 0 AND 6으로 마이그레이션."""
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='dashboard_coin_slots'"
+    ).fetchone()
+    if row and 'AND 5' in row[0]:
+        conn.executescript("""
+            BEGIN;
+            CREATE TABLE dashboard_coin_slots_new (
+                position    INTEGER PRIMARY KEY CHECK (position BETWEEN 0 AND 6),
+                coin_id     TEXT NOT NULL,
+                symbol      TEXT NOT NULL,
+                tv_symbol   TEXT,
+                updated_at  TEXT DEFAULT (datetime('now'))
+            );
+            INSERT INTO dashboard_coin_slots_new SELECT * FROM dashboard_coin_slots;
+            DROP TABLE dashboard_coin_slots;
+            ALTER TABLE dashboard_coin_slots_new RENAME TO dashboard_coin_slots;
+            COMMIT;
+        """)
 
 
 @contextmanager

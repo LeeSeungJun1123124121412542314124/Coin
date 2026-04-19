@@ -30,7 +30,7 @@ def update_slot(
     """슬롯 업데이트.
 
     Args:
-        position: 슬롯 위치 (0-5)
+        position: 슬롯 위치 (0-6)
         coin_id: 코인 ID (CoinGecko)
         symbol: 심볼 (예: BTC, ETH)
         tv_symbol: TradingView 심볼 (예: BINANCE:BTCUSDT)
