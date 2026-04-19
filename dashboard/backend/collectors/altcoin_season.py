@@ -26,29 +26,18 @@ def _season_label(value: int) -> str:
 
 @cached(ttl=3600, key_prefix="altcoin_season")
 async def fetch_altcoin_season() -> dict | None:
-    """CMC data-api에서 알트코인 시즌 지수 + 90일 히스토리 조회 (1시간 캐시).
-
-    Returns:
-        {
-            "index_value": int,          # 현재 지수 0-100
-            "season_label": str,         # altcoin_season | neutral | bitcoin_season
-            "history": [{"date": str, "value": int}, ...],  # 90일 일별
-            "cached_at": str,            # ISO8601 UTC
-            "is_stale": bool,            # 항상 False (캐시 히트 시에는 반환 안 됨)
-        }
-        None 반환 시 프론트엔드는 캐시된 마지막 데이터를 사용한다.
-    """
+    """CMC data-api에서 알트코인 시즌 지수 + 365일 데이터 조회 (1시간 캐시)."""
     now = int(time.time())
-    start = int((datetime.now(timezone.utc) - timedelta(days=90)).timestamp())
+    start_365 = int((datetime.now(timezone.utc) - timedelta(days=365)).timestamp())
 
     try:
         async with httpx.AsyncClient(
-            timeout=10,
+            timeout=15,
             headers={"User-Agent": "Mozilla/5.0"},
         ) as client:
             resp = await client.get(
                 _CMC_CHART_URL,
-                params={"start": start, "end": now},
+                params={"start": start_365, "end": now},
             )
             resp.raise_for_status()
             data = resp.json()
@@ -58,23 +47,46 @@ async def fetch_altcoin_season() -> dict | None:
             logger.warning("altcoin_season: CMC 응답에 points 없음")
             return None
 
-        # 최신 포인트 = 현재 지수
+        # 현재 지수 (최신 포인트)
         latest = points[-1]
         index_value = int(float(latest["altcoinIndex"]))
 
-        # 90일 히스토리 — 일별 (timestamp → MM/DD)
+        # 90일 히스토리 (차트용) — market_cap 포함
+        history_raw = points[-90:] if len(points) >= 90 else points
         history = [
             {
                 "date": datetime.fromtimestamp(int(p["timestamp"]), tz=timezone.utc).strftime("%m/%d"),
                 "value": int(float(p["altcoinIndex"])),
+                "market_cap": float(p.get("altcoinMarketcap") or 0),
             }
-            for p in points
+            for p in history_raw
         ]
+
+        # 과거 시점별 값
+        def _val_at(days_ago: int) -> int | None:
+            idx = len(points) - 1 - days_ago
+            return int(float(points[idx]["altcoinIndex"])) if idx >= 0 else None
+
+        # 연간 고저
+        def _extreme(fn) -> dict:
+            p = fn(points, key=lambda x: float(x["altcoinIndex"]))
+            v = int(float(p["altcoinIndex"]))
+            dt = datetime.fromtimestamp(int(p["timestamp"]), tz=timezone.utc)
+            return {
+                "value": v,
+                "date": dt.strftime("%b %d, %Y"),
+                "season_label": _season_label(v),
+            }
 
         return {
             "index_value": index_value,
             "season_label": _season_label(index_value),
             "history": history,
+            "yesterday_value": _val_at(1),
+            "last_week_value": _val_at(7),
+            "last_month_value": _val_at(30),
+            "yearly_high": _extreme(max),
+            "yearly_low": _extreme(min),
             "cached_at": datetime.now(timezone.utc).isoformat(),
             "is_stale": False,
         }
