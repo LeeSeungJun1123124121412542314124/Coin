@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { apiFetch } from '../../lib/api'
 import { Modal } from '../shared/Modal'
 import { SimScorecard } from '../shared/SimScorecard'
@@ -36,6 +37,76 @@ interface StockSuggestion {
 }
 
 type MarketTab = 'crypto' | 'kr_stock' | 'us_stock'
+
+// ────────────────────────────────────────
+// v2 신규 인터페이스
+// ────────────────────────────────────────
+
+interface MacroContext {
+  oi: { value: number | null; change_24h_pct: number | null; signal: string } | null
+  fr: { value: number | null; annualized_pct: number | null; signal: string } | null
+  tga_yoy: { pct: number | null; signal: string } | null
+  m2_yoy: { pct: number | null; signal: string } | null
+}
+
+interface SignalData {
+  symbol: string
+  indicators: Array<{
+    name: string
+    signal: 'long' | 'short' | 'neutral'
+    desc: string
+  }>
+  score: number
+  bias: string
+  confidence: number
+}
+
+interface ProjectionData {
+  signal_score: number
+  atr_pct: number
+  horizons: Array<{
+    period: string
+    base_pct: number
+    best_pct: number
+    worst_pct: number
+    confidence: number
+  }>
+}
+
+interface WinRateData {
+  overall_win_rate: number | null
+  total_trades: number
+  winning_trades: number
+  indicators: Array<{
+    name: string
+    win_rate: number
+    total_signals: number
+    status: string
+    suggestion: string | null
+  }>
+}
+
+// ────────────────────────────────────────
+// v2 신호 색상/레이블 헬퍼
+// ────────────────────────────────────────
+
+function signalColor(signal: string): string {
+  if (['caution', 'tightening', 'long_bias'].includes(signal)) return '#fb923c'
+  if (['easing', 'expanding'].includes(signal)) return '#4ade80'
+  if (['short_bias', 'contracting'].includes(signal)) return '#f87171'
+  return '#94a3b8'
+}
+
+const SIGNAL_KO: Record<string, string> = {
+  caution: '과열주의',
+  easing: '완화',
+  tightening: '긴축',
+  expanding: '확장',
+  contracting: '수축',
+  long_bias: '롱우세',
+  short_bias: '숏우세',
+  neutral: '중립',
+}
 
 // ────────────────────────────────────────
 // 상수
@@ -216,7 +287,7 @@ function NewPredictionForm({ market, onSubmit, onClose }: NewPredictionFormProps
     }
   }
 
-  const inputStyle: React.CSSProperties = {
+  const inputStyle: CSSProperties = {
     background: '#0f1117',
     border: '1px solid #1e293b',
     borderRadius: 6,
@@ -228,14 +299,14 @@ function NewPredictionForm({ market, onSubmit, onClose }: NewPredictionFormProps
     boxSizing: 'border-box',
   }
 
-  const labelStyle: React.CSSProperties = {
+  const labelStyle: CSSProperties = {
     color: '#94a3b8',
     fontSize: '0.75rem',
     marginBottom: 4,
     display: 'block',
   }
 
-  const fieldWrap: React.CSSProperties = {
+  const fieldWrap: CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
     gap: 4,
@@ -673,6 +744,27 @@ export function Simulator() {
 
   const [showNewPrediction, setShowNewPrediction] = useState(false)
 
+  // ── v2: 매크로 패널 ──
+  const [macroCxt, setMacroCxt] = useState<MacroContext | null>(null)
+  const [macroLoading, setMacroLoading] = useState(true)
+  const [macroError, setMacroError] = useState<string | null>(null)
+
+  // ── v2: 신호 분석 패널 ──
+  const [signalData, setSignalData] = useState<SignalData | null>(null)
+  const [signalSymbol, setSignalSymbol] = useState('BTCUSDT')
+  const [signalLoading, setSignalLoading] = useState(false)
+  const [signalError, setSignalError] = useState<string | null>(null)
+
+  // ── v2: 수익 예측 테이블 ──
+  const [projData, setProjData] = useState<ProjectionData | null>(null)
+  const [projDir, setProjDir] = useState<'long' | 'short'>('long')
+  const [projLeverage, setProjLeverage] = useState(1)
+  const [projLoading, setProjLoading] = useState(false)
+
+  // ── v2: 승률 & 튜닝 ──
+  const [winRateData, setWinRateData] = useState<WinRateData | null>(null)
+  const [winRateLoading, setWinRateLoading] = useState(false)
+
   // 계좌 목록 조회
   const fetchAccounts = useCallback(async () => {
     setAccountsLoading(true)
@@ -757,13 +849,89 @@ export function Simulator() {
     }
   }
 
+  // ── v2: 매크로 컨텍스트 조회 (마운트 1회) ──
+  const fetchMacroContext = useCallback(async () => {
+    setMacroLoading(true)
+    setMacroError(null)
+    try {
+      const data: MacroContext = await apiFetch('/api/sim/macro-context')
+      setMacroCxt(data)
+    } catch (e: unknown) {
+      setMacroError(e instanceof Error ? e.message : '매크로 데이터 로딩 실패')
+    } finally {
+      setMacroLoading(false)
+    }
+  }, [])
+
+  // ── v2: 신호 분석 조회 ──
+  const fetchSignals = useCallback(async (sym: string) => {
+    setSignalLoading(true)
+    setSignalError(null)
+    try {
+      const data: SignalData = await apiFetch(
+        `/api/sim/signals?symbol=${encodeURIComponent(sym)}`
+      )
+      setSignalData(data)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '신호 조회 실패'
+      setSignalError(msg)
+    } finally {
+      setSignalLoading(false)
+    }
+  }, [])
+
+  // ── v2: 수익 예측 조회 ──
+  const fetchProjection = useCallback(async (sym: string, dir: 'long' | 'short', lev: number) => {
+    setProjLoading(true)
+    try {
+      const data: ProjectionData = await apiFetch(
+        `/api/sim/projection?symbol=${encodeURIComponent(sym)}&direction=${dir}&leverage=${lev}`
+      )
+      setProjData(data)
+    } catch {
+      // 오류 시 무시
+    } finally {
+      setProjLoading(false)
+    }
+  }, [])
+
+  // ── v2: 승률 분석 조회 ──
+  const fetchWinRate = useCallback(async (sym: string) => {
+    setWinRateLoading(true)
+    try {
+      const data: WinRateData = await apiFetch(
+        `/api/sim/win-rate-analysis?symbol=${encodeURIComponent(sym)}`
+      )
+      setWinRateData(data)
+    } catch {
+      // 오류 시 무시
+    } finally {
+      setWinRateLoading(false)
+    }
+  }, [])
+
+  // v2: 마운트 시 매크로 1회 조회
+  useEffect(() => {
+    fetchMacroContext()
+  }, [fetchMacroContext])
+
+  // v2: crypto 탭 진입 시 신호/예측/승률 자동 조회
+  useEffect(() => {
+    if (activeMarket === 'crypto') {
+      fetchSignals(signalSymbol)
+      fetchProjection(signalSymbol, projDir, projLeverage)
+      fetchWinRate(signalSymbol)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMarket])
+
   // 예측 등록 완료
   const handlePredictionSubmitted = () => {
     setShowNewPrediction(false)
     fetchPredictions()
   }
 
-  const dividerStyle: React.CSSProperties = {
+  const dividerStyle: CSSProperties = {
     borderBottom: '1px solid #1e293b',
     marginBottom: 16,
   }
@@ -842,6 +1010,355 @@ export function Simulator() {
           <div style={{ color: '#94a3b8', fontSize: '0.875rem' }}>계좌 정보 없음</div>
         )}
       </div>
+
+      {/* ── v2: 매크로 배경 패널 ── */}
+      <div style={{
+        background: '#0f172a',
+        border: '1px solid #1e293b',
+        borderRadius: 10,
+        padding: '16px 20px',
+        marginBottom: 20,
+      }}>
+        <div style={{
+          fontSize: '0.85rem',
+          fontWeight: 600,
+          color: '#94a3b8',
+          marginBottom: 10,
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+        }}>
+          매크로 배경
+        </div>
+        {macroLoading ? (
+          <div style={{ color: '#64748b', fontSize: '0.8rem' }}>로딩 중...</div>
+        ) : macroError ? (
+          <div style={{ color: '#64748b', fontSize: '0.8rem' }}>{macroError}</div>
+        ) : macroCxt ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+            {/* OI */}
+            {macroCxt.oi && (
+              <div style={{ background: '#111827', borderRadius: 8, padding: '10px 12px', border: '1px solid #1e293b' }}>
+                <div style={{ color: '#64748b', fontSize: '0.7rem', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>미결제약정 (OI)</div>
+                <div style={{ color: '#e2e8f0', fontSize: '0.9rem', fontWeight: 700 }}>
+                  {macroCxt.oi.value !== null ? `$${(macroCxt.oi.value / 1e9).toFixed(1)}B` : '-'}
+                  {macroCxt.oi.change_24h_pct !== null && (
+                    <span style={{ fontSize: '0.75rem', marginLeft: 6, color: macroCxt.oi.change_24h_pct >= 0 ? '#4ade80' : '#f87171' }}>
+                      {macroCxt.oi.change_24h_pct >= 0 ? '+' : ''}{macroCxt.oi.change_24h_pct.toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+                <div style={{ marginTop: 4, fontSize: '0.72rem', color: signalColor(macroCxt.oi.signal), fontWeight: 600 }}>
+                  {SIGNAL_KO[macroCxt.oi.signal] ?? macroCxt.oi.signal}
+                </div>
+              </div>
+            )}
+            {/* FR */}
+            {macroCxt.fr && (
+              <div style={{ background: '#111827', borderRadius: 8, padding: '10px 12px', border: '1px solid #1e293b' }}>
+                <div style={{ color: '#64748b', fontSize: '0.7rem', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>펀딩비 (FR)</div>
+                <div style={{ color: '#e2e8f0', fontSize: '0.9rem', fontWeight: 700 }}>
+                  {macroCxt.fr.value !== null ? `${(macroCxt.fr.value * 100).toFixed(4)}%` : '-'}
+                  {macroCxt.fr.annualized_pct !== null && (
+                    <span style={{ fontSize: '0.72rem', marginLeft: 6, color: '#94a3b8' }}>
+                      연 {macroCxt.fr.annualized_pct.toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+                <div style={{ marginTop: 4, fontSize: '0.72rem', color: signalColor(macroCxt.fr.signal), fontWeight: 600 }}>
+                  {SIGNAL_KO[macroCxt.fr.signal] ?? macroCxt.fr.signal}
+                </div>
+              </div>
+            )}
+            {/* TGA YoY */}
+            {macroCxt.tga_yoy && (
+              <div style={{ background: '#111827', borderRadius: 8, padding: '10px 12px', border: '1px solid #1e293b' }}>
+                <div style={{ color: '#64748b', fontSize: '0.7rem', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>TGA YoY</div>
+                <div style={{ color: '#e2e8f0', fontSize: '0.9rem', fontWeight: 700 }}>
+                  {macroCxt.tga_yoy.pct !== null ? `${macroCxt.tga_yoy.pct.toFixed(1)}%` : '-'}
+                </div>
+                <div style={{ marginTop: 4, fontSize: '0.72rem', color: signalColor(macroCxt.tga_yoy.signal), fontWeight: 600 }}>
+                  {SIGNAL_KO[macroCxt.tga_yoy.signal] ?? macroCxt.tga_yoy.signal}
+                </div>
+              </div>
+            )}
+            {/* M2 YoY */}
+            {macroCxt.m2_yoy && (
+              <div style={{ background: '#111827', borderRadius: 8, padding: '10px 12px', border: '1px solid #1e293b' }}>
+                <div style={{ color: '#64748b', fontSize: '0.7rem', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>M2 YoY</div>
+                <div style={{ color: '#e2e8f0', fontSize: '0.9rem', fontWeight: 700 }}>
+                  {macroCxt.m2_yoy.pct !== null ? `${macroCxt.m2_yoy.pct.toFixed(1)}%` : '-'}
+                </div>
+                <div style={{ marginTop: 4, fontSize: '0.72rem', color: signalColor(macroCxt.m2_yoy.signal), fontWeight: 600 }}>
+                  {SIGNAL_KO[macroCxt.m2_yoy.signal] ?? macroCxt.m2_yoy.signal}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ color: '#64748b', fontSize: '0.8rem' }}>데이터 없음</div>
+        )}
+      </div>
+
+      {/* ── v2: 신호 분석 + 수익 예측 (crypto 탭만) ── */}
+      {activeMarket === 'crypto' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+
+          {/* 신호 분석 패널 */}
+          <div style={{
+            background: '#0f172a',
+            border: '1px solid #1e293b',
+            borderRadius: 10,
+            padding: '16px 20px',
+          }}>
+            <div style={{
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              color: '#94a3b8',
+              marginBottom: 10,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+            }}>
+              신호 분석
+            </div>
+            {/* 심볼 입력 */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <input
+                type="text"
+                value={signalSymbol}
+                onChange={e => setSignalSymbol(e.target.value.toUpperCase())}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    fetchSignals(signalSymbol)
+                    fetchProjection(signalSymbol, projDir, projLeverage)
+                    fetchWinRate(signalSymbol)
+                  }
+                }}
+                style={{
+                  background: '#111827',
+                  border: '1px solid #1e293b',
+                  borderRadius: 6,
+                  color: '#e2e8f0',
+                  fontSize: '0.8rem',
+                  padding: '5px 10px',
+                  flex: 1,
+                  outline: 'none',
+                }}
+                placeholder="BTCUSDT"
+              />
+              <button
+                onClick={() => {
+                  fetchSignals(signalSymbol)
+                  fetchProjection(signalSymbol, projDir, projLeverage)
+                  fetchWinRate(signalSymbol)
+                }}
+                disabled={signalLoading}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #60a5fa',
+                  borderRadius: 6,
+                  color: '#60a5fa',
+                  cursor: signalLoading ? 'not-allowed' : 'pointer',
+                  fontSize: '0.8rem',
+                  padding: '5px 12px',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {signalLoading ? '분석 중...' : '분석'}
+              </button>
+            </div>
+
+            {signalError && (
+              <div style={{ color: '#f87171', fontSize: '0.78rem', marginBottom: 8 }}>{signalError}</div>
+            )}
+
+            {signalData && (
+              <>
+                {/* 스코어 게이지 */}
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: 4 }}>
+                    종합 스코어: <span style={{
+                      color: signalData.score > 0 ? '#4ade80' : signalData.score < 0 ? '#f87171' : '#94a3b8',
+                      fontWeight: 700,
+                    }}>{signalData.score}</span>
+                    {' '}[{signalData.bias}] — 신뢰도 {(signalData.confidence * 100).toFixed(0)}%
+                  </div>
+                  <div style={{ height: 8, background: '#1e293b', borderRadius: 4, overflow: 'hidden', position: 'relative' }}>
+                    {/* 중간선 */}
+                    <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: '#334155' }} />
+                    {/* 스코어 바 */}
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      bottom: 0,
+                      left: signalData.score >= 0 ? '50%' : `${50 + signalData.score / 2}%`,
+                      width: `${Math.abs(signalData.score) / 2}%`,
+                      background: signalData.score > 0 ? '#4ade80' : signalData.score < 0 ? '#f87171' : '#94a3b8',
+                      borderRadius: 4,
+                    }} />
+                  </div>
+                </div>
+                {/* 인디케이터 그리드 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  {signalData.indicators.map((ind, i) => (
+                    <div key={i} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      background: '#111827',
+                      borderRadius: 6,
+                      padding: '5px 8px',
+                    }}>
+                      <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{ind.name}</span>
+                      <span style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        padding: '1px 7px',
+                        borderRadius: 3,
+                        ...(ind.signal === 'long'
+                          ? { background: 'rgba(74,222,128,0.15)', color: '#4ade80' }
+                          : ind.signal === 'short'
+                          ? { background: 'rgba(248,113,113,0.15)', color: '#f87171' }
+                          : { background: '#1e293b', color: '#64748b' }),
+                      }}>
+                        {ind.signal === 'long' ? '롱' : ind.signal === 'short' ? '숏' : '중립'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {!signalData && !signalLoading && !signalError && (
+              <div style={{ color: '#64748b', fontSize: '0.8rem' }}>심볼을 입력하고 분석 버튼을 누르세요.</div>
+            )}
+          </div>
+
+          {/* 수익 예측 테이블 */}
+          <div style={{
+            background: '#0f172a',
+            border: '1px solid #1e293b',
+            borderRadius: 10,
+            padding: '16px 20px',
+          }}>
+            <div style={{
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              color: '#94a3b8',
+              marginBottom: 10,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+            }}>
+              수익 예측
+            </div>
+            {/* 방향 + 레버리지 컨트롤 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {(['long', 'short'] as const).map(dir => (
+                  <button
+                    key={dir}
+                    onClick={() => setProjDir(dir)}
+                    style={{
+                      padding: '4px 12px',
+                      borderRadius: 6,
+                      border: '1px solid #1e293b',
+                      background: projDir === dir
+                        ? (dir === 'long' ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)')
+                        : '#111827',
+                      color: projDir === dir
+                        ? (dir === 'long' ? '#4ade80' : '#f87171')
+                        : '#64748b',
+                      cursor: 'pointer',
+                      fontSize: '0.78rem',
+                      fontWeight: projDir === dir ? 700 : 400,
+                    }}
+                  >
+                    {dir === 'long' ? '롱' : '숏'} {projDir === dir ? '●' : '○'}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: '#64748b', fontSize: '0.75rem' }}>레버리지</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={64}
+                  value={projLeverage}
+                  onChange={e => setProjLeverage(Math.max(1, Math.min(64, parseInt(e.target.value) || 1)))}
+                  style={{
+                    background: '#111827',
+                    border: '1px solid #1e293b',
+                    borderRadius: 6,
+                    color: '#e2e8f0',
+                    fontSize: '0.8rem',
+                    padding: '4px 8px',
+                    width: 50,
+                    outline: 'none',
+                    textAlign: 'center',
+                  }}
+                />
+                <span style={{ color: '#64748b', fontSize: '0.75rem' }}>x</span>
+              </div>
+              <button
+                onClick={() => fetchProjection(signalSymbol, projDir, projLeverage)}
+                disabled={projLoading}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #60a5fa',
+                  borderRadius: 6,
+                  color: '#60a5fa',
+                  cursor: projLoading ? 'not-allowed' : 'pointer',
+                  fontSize: '0.75rem',
+                  padding: '4px 10px',
+                  marginLeft: 'auto',
+                }}
+              >
+                {projLoading ? '계산 중...' : '예측 계산'}
+              </button>
+            </div>
+
+            {projData ? (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+                <thead>
+                  <tr>
+                    {['기간', '예상(기본)', '최선', '최악', '신뢰도'].map(h => (
+                      <th key={h} style={{
+                        textAlign: 'left',
+                        padding: '4px 6px',
+                        color: '#64748b',
+                        fontWeight: 500,
+                        borderBottom: '1px solid #1e293b',
+                      }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {projData.horizons.map((row, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid #111827' }}>
+                      <td style={{ padding: '5px 6px', color: '#94a3b8' }}>{row.period}</td>
+                      <td style={{ padding: '5px 6px', color: row.base_pct >= 0 ? '#4ade80' : '#f87171', fontWeight: 600 }}>
+                        {row.base_pct >= 0 ? '+' : ''}{row.base_pct.toFixed(1)}%
+                      </td>
+                      <td style={{ padding: '5px 6px', color: '#4ade80' }}>
+                        +{row.best_pct.toFixed(1)}%
+                      </td>
+                      <td style={{ padding: '5px 6px', color: '#f87171' }}>
+                        {row.worst_pct.toFixed(1)}%
+                      </td>
+                      <td style={{ padding: '5px 6px', color: '#94a3b8' }}>
+                        {(row.confidence * 100).toFixed(0)}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ color: '#64748b', fontSize: '0.8rem' }}>
+                {projLoading ? '예측 계산 중...' : '예측 계산 버튼을 눌러 결과를 확인하세요.'}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── 액션 버튼 ── */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, ...dividerStyle, paddingBottom: 20 }}>
@@ -994,6 +1511,109 @@ export function Simulator() {
                 </button>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── v2: 승률 & 튜닝 피드백 ── */}
+      <div style={{
+        background: '#0f172a',
+        border: '1px solid #1e293b',
+        borderRadius: 10,
+        padding: '16px 20px',
+        marginBottom: 20,
+      }}>
+        <div style={{
+          fontSize: '0.85rem',
+          fontWeight: 600,
+          color: '#94a3b8',
+          marginBottom: 10,
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+        }}>
+          승률 &amp; 튜닝
+        </div>
+        {winRateLoading ? (
+          <div style={{ color: '#94a3b8', fontSize: '0.8rem' }}>분석 중...</div>
+        ) : winRateData ? (
+          winRateData.total_trades === 0 ? (
+            <div style={{ color: '#64748b', fontSize: '0.8rem' }}>포지션 데이터 없음</div>
+          ) : (
+            <>
+              {/* 전체 승률 */}
+              <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  fontSize: '1.1rem',
+                  fontWeight: 700,
+                  color: winRateData.overall_win_rate !== null
+                    ? (winRateData.overall_win_rate >= 0.6 ? '#4ade80'
+                      : winRateData.overall_win_rate >= 0.5 ? '#fb923c'
+                      : '#f87171')
+                    : '#94a3b8',
+                }}>
+                  전체 승률: {winRateData.overall_win_rate !== null
+                    ? `${(winRateData.overall_win_rate * 100).toFixed(0)}%`
+                    : '-'}
+                </div>
+                <div style={{ color: '#64748b', fontSize: '0.8rem' }}>
+                  ({winRateData.winning_trades}/{winRateData.total_trades}건)
+                </div>
+                {winRateData.overall_win_rate !== null && winRateData.overall_win_rate < 0.6 && (
+                  <div style={{
+                    background: 'rgba(251,146,60,0.15)',
+                    color: '#fb923c',
+                    fontSize: '0.72rem',
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    fontWeight: 600,
+                  }}>
+                    ⚠ 승률 60% 미만 — 전략 재검토 권장
+                  </div>
+                )}
+              </div>
+              {/* 인디케이터별 */}
+              {winRateData.indicators.filter(ind => ind.status !== 'good').length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {winRateData.indicators
+                    .filter(ind => ind.status !== 'good')
+                    .map((ind, i) => (
+                      <div key={i} style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 10,
+                        background: '#111827',
+                        borderRadius: 7,
+                        padding: '8px 12px',
+                      }}>
+                        <div style={{ minWidth: 80, fontWeight: 600, color: '#e2e8f0', fontSize: '0.8rem' }}>{ind.name}</div>
+                        <div style={{ color: '#94a3b8', fontSize: '0.78rem' }}>
+                          승률 {(ind.win_rate * 100).toFixed(0)}% ({ind.total_signals}건)
+                        </div>
+                        <div style={{
+                          padding: '1px 7px',
+                          borderRadius: 3,
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          background: ind.status === 'low' ? 'rgba(248,113,113,0.15)' : 'rgba(251,146,60,0.15)',
+                          color: ind.status === 'low' ? '#f87171' : '#fb923c',
+                        }}>
+                          {ind.status}
+                        </div>
+                        {ind.suggestion && (
+                          <div style={{ color: '#64748b', fontSize: '0.75rem', flex: 1 }}>{ind.suggestion}</div>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              )}
+              {winRateData.indicators.filter(ind => ind.status !== 'good').length === 0 && (
+                <div style={{ color: '#4ade80', fontSize: '0.8rem' }}>모든 인디케이터 정상 — 현재 전략 유지</div>
+              )}
+            </>
+          )
+        ) : (
+          <div style={{ color: '#64748b', fontSize: '0.8rem' }}>
+            {activeMarket === 'crypto' ? '심볼을 분석하면 승률 데이터가 표시됩니다.' : '코인 탭에서 사용 가능합니다.'}
           </div>
         )}
       </div>

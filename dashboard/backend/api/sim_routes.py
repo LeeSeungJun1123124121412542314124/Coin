@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from asyncio import gather
 from datetime import datetime, timezone
 from typing import Literal, Optional
 
@@ -11,8 +12,12 @@ from fastapi import APIRouter, HTTPException, Path, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
+from dashboard.backend.collectors.bybit_derivatives import fetch_funding_rate, fetch_oi_change
+from dashboard.backend.collectors.fred import calc_m2_yoy, calc_tga_yoy, fetch_m2, fetch_tga
 from dashboard.backend.db.connection import get_db
 from dashboard.backend.services.auto_backtest import run_backtest
+from dashboard.backend.services.return_projector import get_projection
+from dashboard.backend.services.signal_analyzer import get_current_signals
 from dashboard.backend.services.sim_engine import calc_liquidation_price
 from dashboard.backend.services.sim_scorecard import get_scorecard, get_scorecard_by_indicator
 
@@ -311,6 +316,42 @@ async def create_sim_prediction(body: PredictionCreate):
     tags_json = json.dumps(body.indicator_tags, ensure_ascii=False)
     now = datetime.now(timezone.utc).isoformat()
 
+    # 포트폴리오 모드: 신호/매크로/예측 사전 수집 (DB 블록 진입 전에 async 처리)
+    signal_data = None
+    macro_data = None
+    projection_data = None
+    if body.mode == "portfolio":
+        try:
+            signal_data = await get_current_signals(asset_symbol)
+        except Exception:
+            logger.warning("신호 분석 수집 실패 (포지션 생성은 계속)", exc_info=True)
+
+        try:
+            direction_str = body.direction or "long"
+            lev = body.leverage or 1
+            projection_data = await get_projection(asset_symbol, direction_str, lev)
+        except Exception:
+            logger.warning("수익 예측 수집 실패 (포지션 생성은 계속)", exc_info=True)
+
+        try:
+            # 심볼이 USDT 쌍이면 그대로, 아니면 BTCUSDT로 폴백
+            derivatives_symbol = asset_symbol if "USDT" in asset_symbol else "BTCUSDT"
+            oi_data, fr_data, tga_raw, m2_raw = await gather(
+                fetch_oi_change(derivatives_symbol),
+                fetch_funding_rate(derivatives_symbol),
+                fetch_tga(),
+                fetch_m2(),
+            )
+            macro_data = {
+                "oi": oi_data,
+                "fr": fr_data,
+                "tga_yoy": calc_tga_yoy(tga_raw)[-1] if tga_raw else None,
+                "m2_yoy": calc_m2_yoy(m2_raw)[-1] if m2_raw else None,
+            }
+        except Exception:
+            logger.warning("매크로 수집 실패 (포지션 생성은 계속)", exc_info=True)
+            macro_data = None
+
     with get_db() as conn:
         # 계좌 조회
         account_row = conn.execute(
@@ -346,14 +387,38 @@ async def create_sim_prediction(body: PredictionCreate):
         )
         prediction_id = cursor.lastrowid
 
-        # 포트폴리오 모드: 포지션 삽입
+        # 포트폴리오 모드: 포지션 삽입 (신호/매크로/예측 포함)
         if body.mode == "portfolio":
+            # 신호 데이터 추출
+            signal_score_val = signal_data["score"] if signal_data else None
+            signal_snapshot_val = (
+                json.dumps(signal_data["indicators"], ensure_ascii=False) if signal_data else None
+            )
+            macro_snapshot_val = (
+                json.dumps(macro_data, ensure_ascii=False) if macro_data else None
+            )
+
+            # 예측 수익률 추출
+            pred_1d = pred_1w = pred_1m = pred_3m = None
+            if projection_data and projection_data.get("horizons"):
+                for h in projection_data["horizons"]:
+                    if h["period"] == "1d":
+                        pred_1d = h["base_pct"]
+                    elif h["period"] == "1w":
+                        pred_1w = h["base_pct"]
+                    elif h["period"] == "1m":
+                        pred_1m = h["base_pct"]
+                    elif h["period"] == "3m":
+                        pred_3m = h["base_pct"]
+
             conn.execute(
                 """
                 INSERT INTO sim_positions
                     (prediction_id, instrument_type, quantity, leverage,
-                     stop_loss, take_profit, liquidation_price, funding_fee_accrued)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 0.0)
+                     stop_loss, take_profit, liquidation_price, funding_fee_accrued,
+                     signal_score, signal_snapshot, macro_snapshot,
+                     predicted_1d, predicted_1w, predicted_1m, predicted_3m)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 0.0, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     prediction_id,
@@ -363,6 +428,13 @@ async def create_sim_prediction(body: PredictionCreate):
                     body.stop_loss,
                     body.take_profit,
                     liquidation_price,
+                    signal_score_val,
+                    signal_snapshot_val,
+                    macro_snapshot_val,
+                    pred_1d,
+                    pred_1w,
+                    pred_1m,
+                    pred_3m,
                 ),
             )
 
@@ -535,3 +607,306 @@ async def get_auto_backtest(
     except Exception:
         logger.error("자동 백테스트 실패: %s %sh", symbol, horizon_h, exc_info=True)
         raise HTTPException(status_code=500, detail="백테스트 실행 실패")
+
+
+# ============================================================
+# GET /sim/projection
+# ============================================================
+
+@router.get("/sim/projection")
+async def get_sim_projection(
+    symbol: str = Query(default="BTCUSDT"),
+    direction: str = Query(default="long"),
+    leverage: int = Query(default=1, ge=1, le=64),
+):
+    """수익 예측 (1d/1w/1m/3m 기간별 예상 범위)."""
+    symbol = symbol.strip().upper()
+    if direction not in ("long", "short"):
+        raise HTTPException(status_code=400, detail="direction은 'long' 또는 'short'여야 합니다.")
+    try:
+        result = await get_projection(symbol, direction, leverage)
+    except Exception:
+        logger.error("수익 예측 실패: %s", symbol, exc_info=True)
+        raise HTTPException(status_code=500, detail="수익 예측 중 오류 발생")
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"{symbol} OHLCV 데이터가 부족합니다")
+    return result
+
+
+# ============================================================
+# GET /sim/signals
+# ============================================================
+
+@router.get("/sim/signals")
+async def get_sim_signals(symbol: str = Query(default="BTCUSDT")):
+    """실시간 TA 신호 분석."""
+    symbol = symbol.strip().upper()
+    try:
+        result = await get_current_signals(symbol)
+    except Exception:
+        logger.error("신호 분석 실패: %s", symbol, exc_info=True)
+        raise HTTPException(status_code=500, detail="신호 분석 중 오류 발생")
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"{symbol} 데이터가 부족합니다 (최소 80봉 필요)")
+    return result
+
+
+# ============================================================
+# GET /sim/macro-context
+# ============================================================
+
+@router.get("/sim/macro-context")
+async def get_macro_context():
+    """거시 지표 컨텍스트 반환 — OI, FR, TGA YoY, M2 YoY."""
+
+    oi_data, fr_data, tga_raw, m2_raw = await gather(
+        fetch_oi_change("BTCUSDT"),
+        fetch_funding_rate("BTCUSDT"),
+        fetch_tga(),
+        fetch_m2(),
+    )
+
+    # OI 처리
+    oi_result: dict | None = None
+    if oi_data is not None:
+        change_24h = oi_data.get("change_24h_pct", 0.0)
+        if change_24h > 5:
+            oi_signal = "caution"
+        elif change_24h < -5:
+            oi_signal = "easing"
+        else:
+            oi_signal = "neutral"
+        oi_result = {
+            "value": oi_data.get("current_oi"),
+            "change_24h_pct": change_24h,
+            "signal": oi_signal,
+        }
+
+    # FR 처리
+    fr_result: dict | None = None
+    if fr_data is not None:
+        fr_value = fr_data.get("funding_rate", 0.0)
+        # annualized_pct = 펀딩비 × 3회/일 × 365일 × 100(%)
+        annualized_pct = fr_value * 3 * 365 * 100
+        if fr_value > 0.0001:
+            fr_signal = "long_bias"
+        elif fr_value < -0.0001:
+            fr_signal = "short_bias"
+        else:
+            fr_signal = "neutral"
+        fr_result = {
+            "value": fr_value,
+            "annualized_pct": round(annualized_pct, 4),
+            "signal": fr_signal,
+        }
+
+    # TGA YoY 처리
+    tga_result: dict | None = None
+    if tga_raw:
+        tga_yoy_data = calc_tga_yoy(tga_raw)
+        if tga_yoy_data:
+            latest_tga = tga_yoy_data[-1]
+            tga_pct = latest_tga.get("yoy_pct", 0.0)
+            if tga_pct < -10:
+                tga_signal = "easing"
+            elif tga_pct > 10:
+                tga_signal = "tightening"
+            else:
+                tga_signal = "neutral"
+            tga_result = {
+                "pct": tga_pct,
+                "signal": tga_signal,
+            }
+
+    # M2 YoY 처리
+    m2_result: dict | None = None
+    if m2_raw:
+        m2_yoy_data = calc_m2_yoy(m2_raw)
+        if m2_yoy_data:
+            latest_m2 = m2_yoy_data[-1]
+            m2_pct = latest_m2.get("yoy_pct", 0.0)
+            if m2_pct > 5:
+                m2_signal = "expanding"
+            elif m2_pct < 0:
+                m2_signal = "contracting"
+            else:
+                m2_signal = "neutral"
+            m2_result = {
+                "pct": m2_pct,
+                "signal": m2_signal,
+            }
+
+    return {
+        "oi": oi_result,
+        "fr": fr_result,
+        "tga_yoy": tga_result,
+        "m2_yoy": m2_result,
+    }
+
+
+# ============================================================
+# GET /sim/win-rate-analysis
+# ============================================================
+
+# 지표별 파라미터 튜닝 제안 (승률 poor 시 노출)
+_TUNING_SUGGESTIONS: dict[str, str] = {
+    "RSI":     "기간 14→21로 장기화 또는 임계값 30/70→25/75",
+    "MACD":    "fast 12→8 (민감도↑) 또는 slow 26→34 (노이즈↓)",
+    "BB":      "σ 2.0→2.5로 조정 권장 (신호 필터 강화)",
+    "스토캐스틱":  "임계값 20/80→15/85 (과매도/과매수 강화)",
+    "ADX":     "강도 기준 25→30 (더 강한 추세만 신호)",
+}
+
+
+@router.get("/sim/win-rate-analysis")
+async def get_win_rate_analysis(
+    symbol: Optional[str] = Query(default=None),
+    market: Optional[str] = Query(default=None),
+):
+    """지표별 승률 분석 및 파라미터 튜닝 제안."""
+    # 심볼 정규화 (None 또는 'ALL' → 전체 조회)
+    normalized_symbol = None
+    if symbol and symbol.strip().upper() not in ("", "ALL"):
+        normalized_symbol = symbol.strip().upper()
+
+    display_symbol = normalized_symbol or "ALL"
+
+    # SQL 쿼리 구성 (심볼 필터 유무 분기)
+    if normalized_symbol:
+        query = """
+            SELECT
+                p.direction,
+                p.status,
+                pos.signal_score,
+                pos.signal_snapshot
+            FROM sim_predictions p
+            JOIN sim_positions pos ON pos.prediction_id = p.id
+            WHERE p.status = 'settled'
+              AND p.asset_symbol = ?
+              AND pos.signal_snapshot IS NOT NULL
+            LIMIT 500
+        """
+        params: list = [normalized_symbol]
+    else:
+        query = """
+            SELECT
+                p.direction,
+                p.status,
+                pos.signal_score,
+                pos.signal_snapshot
+            FROM sim_predictions p
+            JOIN sim_positions pos ON pos.prediction_id = p.id
+            WHERE p.status = 'settled'
+              AND pos.signal_snapshot IS NOT NULL
+            LIMIT 500
+        """
+        params = []
+
+    with get_db() as conn:
+        rows = conn.execute(query, params).fetchall()
+
+    # 데이터가 없으면 빈 응답 반환
+    if not rows:
+        return {
+            "symbol": display_symbol,
+            "overall_win_rate": None,
+            "total_trades": 0,
+            "winning_trades": 0,
+            "indicators": [],
+        }
+
+    # 전체 승률 집계
+    # 승리 판정: direction == 'long' and signal_score > 0  OR  direction == 'short' and signal_score < 0
+    total_trades = 0
+    winning_trades = 0
+
+    # 지표별 집계 {name: {"wins": int, "total": int}}
+    indicator_stats: dict[str, dict[str, int]] = {}
+
+    for row in rows:
+        direction = row["direction"]
+        signal_score = row["signal_score"]
+        snapshot_raw = row["signal_snapshot"]
+
+        if direction is None:
+            continue
+
+        total_trades += 1
+
+        # 전체 승패 판정
+        is_win = False
+        if signal_score is not None:
+            if direction == "long" and signal_score > 0:
+                is_win = True
+            elif direction == "short" and signal_score < 0:
+                is_win = True
+        if is_win:
+            winning_trades += 1
+
+        # 지표별 신호 파싱
+        if not snapshot_raw:
+            continue
+        try:
+            indicators_list = json.loads(snapshot_raw)
+        except (json.JSONDecodeError, TypeError):
+            continue
+
+        if not isinstance(indicators_list, list):
+            continue
+
+        for ind in indicators_list:
+            if not isinstance(ind, dict):
+                continue
+            name = ind.get("name")
+            signal = ind.get("signal")
+            if not name or not signal:
+                continue
+
+            # neutral 신호는 집계에서 제외
+            if signal == "neutral":
+                continue
+
+            # 지표 신호와 포지션 방향 일치 여부 확인
+            if name not in indicator_stats:
+                indicator_stats[name] = {"wins": 0, "total": 0}
+
+            indicator_stats[name]["total"] += 1
+            if signal == direction:  # 예: signal='long', direction='long' → 일치
+                indicator_stats[name]["wins"] += 1
+
+    # 전체 승률 계산
+    overall_win_rate = (winning_trades / total_trades) if total_trades > 0 else None
+
+    # 지표별 결과 구성
+    indicators_result = []
+    for name, stats in sorted(indicator_stats.items()):
+        total_signals = stats["total"]
+        wins = stats["wins"]
+        ind_win_rate = wins / total_signals if total_signals > 0 else 0.0
+
+        # 상태 판정
+        if ind_win_rate >= 0.60:
+            status = "good"
+        elif ind_win_rate >= 0.50:
+            status = "warning"
+        else:
+            status = "poor"
+
+        # 튜닝 제안 (poor 상태만)
+        suggestion = _TUNING_SUGGESTIONS.get(name) if status == "poor" else None
+
+        indicators_result.append({
+            "name": name,
+            "win_rate": round(ind_win_rate, 4),
+            "total_signals": total_signals,
+            "status": status,
+            "suggestion": suggestion,
+        })
+
+    return {
+        "symbol": display_symbol,
+        "overall_win_rate": round(overall_win_rate, 4) if overall_win_rate is not None else None,
+        "total_trades": total_trades,
+        "winning_trades": winning_trades,
+        "indicators": indicators_result,
+    }

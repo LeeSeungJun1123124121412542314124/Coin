@@ -48,11 +48,31 @@ def get_connection() -> sqlite3.Connection:
     return _conn
 
 
+def _migrate_sim_positions_v2(conn: sqlite3.Connection) -> None:
+    """sim_positions에 v2 신호/예측 컬럼 추가 (없으면 ALTER TABLE)."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(sim_positions)").fetchall()}
+    new_cols = [
+        ("signal_score",    "INTEGER"),
+        ("signal_snapshot", "TEXT"),
+        ("macro_snapshot",  "TEXT"),
+        ("predicted_1d",    "REAL"),
+        ("predicted_1w",    "REAL"),
+        ("predicted_1m",    "REAL"),
+        ("predicted_3m",    "REAL"),
+    ]
+    for col_name, col_type in new_cols:
+        if col_name not in existing:
+            conn.execute(f"ALTER TABLE sim_positions ADD COLUMN {col_name} {col_type}")
+    conn.commit()
+
+
 def _init_schema(conn: sqlite3.Connection) -> None:
     schema = _SCHEMA_PATH.read_text(encoding="utf-8")
     conn.executescript(schema)
     # 코인 슬롯 CHECK 제약 마이그레이션: BETWEEN 0 AND 5 → BETWEEN 0 AND 6
     _migrate_coin_slots_constraint(conn)
+    # sim_positions v2 컬럼 마이그레이션 (신호/매크로/예측)
+    _migrate_sim_positions_v2(conn)
     # 마이그레이션 후 position 6 기본값 삽입 (schema.sql의 INSERT OR IGNORE는 구 제약 때문에 실패)
     conn.execute(
         "INSERT OR IGNORE INTO dashboard_coin_slots (position, coin_id, symbol, tv_symbol) VALUES (?,?,?,?)",

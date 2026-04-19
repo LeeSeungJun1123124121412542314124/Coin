@@ -202,7 +202,14 @@ CREATE TABLE IF NOT EXISTS sim_positions (
     stop_loss           REAL,
     take_profit         REAL,
     liquidation_price   REAL,
-    funding_fee_accrued REAL DEFAULT 0
+    funding_fee_accrued REAL DEFAULT 0,
+    signal_score        INTEGER,  -- 진입 시 TA 신호 스코어 (-100~+100)
+    signal_snapshot     TEXT,     -- JSON: 지표별 신호 상태
+    macro_snapshot      TEXT,     -- JSON: OI, FR, TGA, M2 매크로 상태
+    predicted_1d        REAL,     -- 예측 수익률 1일
+    predicted_1w        REAL,     -- 예측 수익률 1주
+    predicted_1m        REAL,     -- 예측 수익률 1달
+    predicted_3m        REAL      -- 예측 수익률 3달
 );
 
 -- 채점 결과
