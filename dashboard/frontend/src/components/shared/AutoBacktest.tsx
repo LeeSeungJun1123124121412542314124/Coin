@@ -104,11 +104,12 @@ export function AutoBacktest() {
   const [error, setError] = useState<string | null>(null)
 
   function handleRun() {
+    if (loading) return
     setLoading(true)
     setError(null)
-    apiFetch(`/api/sim/auto-backtest?symbol=${symbol}&horizon_h=${horizonH}&lookback=500`)
+    apiFetch<BacktestResult>(`/api/sim/auto-backtest?symbol=${symbol}&horizon_h=${horizonH}&lookback=500`)
       .then((data) => {
-        setResult(data as BacktestResult)
+        setResult(data)
       })
       .catch((e: unknown) => {
         const msg = e instanceof Error ? e.message : '백테스트 조회 실패'
@@ -300,7 +301,7 @@ export function AutoBacktest() {
                     {ind.avg_return_pct >= 0 ? '+' : ''}{ind.avg_return_pct.toFixed(2)}%
                   </div>
                   <div style={{ fontSize: '0.73rem' }}>
-                    <span style={{ color: '#4ade80' }}>+{ind.max_win_pct.toFixed(1)}</span>
+                    <span style={{ color: '#4ade80' }}>{ind.max_win_pct >= 0 ? '+' : ''}{ind.max_win_pct.toFixed(1)}%</span>
                     <span style={{ color: '#64748b' }}>/</span>
                     <span style={{ color: '#f87171' }}>{ind.max_loss_pct.toFixed(1)}%</span>
                   </div>
