@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
 from dashboard.backend.db.connection import get_db
+from dashboard.backend.services.auto_backtest import run_backtest
 from dashboard.backend.services.sim_engine import calc_liquidation_price
 from dashboard.backend.services.sim_scorecard import get_scorecard, get_scorecard_by_indicator
 
@@ -510,3 +511,27 @@ async def get_sim_position(position_id: int = Path(...)):
             "created_at": row["created_at"],
         },
     }
+
+
+# ============================================================
+# GET /sim/auto-backtest
+# ============================================================
+
+@router.get("/sim/auto-backtest")
+async def get_auto_backtest(
+    symbol: str = Query(default="BTCUSDT"),
+    horizon_h: int = Query(default=24),
+    lookback: int = Query(default=500),
+):
+    """자동 백테스트 실행 및 결과 반환."""
+    if horizon_h not in (4, 8, 24):
+        raise HTTPException(status_code=422, detail="horizon_h must be 4, 8, or 24")
+    if not (50 <= lookback <= 1000):
+        raise HTTPException(status_code=422, detail="lookback must be between 50 and 1000")
+    try:
+        return await run_backtest(symbol.strip().upper(), horizon_h, lookback)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception:
+        logger.error("자동 백테스트 실패: %s %sh", symbol, horizon_h, exc_info=True)
+        raise HTTPException(status_code=500, detail="백테스트 실행 실패")
