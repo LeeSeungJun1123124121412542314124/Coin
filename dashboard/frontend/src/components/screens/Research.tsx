@@ -21,7 +21,7 @@ interface SignalItem {
   name: string
   status: 'green' | 'yellow' | 'red'
   label: string
-  note: string
+  note?: string
 }
 
 interface ResearchData {
@@ -57,6 +57,12 @@ const LEVEL_ICONS: Record<string, string> = {
 }
 
 const CATEGORIES = ['전체', '매크로', '온체인', '파생상품', '알트코인', '기술적분석', '시장분석', '기타']
+
+const STATUS_COLORS: Record<string, string> = {
+  green: '#22c55e',
+  yellow: '#f59e0b',
+  red: '#ef4444',
+}
 
 
 function AnalysisCard({ cat, expanded, onToggle }: {
@@ -251,12 +257,6 @@ function _renderDetails(key: string, details: Record<string, unknown>) {
     const peakCount = (details.peak_count as number) ?? 0
     const total = (details.total as number) ?? 0
 
-    const statusColorMap: Record<string, string> = {
-      green: '#22c55e',
-      yellow: '#f59e0b',
-      red: '#ef4444',
-    }
-
     return (
       <div>
         {peakCount >= 1 && (
@@ -264,11 +264,11 @@ function _renderDetails(key: string, details: Record<string, unknown>) {
             ⚠️ {peakCount}/{total} 모니터링
           </div>
         )}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {signals.map((signal) => {
-            const statusColor = statusColorMap[signal.status] ?? '#94a3b8'
+            const statusColor = STATUS_COLORS[signal.status] ?? '#94a3b8'
             return (
-              <div key={signal.id} style={{ marginBottom: 8 }}>
+              <div key={signal.id}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 10, color: statusColor }}>●</span>
