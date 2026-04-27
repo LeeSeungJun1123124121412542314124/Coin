@@ -4,6 +4,7 @@ import { apiFetch } from '../../lib/api'
 import { Modal } from '../shared/Modal'
 import { SimScorecard } from '../shared/SimScorecard'
 import { AutoBacktest } from '../shared/AutoBacktest'
+import { CompositeSimulator } from '../shared/CompositeSimulator'
 
 // ────────────────────────────────────────
 // 타입 정의
@@ -734,6 +735,7 @@ function NewPredictionForm({ market, onSubmit, onClose }: NewPredictionFormProps
 
 export function Simulator() {
   const [activeMarket, setActiveMarket] = useState<MarketTab>('crypto')
+  const [backtestTab, setBacktestTab] = useState<'composite' | 'indicator'>('composite')
   const [accounts, setAccounts] = useState<SimAccount[]>([])
   const [accountsLoading, setAccountsLoading] = useState(true)
   const [accountsError, setAccountsError] = useState<string | null>(null)
@@ -1618,8 +1620,37 @@ export function Simulator() {
         )}
       </div>
 
-      {/* ── 자동 백테스트 ── */}
-      <AutoBacktest />
+      {/* ── 백테스트 ── */}
+      <div style={{ marginBottom: 24 }}>
+        {/* 탭 헤더 */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {(['composite', 'indicator'] as const).map(tab => {
+            const label = tab === 'composite' ? '종합 시뮬레이션' : '지표별 분석'
+            const isActive = backtestTab === tab
+            return (
+              <button
+                key={tab}
+                onClick={() => setBacktestTab(tab)}
+                style={{
+                  background: isActive ? '#1e3a5f' : 'transparent',
+                  border: `1px solid ${isActive ? '#60a5fa' : '#334155'}`,
+                  borderRadius: 8,
+                  padding: '6px 14px',
+                  fontSize: 13,
+                  color: isActive ? '#60a5fa' : '#64748b',
+                  cursor: 'pointer',
+                  fontWeight: isActive ? 600 : 400,
+                  transition: 'all 0.15s',
+                }}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+        {/* 탭 내용 */}
+        {backtestTab === 'composite' ? <CompositeSimulator /> : <AutoBacktest />}
+      </div>
 
       {/* ── 스코어카드 ── */}
       <SimScorecard market={activeMarket} />
