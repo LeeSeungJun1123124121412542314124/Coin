@@ -18,10 +18,19 @@ _FLOW_LABELS = {
     "neutral": "중립",
 }
 
+SAMSUNG_SIGNALS = [
+    {"id": "dram_price_momentum", "name": "DRAM 고정거래가 모멘텀 둔화",  "status": "green",  "label": "아직 아님",  "note": "1Q26 +65% QoQ, 2026 +148% 전망 지속"},
+    {"id": "memory_capex",        "name": "메모리 capex 폭발적 증가",      "status": "yellow", "label": "진행 중",    "note": "삼성 P4 라인 발주, 본격화 시작"},
+    {"id": "lta_price_floor",     "name": "LTA 가격 하한선 무력화",         "status": "green",  "label": "아직 아님",  "note": "골드만삭스: 이번엔 강력 구속력, 정점 신호 아님"},
+    {"id": "foreign_selling",     "name": "외국인 4주 누적 매도 가속",       "status": "yellow", "label": "모니터링",   "note": "4월 누적 +2.53조 매수, 직전 2일 -4조 매도 전환"},
+    {"id": "eps_consensus",       "name": "컨센서스 EPS 상향 정체/하향",    "status": "green",  "label": "아직 아님",  "note": "1Q26 +49% 서프, 컨센 상향 진행 중"},
+    {"id": "dram_inventory",      "name": "DRAM 재고 증가",                 "status": "green",  "label": "아직 아님",  "note": "1~2주 (역대 최저)"},
+]
+
 
 @cached(ttl=120, key_prefix="research_analysis")
 async def analyze_all() -> dict:
-    """7개 카테고리 분석을 병렬 실행하여 통합 결과 반환."""
+    """8개 카테고리 분석을 병렬 실행하여 통합 결과 반환."""
     results = await asyncio.gather(
         _analyze_macro(),
         _analyze_onchain(),
@@ -30,12 +39,13 @@ async def analyze_all() -> dict:
         _analyze_technical(),
         _analyze_market(),
         _analyze_whale(),
+        _analyze_samsung_signals(),
         return_exceptions=True,
     )
 
     categories = []
-    names = ["매크로", "온체인", "파생상품", "알트코인", "기술적분석", "시장분석", "기타"]
-    keys = ["macro", "onchain", "derivatives", "altcoin", "technical", "market", "whale"]
+    names = ["매크로", "온체인", "파생상품", "알트코인", "기술적분석", "시장분석", "기타", "반도체 정점"]
+    keys = ["macro", "onchain", "derivatives", "altcoin", "technical", "market", "whale", "samsung_signals"]
 
     for i, result in enumerate(results):
         if isinstance(result, Exception):
@@ -631,6 +641,64 @@ async def _analyze_whale() -> dict:
             "neutral_count": neutral_count,
             "long_pct": long_pct,
             "short_pct": short_pct,
+            "total": total,
+        },
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+# ─── 반도체 정점 시그널 ────────────────────────────────────────────
+
+async def _analyze_samsung_signals() -> dict:
+    """삼성 반도체 정점 임박 시그널 6개 분석."""
+    signals = SAMSUNG_SIGNALS.copy()
+
+    # 신호 집계
+    red_count = sum(1 for s in signals if s["status"] == "red")
+    yellow_count = sum(1 for s in signals if s["status"] == "yellow")
+    peak_count = yellow_count + red_count
+    total = len(signals)
+
+    # level 판정
+    if red_count >= 1:
+        level = "critical"
+    elif yellow_count >= 3:
+        level = "warning"
+    elif yellow_count >= 1:
+        level = "neutral"
+    else:
+        level = "bullish"
+
+    # score 계산
+    score = (yellow_count * 50 + red_count * 100) // total
+    score = max(0, min(100, score))
+
+    # title 생성
+    if peak_count > 0:
+        title = f"정점 임박 시그널 {peak_count}/{total} 감지"
+    else:
+        title = f"정점 시그널 없음 — {total}개 정상"
+
+    # summary 생성
+    alerted = [s["name"] for s in signals if s["status"] in ("yellow", "red")]
+    if alerted:
+        if len(alerted) <= 3:
+            summary = " · ".join(alerted) + " 모니터링 중"
+        else:
+            summary = " · ".join(alerted[:3]) + f" 외 {len(alerted)-3}개 모니터링 중"
+    else:
+        summary = f"모든 {total}개 시그널 정상"
+
+    return {
+        "key": "samsung_signals",
+        "name": "반도체 정점",
+        "level": level,
+        "score": score,
+        "title": title,
+        "summary": summary,
+        "details": {
+            "signals": signals,
+            "peak_count": peak_count,
             "total": total,
         },
         "updated_at": datetime.now(timezone.utc).isoformat(),
