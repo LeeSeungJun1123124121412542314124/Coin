@@ -92,11 +92,10 @@ const INTERVALS = ['1h', '4h', '1d']
 const REASON_MAP: Record<string, string> = {
   stop_loss: '손절',
   take_profit: '익절',
-  score_signal: '시그널',
   score_exit: '점수이탈',
   flip: '포지션전환',
   period_end: '기간종료',
-  liquidation: '청산',
+  liquidated: '청산',
 }
 
 // ────────────────────────────────────────
