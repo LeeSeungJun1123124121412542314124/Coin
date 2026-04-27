@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   LineChart,
   Line,
@@ -228,15 +228,20 @@ export function CompositeSimulator() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<CompositeResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   function handleRun() {
     if (loading) return
     setLoading(true)
     setError(null)
 
+    const controller = new AbortController()
+    abortRef.current = controller
+
     apiFetch<CompositeResult>('/api/sim/composite-backtest', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify({
         symbol,
         interval,
@@ -253,10 +258,18 @@ export function CompositeSimulator() {
     })
       .then((data) => setResult(data))
       .catch((e: unknown) => {
+        if (e instanceof DOMException && e.name === 'AbortError') return
         const msg = e instanceof Error ? e.message : '백테스트 실패'
         setError(msg)
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        setLoading(false)
+        abortRef.current = null
+      })
+  }
+
+  function handleStop() {
+    abortRef.current?.abort()
   }
 
   // 요약 값 계산
@@ -363,25 +376,45 @@ export function CompositeSimulator() {
             <span style={{ color: '#475569', fontSize: '0.78rem' }}>%</span>
           </label>
 
-          {/* 실행 버튼 */}
-          <button
-            onClick={handleRun}
-            disabled={loading}
-            style={{
-              marginLeft: 'auto',
-              padding: '6px 20px',
-              borderRadius: 6,
-              border: '1px solid #3b82f6',
-              background: loading ? '#1e293b' : 'rgba(59,130,246,0.15)',
-              color: loading ? '#475569' : '#60a5fa',
-              fontSize: '0.85rem',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {loading ? '분석 중...' : '🚀 테스트 실행'}
-          </button>
+          {/* 버튼 영역 */}
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+            <button
+              onClick={handleRun}
+              disabled={loading}
+              style={{
+                padding: '6px 20px',
+                borderRadius: 6,
+                border: `1px solid ${loading ? '#1e293b' : '#3b82f6'}`,
+                background: loading ? '#0f1117' : 'rgba(59,130,246,0.15)',
+                color: loading ? '#334155' : '#60a5fa',
+                fontSize: '0.85rem',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                opacity: loading ? 0.45 : 1,
+              }}
+            >
+              🚀 테스트 실행
+            </button>
+            {loading && (
+              <button
+                onClick={handleStop}
+                style={{
+                  padding: '6px 16px',
+                  borderRadius: 6,
+                  border: '1px solid #ef4444',
+                  background: 'rgba(239,68,68,0.12)',
+                  color: '#f87171',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ⏹ 종료
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 행 3: 임계값, 레버리지, 포지션크기, 초기자본 */}
