@@ -317,11 +317,14 @@ async def _analyze_onchain() -> dict:
             summary += " — 축적 구간 신호"
 
         return {
+            "key": "onchain",
+            "name": "온체인",
             "level": level,
             "score": score,
             "title": title,
             "summary": summary,
             "details": {"signal": signal, "flow_ratio": round(ratio, 3), "inflow": inflow, "outflow": outflow},
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
         logger.error("온체인 분석 실패: %s", e)
