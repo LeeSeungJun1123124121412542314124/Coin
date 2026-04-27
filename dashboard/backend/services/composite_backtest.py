@@ -55,6 +55,14 @@ class CompositeBacktestParams:
             raise ValueError(f"short_threshold must be in (0, 100], got {self.short_threshold}")
         if not (0 <= self.score_exit_buffer < 100):
             raise ValueError("score_exit_buffer는 0 이상 100 미만이어야 합니다")
+        if self.score_exit_buffer >= self.long_threshold:
+            raise ValueError(
+                f"score_exit_buffer({self.score_exit_buffer})는 long_threshold({self.long_threshold})보다 작아야 합니다"
+            )
+        if self.score_exit_buffer >= self.short_threshold:
+            raise ValueError(
+                f"score_exit_buffer({self.score_exit_buffer})는 short_threshold({self.short_threshold})보다 작아야 합니다"
+            )
 
 
 # ---------------------------------------------------------------------------
