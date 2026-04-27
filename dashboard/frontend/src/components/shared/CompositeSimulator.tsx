@@ -143,12 +143,6 @@ function SummaryCard({ label, value, sub, valueColor }: SummaryCardProps) {
 // 커스텀 Tooltip (자본 곡선)
 // ────────────────────────────────────────
 
-interface EquityTooltipPayload {
-  payload?: { timestamp: string; value: number }
-  active?: boolean
-  // recharts는 payload를 배열로 전달하므로 두 가지 형태 허용
-}
-
 function EquityTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: EquityPoint }> }) {
   if (!active || !payload || !payload.length) return null
   const d = payload[0].payload
