@@ -2,7 +2,7 @@
 종합 자동 백테스트 서비스
 
 매크로 점수(research_analyzer)와 기술적 점수(RSI/MACD/BB/ADX)를 합산한
-복합 점수(composite score)를 기반으로 매수/매도 신호를 생성하고
+롱/숏 독립 점수를 기반으로 진입/청산 신호를 생성하고
 지정 기간 내 백테스트 결과를 반환한다.
 """
 
@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pandas as pd
 
@@ -30,6 +30,10 @@ class CompositeBacktestParams:
     stop_loss_pct: float = 3.0
     take_profit_pct: float = 5.0
     initial_capital: float = 10000.0
+    long_threshold: float = 70.0
+    short_threshold: float = 70.0
+    leverage: float = 1.0
+    position_size_pct: float = 100.0
 
     def __post_init__(self):
         if self.stop_loss_pct <= 0:
@@ -38,6 +42,12 @@ class CompositeBacktestParams:
             raise ValueError(f"take_profit_pct must be > 0, got {self.take_profit_pct}")
         if self.initial_capital <= 0:
             raise ValueError(f"initial_capital must be > 0, got {self.initial_capital}")
+        if self.leverage <= 0 or self.leverage > 100:
+            raise ValueError(f"leverage must be > 0 and <= 100, got {self.leverage}")
+        if self.position_size_pct <= 0 or self.position_size_pct > 100:
+            raise ValueError(
+                f"position_size_pct must be > 0 and <= 100, got {self.position_size_pct}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -151,9 +161,79 @@ def calc_tech_bullish_score(details: dict) -> float:
     return sum(scores) / len(scores)
 
 
-def calc_composite(macro_bullish: float, tech_bullish: float) -> float:
-    """매크로·기술적 강세 점수를 4:6 비율로 합산한다."""
-    return macro_bullish * 0.4 + tech_bullish * 0.6
+def calc_tech_bearish_score(details: dict) -> float:
+    """RSI·MACD·BB·ADX 세부 지표를 약세(숏) 점수로 변환 후 평균을 반환한다.
+
+    유효한 지표만 포함해 평균을 구한다. 모두 None이면 50 반환.
+    """
+    scores: list[float] = []
+
+    # RSI: 과매수일수록 숏 강세
+    rsi_val = details.get("rsi")
+    if rsi_val is not None:
+        if rsi_val > 70:
+            scores.append(85.0)   # 과매수 = 숏 강세
+        elif rsi_val > 55:
+            scores.append(65.0)
+        elif rsi_val > 40:
+            scores.append(45.0)
+        else:
+            scores.append(20.0)   # 과매도
+
+    # MACD: 하향 확대일수록 숏 강세
+    macd_val = details.get("macd")
+    if macd_val is not None:
+        hist = macd_val.get("histogram")
+        prev_hist = macd_val.get("prev_histogram")
+        if hist is not None and prev_hist is not None:
+            if hist < 0 and hist < prev_hist:
+                scores.append(75.0)   # 하향 확대
+            elif hist < 0:
+                scores.append(55.0)
+            elif hist > 0 and hist > prev_hist:
+                scores.append(25.0)   # 상향 확대
+            else:
+                scores.append(45.0)
+
+    # BB %B: 상단 근접일수록 숏 강세
+    bb_val = details.get("bb")
+    if bb_val is not None:
+        if bb_val > 0.8:
+            scores.append(80.0)   # 상단 근접 = 숏 강세
+        elif bb_val > 0.6:
+            scores.append(60.0)
+        elif bb_val > 0.4:
+            scores.append(45.0)
+        else:
+            scores.append(25.0)
+
+    # ADX: 강한 하락 추세일수록 숏 강세
+    adx_val = details.get("adx")
+    if adx_val is not None:
+        adx = adx_val.get("adx", 0.0)
+        plus_di = adx_val.get("plus_di", 0.0)
+        minus_di = adx_val.get("minus_di", 0.0)
+        if adx > 25 and minus_di > plus_di:
+            scores.append(70.0)   # 강한 하락 추세
+        elif adx > 25:
+            scores.append(30.0)
+        else:
+            scores.append(50.0)
+
+    if not scores:
+        return 50.0
+    return sum(scores) / len(scores)
+
+
+def calc_long_score(macro_bullish: float, tech_details: dict) -> float:
+    """매크로 강세 + 기술적 강세 점수를 4:6 비율로 합산해 롱 점수를 반환한다."""
+    return macro_bullish * 0.4 + calc_tech_bullish_score(tech_details) * 0.6
+
+
+def calc_short_score(macro_bullish: float, tech_details: dict) -> float:
+    """매크로 약세 + 기술적 약세 점수를 4:6 비율로 합산해 숏 점수를 반환한다."""
+    macro_bearish = 100.0 - macro_bullish
+    return macro_bearish * 0.4 + calc_tech_bearish_score(tech_details) * 0.6
 
 
 # ---------------------------------------------------------------------------
@@ -278,7 +358,12 @@ def _run_backtest_sync(
     params: CompositeBacktestParams,
     macro_bullish: float,
 ) -> dict:
-    """동기 백테스트 루프. 스레드 풀에서 실행된다."""
+    """동기 백테스트 루프. 스레드 풀에서 실행된다.
+
+    롱/숏 독립 점수 시스템, Flip, 레버리지, 수수료, 강제청산을 지원한다.
+    """
+
+    FEE_RATE = 0.0006  # 0.06% 수수료
 
     # start_date / end_date 파싱
     start_ts = (
@@ -313,16 +398,20 @@ def _run_backtest_sync(
     # 전체 DataFrame 기준으로 지표 일괄 계산 (O(n), 루프 외부)
     indicator_series = _compute_all_indicators(full_df)
 
-    capital = params.initial_capital
+    initial_capital = params.initial_capital
+    capital = initial_capital
     position: dict | None = None
     trades: list[dict] = []
     equity_curve: list[dict] = []
+    liquidated = False
+
+    total_candles = len(target_indices)
 
     for seq, idx in enumerate(target_indices):
         candle_row = full_df.iloc[idx]
         loc = full_df.index[idx]
         ts_str = loc.isoformat()
-        close_price = float(candle_row["close"])
+        close = float(candle_row["close"])
 
         # 인덱스 조회만으로 지표값 추출 (재계산 없음)
         details = {
@@ -339,60 +428,183 @@ def _run_backtest_sync(
             },
         }
 
-        tech_bullish = calc_tech_bullish_score(details)
-        composite = calc_composite(macro_bullish, tech_bullish)
+        # 롱/숏 독립 점수 계산
+        long_score = calc_long_score(macro_bullish, details)
+        short_score = calc_short_score(macro_bullish, details)
 
-        is_last_candle = (seq == len(target_indices) - 1)
+        long_threshold = params.long_threshold
+        short_threshold = params.short_threshold
+        is_last = (seq == total_candles - 1)
+
+        # 양쪽 동시 트리거 여부
+        both_triggered = (long_score > long_threshold) and (short_score > short_threshold)
 
         if position is None:
-            # 매수 조건: composite > 70
-            if composite > 70:
+            # ── 포지션 없을 때: 진입 판단 ──
+            if both_triggered:
+                # 양쪽 모두 트리거 → 관망
+                pass
+            elif long_score > long_threshold:
+                # 롱 진입
+                capital *= (1 - FEE_RATE)
                 position = {
-                    "entry_price": close_price,
+                    "direction": "long",
+                    "entry_price": close,
                     "entry_timestamp": ts_str,
-                    "composite_score": composite,
+                    "long_score": long_score,
+                    "short_score": short_score,
                 }
                 trades.append({
-                    "type": "buy",
+                    "type": "entry",
+                    "direction": "long",
                     "timestamp": ts_str,
-                    "price": close_price,
+                    "price": close,
                     "pnl_pct": None,
                     "reason": None,
-                    "composite_score": round(composite, 2),
+                    "long_score": round(long_score, 2),
+                    "short_score": round(short_score, 2),
                 })
+            elif short_score > short_threshold:
+                # 숏 진입
+                capital *= (1 - FEE_RATE)
+                position = {
+                    "direction": "short",
+                    "entry_price": close,
+                    "entry_timestamp": ts_str,
+                    "long_score": long_score,
+                    "short_score": short_score,
+                }
+                trades.append({
+                    "type": "entry",
+                    "direction": "short",
+                    "timestamp": ts_str,
+                    "price": close,
+                    "pnl_pct": None,
+                    "reason": None,
+                    "long_score": round(long_score, 2),
+                    "short_score": round(short_score, 2),
+                })
+
         else:
-            # 매도 조건 확인 (우선순위: 손절 > 익절 > 시그널역전 > 기간종료)
+            # ── 포지션 있을 때: 청산 판단 ──
+            direction = position["direction"]
             entry = position["entry_price"]
             reason: str | None = None
 
-            if close_price <= entry * (1 - params.stop_loss_pct / 100):
-                reason = "stop_loss"
-            elif close_price >= entry * (1 + params.take_profit_pct / 100):
-                reason = "take_profit"
-            elif composite < 30:
-                reason = "score_signal"
-            elif is_last_candle:
+            # 1순위: 손절 (SL)
+            if direction == "long":
+                if close <= entry * (1 - params.stop_loss_pct / 100):
+                    reason = "stop_loss"
+            else:  # short
+                if close >= entry * (1 + params.stop_loss_pct / 100):
+                    reason = "stop_loss"
+
+            # 2순위: 익절 (TP)
+            if reason is None:
+                if direction == "long":
+                    if close >= entry * (1 + params.take_profit_pct / 100):
+                        reason = "take_profit"
+                else:  # short
+                    if close <= entry * (1 - params.take_profit_pct / 100):
+                        reason = "take_profit"
+
+            # 3순위: Flip (반대 방향 신호 강함)
+            if reason is None:
+                if direction == "long" and short_score > short_threshold and not both_triggered:
+                    reason = "flip"
+                elif direction == "short" and long_score > long_threshold and not both_triggered:
+                    reason = "flip"
+
+            # 4순위: 점수 하락 (score_exit)
+            if reason is None:
+                if direction == "long" and long_score <= long_threshold:
+                    reason = "score_exit"
+                elif direction == "short" and short_score <= short_threshold:
+                    reason = "score_exit"
+
+            # 5순위: 기간 종료
+            if reason is None and is_last:
                 reason = "period_end"
 
             if reason:
-                pnl_pct = (close_price - entry) / entry * 100
-                capital *= (1 + pnl_pct / 100)
+                # ── 청산 실행 ──
+                if direction == "long":
+                    raw_return = (close - entry) / entry
+                else:  # short
+                    raw_return = (entry - close) / entry
+
+                pnl_pct = raw_return * params.leverage * 100
+
+                # 청산 수수료 차감
+                capital = capital * (1 + pnl_pct / 100) * (1 - FEE_RATE)
+
+                # 강제청산 확인
+                if capital <= 0:
+                    capital = 0.0
+                    liquidated = True
+                    trades.append({
+                        "type": "exit",
+                        "direction": direction,
+                        "timestamp": ts_str,
+                        "price": close,
+                        "pnl_pct": round(pnl_pct, 4),
+                        "reason": "liquidated",
+                        "long_score": round(long_score, 2),
+                        "short_score": round(short_score, 2),
+                    })
+                    equity_curve.append({
+                        "timestamp": ts_str,
+                        "value": 0.0,
+                    })
+                    position = None
+                    break
+
                 trades.append({
-                    "type": "sell",
+                    "type": "exit",
+                    "direction": direction,
                     "timestamp": ts_str,
-                    "price": close_price,
+                    "price": close,
                     "pnl_pct": round(pnl_pct, 4),
                     "reason": reason,
-                    "composite_score": round(composite, 2),
+                    "long_score": round(long_score, 2),
+                    "short_score": round(short_score, 2),
                 })
+
                 position = None
 
-        # equity_curve 기록
+                # ── Flip: 청산 후 반대 방향 즉시 진입 ──
+                if reason == "flip":
+                    new_dir = "short" if direction == "long" else "long"
+                    capital *= (1 - FEE_RATE)
+                    position = {
+                        "direction": new_dir,
+                        "entry_price": close,
+                        "entry_timestamp": ts_str,
+                        "long_score": long_score,
+                        "short_score": short_score,
+                    }
+                    trades.append({
+                        "type": "entry",
+                        "direction": new_dir,
+                        "timestamp": ts_str,
+                        "price": close,
+                        "pnl_pct": None,
+                        "reason": None,
+                        "long_score": round(long_score, 2),
+                        "short_score": round(short_score, 2),
+                    })
+
+        # ── equity_curve 기록 ──
         if position is None:
             current_value = capital
         else:
             entry = position["entry_price"]
-            current_value = capital * (close_price / entry)
+            dir_ = position["direction"]
+            if dir_ == "long":
+                unrealized_pnl = (close / entry - 1) * params.leverage
+            else:  # short
+                unrealized_pnl = (entry / close - 1) * params.leverage
+            current_value = capital * (1 + unrealized_pnl)
 
         equity_curve.append({
             "timestamp": ts_str,
@@ -400,23 +612,25 @@ def _run_backtest_sync(
         })
 
     # MDD 계산
-    peak = params.initial_capital
+    peak = initial_capital
     max_drawdown = 0.0
     for point in equity_curve:
         val = point["value"]
         if val > peak:
             peak = val
-        dd = (val - peak) / peak * 100
+        dd = (val - peak) / peak * 100 if peak > 0 else 0.0
         if dd < max_drawdown:
             max_drawdown = dd
 
     # 요약 통계
-    sell_trades = [t for t in trades if t["type"] == "sell"]
+    sell_trades = [t for t in trades if t["type"] == "exit"]
+    long_trades = [t for t in sell_trades if t["direction"] == "long"]
+    short_trades = [t for t in sell_trades if t["direction"] == "short"]
     trade_count = len(sell_trades)
-    winning_trades = sum(1 for t in sell_trades if (t["pnl_pct"] or 0) > 0)
+    winning_trades = len([t for t in sell_trades if (t["pnl_pct"] or 0) > 0])
     losing_trades = trade_count - winning_trades
     win_rate = winning_trades / trade_count if trade_count > 0 else 0.0
-    total_return_pct = (capital - params.initial_capital) / params.initial_capital * 100
+    total_return_pct = (capital - initial_capital) / initial_capital * 100
 
     return {
         "summary": {
@@ -425,8 +639,11 @@ def _run_backtest_sync(
             "trade_count": trade_count,
             "winning_trades": winning_trades,
             "losing_trades": losing_trades,
+            "long_trade_count": len(long_trades),
+            "short_trade_count": len(short_trades),
             "max_drawdown_pct": round(max_drawdown, 4),
             "final_capital": round(capital, 4),
+            "liquidated": liquidated,
         },
         "trades": trades,
         "equity_curve": equity_curve,
@@ -500,6 +717,10 @@ async def run_composite_backtest(params: CompositeBacktestParams) -> dict:
             "take_profit_pct": params.take_profit_pct,
             "macro_level": macro_level,
             "macro_bullish_score": macro_bullish,
+            "long_threshold": params.long_threshold,
+            "short_threshold": params.short_threshold,
+            "leverage": params.leverage,
+            "position_size_pct": params.position_size_pct,
         },
     }
 
@@ -518,6 +739,10 @@ if __name__ == "__main__":
             stop_loss_pct=3.0,
             take_profit_pct=5.0,
             initial_capital=10000.0,
+            long_threshold=70.0,
+            short_threshold=70.0,
+            leverage=1.0,
+            position_size_pct=100.0,
         )
         result = await run_composite_backtest(p)
         if "error" in result:
