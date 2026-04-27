@@ -34,6 +34,7 @@ class CompositeBacktestParams:
     short_threshold: float = 70.0
     leverage: float = 1.0
     position_size_pct: float = 100.0
+    score_exit_buffer: float = 15.0
 
     def __post_init__(self):
         if self.stop_loss_pct <= 0:
@@ -52,6 +53,8 @@ class CompositeBacktestParams:
             raise ValueError(f"long_threshold must be in (0, 100], got {self.long_threshold}")
         if not (0 < self.short_threshold <= 100):
             raise ValueError(f"short_threshold must be in (0, 100], got {self.short_threshold}")
+        if not (0 <= self.score_exit_buffer < 100):
+            raise ValueError("score_exit_buffer는 0 이상 100 미만이어야 합니다")
 
 
 # ---------------------------------------------------------------------------
@@ -416,6 +419,8 @@ def _run_backtest_sync(
         loc = full_df.index[idx]
         ts_str = loc.isoformat()
         close = float(candle_row["close"])
+        high = float(candle_row["high"])
+        low = float(candle_row["low"])
 
         # 인덱스 조회만으로 지표값 추출 (재계산 없음)
         details = {
@@ -448,8 +453,8 @@ def _run_backtest_sync(
             if both_triggered:
                 # 양쪽 모두 트리거 → 관망
                 pass
-            elif long_score > long_threshold:
-                # 롱 진입
+            elif long_score > long_threshold and macro_bullish >= 40:
+                # 롱 진입 (bearish 매크로 = macro_bullish < 40 시 차단)
                 size = params.position_size_pct / 100.0
                 allocated = capital * size
                 entry_fee = allocated * FEE_RATE
@@ -503,22 +508,30 @@ def _run_backtest_sync(
             entry = position["entry_price"]
             reason: str | None = None
 
-            # 1순위: 손절 (SL)
-            if direction == "long":
-                if close <= entry * (1 - params.stop_loss_pct / 100):
-                    reason = "stop_loss"
-            else:  # short
-                if close >= entry * (1 + params.stop_loss_pct / 100):
-                    reason = "stop_loss"
+            exit_price = close  # 기본값: 종가 체결
 
-            # 2순위: 익절 (TP)
-            if reason is None:
-                if direction == "long":
-                    if close >= entry * (1 + params.take_profit_pct / 100):
-                        reason = "take_profit"
-                else:  # short
-                    if close <= entry * (1 - params.take_profit_pct / 100):
-                        reason = "take_profit"
+            # 1순위: 손절 (SL) — 저가/고가로 체크, SL 정확한 가격에 체결
+            sl_pct = params.stop_loss_pct / 100
+            tp_pct = params.take_profit_pct / 100
+
+            if direction == "long":
+                sl_price = entry * (1 - sl_pct)
+                tp_price = entry * (1 + tp_pct)
+                if low <= sl_price:
+                    reason = "stop_loss"
+                    exit_price = sl_price
+                elif high >= tp_price:
+                    reason = "take_profit"
+                    exit_price = tp_price
+            else:  # short
+                sl_price = entry * (1 + sl_pct)
+                tp_price = entry * (1 - tp_pct)
+                if high >= sl_price:
+                    reason = "stop_loss"
+                    exit_price = sl_price
+                elif low <= tp_price:
+                    reason = "take_profit"
+                    exit_price = tp_price
 
             # 3순위: Flip (반대 방향 신호 강함)
             if reason is None:
@@ -527,11 +540,13 @@ def _run_backtest_sync(
                 elif direction == "short" and long_score > long_threshold and not both_triggered:
                     reason = "flip"
 
-            # 4순위: 점수 하락 (score_exit)
+            # 4순위: 점수 하락 (score_exit) — buffer만큼 여유 부여
             if reason is None:
-                if direction == "long" and long_score <= long_threshold:
+                exit_long = long_threshold - params.score_exit_buffer
+                exit_short = short_threshold - params.score_exit_buffer
+                if direction == "long" and long_score <= exit_long:
                     reason = "score_exit"
-                elif direction == "short" and short_score <= short_threshold:
+                elif direction == "short" and short_score <= exit_short:
                     reason = "score_exit"
 
             # 5순위: 기간 종료
@@ -541,9 +556,9 @@ def _run_backtest_sync(
             if reason:
                 # ── 청산 실행 ──
                 if direction == "long":
-                    raw_return = (close - entry) / entry
+                    raw_return = (exit_price - entry) / entry
                 else:  # short
-                    raw_return = (entry - close) / entry
+                    raw_return = (entry - exit_price) / entry
 
                 pnl_pct = raw_return * params.leverage * 100
 
@@ -561,7 +576,7 @@ def _run_backtest_sync(
                         "type": "exit",
                         "direction": direction,
                         "timestamp": ts_str,
-                        "price": close,
+                        "price": exit_price,
                         "pnl_pct": round(pnl_pct, 4),
                         "reason": "liquidated",
                         "long_score": round(long_score, 2),
@@ -578,7 +593,7 @@ def _run_backtest_sync(
                     "type": "exit",
                     "direction": direction,
                     "timestamp": ts_str,
-                    "price": close,
+                    "price": exit_price,
                     "pnl_pct": round(pnl_pct, 4),
                     "reason": reason,
                     "long_score": round(long_score, 2),
@@ -590,28 +605,32 @@ def _run_backtest_sync(
                 # ── Flip: 청산 후 반대 방향 즉시 진입 ──
                 if reason == "flip":
                     new_dir = "short" if direction == "long" else "long"
-                    size = params.position_size_pct / 100.0
-                    new_allocated = capital * size
-                    entry_fee = new_allocated * FEE_RATE
-                    capital -= entry_fee
-                    position = {
-                        "direction": new_dir,
-                        "entry_price": close,
-                        "entry_timestamp": ts_str,
-                        "allocated": new_allocated,
-                        "long_score": long_score,
-                        "short_score": short_score,
-                    }
-                    trades.append({
-                        "type": "entry",
-                        "direction": new_dir,
-                        "timestamp": ts_str,
-                        "price": close,
-                        "pnl_pct": None,
-                        "reason": None,
-                        "long_score": round(long_score, 2),
-                        "short_score": round(short_score, 2),
-                    })
+                    # bearish 매크로면 long 방향으로 flip 차단
+                    if new_dir == "long" and macro_bullish < 40:
+                        pass  # flip 진입 없이 포지션 없는 상태로 종료
+                    else:
+                        size = params.position_size_pct / 100.0
+                        new_allocated = capital * size
+                        entry_fee = new_allocated * FEE_RATE
+                        capital -= entry_fee
+                        position = {
+                            "direction": new_dir,
+                            "entry_price": close,
+                            "entry_timestamp": ts_str,
+                            "allocated": new_allocated,
+                            "long_score": long_score,
+                            "short_score": short_score,
+                        }
+                        trades.append({
+                            "type": "entry",
+                            "direction": new_dir,
+                            "timestamp": ts_str,
+                            "price": close,
+                            "pnl_pct": None,
+                            "reason": None,
+                            "long_score": round(long_score, 2),
+                            "short_score": round(short_score, 2),
+                        })
 
         # ── equity_curve 기록 ──
         if position is None:
