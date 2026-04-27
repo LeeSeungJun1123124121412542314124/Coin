@@ -1,8 +1,9 @@
-"""리서치 탭 자동 분석 서비스 — 7개 카테고리 병렬 분석."""
+"""리서치 탭 자동 분석 서비스 — 8개 카테고리 병렬 분석."""
 
 from __future__ import annotations
 
 import asyncio
+import copy
 import logging
 from datetime import datetime, timezone
 
@@ -650,8 +651,12 @@ async def _analyze_whale() -> dict:
 # ─── 반도체 정점 시그널 ────────────────────────────────────────────
 
 async def _analyze_samsung_signals() -> dict:
-    """삼성 반도체 정점 임박 시그널 6개 분석."""
-    signals = SAMSUNG_SIGNALS.copy()
+    """삼성 반도체 정점 임박 시그널 6개 분석.
+
+    현재는 SAMSUNG_SIGNALS 상수 기반 정적 분석.
+    향후 Yahoo Finance(외국인 순매수) 등 async I/O 연동 예정.
+    """
+    signals = copy.deepcopy(SAMSUNG_SIGNALS)
 
     # 신호 집계
     red_count = sum(1 for s in signals if s["status"] == "red")
