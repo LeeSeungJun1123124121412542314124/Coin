@@ -77,6 +77,11 @@ class CompositeBacktestRequest(BaseModel):
     end_date: str = Field(..., description="백테스트 종료일 (YYYY-MM-DD)")
     stop_loss_pct: float = Field(default=3.0, gt=0, le=50, description="손절 비율 (%)")
     take_profit_pct: float = Field(default=5.0, gt=0, le=100, description="익절 비율 (%)")
+    long_threshold: float = Field(default=70.0, ge=1, le=99, description="롱 진입 임계값 (1~99)")
+    short_threshold: float = Field(default=70.0, ge=1, le=99, description="숏 진입 임계값 (1~99)")
+    leverage: float = Field(default=1.0, ge=1, le=100, description="레버리지 (1~100배)")
+    position_size_pct: float = Field(default=100.0, gt=0, le=100, description="포지션 크기 (%)")
+    initial_capital: float = Field(default=10000.0, gt=0, description="초기 자본 (USDT)")
 
 
 # ============================================================
@@ -939,6 +944,11 @@ async def composite_backtest_endpoint(req: CompositeBacktestRequest):
         end_date=req.end_date,
         stop_loss_pct=req.stop_loss_pct,
         take_profit_pct=req.take_profit_pct,
+        long_threshold=req.long_threshold,
+        short_threshold=req.short_threshold,
+        leverage=req.leverage,
+        position_size_pct=req.position_size_pct,
+        initial_capital=req.initial_capital,
     )
     result = await run_composite_backtest(params)
     if "error" in result:
