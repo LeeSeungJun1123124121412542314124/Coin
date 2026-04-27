@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import pandas as pd
 
@@ -48,6 +48,10 @@ class CompositeBacktestParams:
             raise ValueError(
                 f"position_size_pct must be > 0 and <= 100, got {self.position_size_pct}"
             )
+        if not (0 < self.long_threshold <= 100):
+            raise ValueError(f"long_threshold must be in (0, 100], got {self.long_threshold}")
+        if not (0 < self.short_threshold <= 100):
+            raise ValueError(f"short_threshold must be in (0, 100], got {self.short_threshold}")
 
 
 # ---------------------------------------------------------------------------
@@ -446,11 +450,15 @@ def _run_backtest_sync(
                 pass
             elif long_score > long_threshold:
                 # 롱 진입
-                capital *= (1 - FEE_RATE)
+                size = params.position_size_pct / 100.0
+                allocated = capital * size
+                entry_fee = allocated * FEE_RATE
+                capital -= entry_fee
                 position = {
                     "direction": "long",
                     "entry_price": close,
                     "entry_timestamp": ts_str,
+                    "allocated": allocated,
                     "long_score": long_score,
                     "short_score": short_score,
                 }
@@ -466,11 +474,15 @@ def _run_backtest_sync(
                 })
             elif short_score > short_threshold:
                 # 숏 진입
-                capital *= (1 - FEE_RATE)
+                size = params.position_size_pct / 100.0
+                allocated = capital * size
+                entry_fee = allocated * FEE_RATE
+                capital -= entry_fee
                 position = {
                     "direction": "short",
                     "entry_price": close,
                     "entry_timestamp": ts_str,
+                    "allocated": allocated,
                     "long_score": long_score,
                     "short_score": short_score,
                 }
@@ -535,8 +547,11 @@ def _run_backtest_sync(
 
                 pnl_pct = raw_return * params.leverage * 100
 
-                # 청산 수수료 차감
-                capital = capital * (1 + pnl_pct / 100) * (1 - FEE_RATE)
+                # 포지션 allocated 기준으로 손익 및 청산 수수료 계산
+                pos_allocated = position["allocated"]
+                pnl_amount = pos_allocated * (pnl_pct / 100.0)
+                exit_fee = pos_allocated * FEE_RATE
+                capital += pnl_amount - exit_fee
 
                 # 강제청산 확인
                 if capital <= 0:
@@ -575,11 +590,15 @@ def _run_backtest_sync(
                 # ── Flip: 청산 후 반대 방향 즉시 진입 ──
                 if reason == "flip":
                     new_dir = "short" if direction == "long" else "long"
-                    capital *= (1 - FEE_RATE)
+                    size = params.position_size_pct / 100.0
+                    new_allocated = capital * size
+                    entry_fee = new_allocated * FEE_RATE
+                    capital -= entry_fee
                     position = {
                         "direction": new_dir,
                         "entry_price": close,
                         "entry_timestamp": ts_str,
+                        "allocated": new_allocated,
                         "long_score": long_score,
                         "short_score": short_score,
                     }
@@ -600,11 +619,12 @@ def _run_backtest_sync(
         else:
             entry = position["entry_price"]
             dir_ = position["direction"]
+            pos_allocated = position["allocated"]
             if dir_ == "long":
                 unrealized_pnl = (close / entry - 1) * params.leverage
             else:  # short
                 unrealized_pnl = (entry / close - 1) * params.leverage
-            current_value = capital * (1 + unrealized_pnl)
+            current_value = capital + pos_allocated * unrealized_pnl
 
         equity_curve.append({
             "timestamp": ts_str,
