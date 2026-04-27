@@ -16,6 +16,10 @@ from dashboard.backend.collectors.bybit_derivatives import fetch_funding_rate, f
 from dashboard.backend.collectors.fred import calc_m2_yoy, calc_tga_yoy, fetch_m2, fetch_tga
 from dashboard.backend.db.connection import get_db
 from dashboard.backend.services.auto_backtest import run_backtest
+from dashboard.backend.services.composite_backtest import (
+    CompositeBacktestParams,
+    run_composite_backtest,
+)
 from dashboard.backend.services.return_projector import get_projection
 from dashboard.backend.services.signal_analyzer import get_current_signals
 from dashboard.backend.services.sim_engine import calc_liquidation_price
@@ -64,6 +68,15 @@ class PredictionCreate(BaseModel):
         except ValueError:
             raise ValueError('ISO 8601 형식이어야 합니다 (예: 2026-04-19T12:00:00+00:00)')
         return v
+
+
+class CompositeBacktestRequest(BaseModel):
+    symbol: str = Field(default="BTCUSDT", description="거래 심볼 (예: BTCUSDT)")
+    interval: str = Field(default="1h", description="캔들 단위: 1h | 4h | 1d")
+    start_date: str = Field(..., description="백테스트 시작일 (YYYY-MM-DD)")
+    end_date: str = Field(..., description="백테스트 종료일 (YYYY-MM-DD)")
+    stop_loss_pct: float = Field(default=3.0, gt=0, le=50, description="손절 비율 (%)")
+    take_profit_pct: float = Field(default=5.0, gt=0, le=100, description="익절 비율 (%)")
 
 
 # ============================================================
@@ -910,3 +923,24 @@ async def get_win_rate_analysis(
         "winning_trades": winning_trades,
         "indicators": indicators_result,
     }
+
+
+# ============================================================
+# POST /sim/composite-backtest — 종합 자동 백테스트
+# ============================================================
+
+@router.post("/sim/composite-backtest")
+async def composite_backtest_endpoint(req: CompositeBacktestRequest):
+    """매크로 + 기술 지표 복합 점수 기반 자동 트레이딩 시뮬레이션."""
+    params = CompositeBacktestParams(
+        symbol=req.symbol,
+        interval=req.interval,
+        start_date=req.start_date,
+        end_date=req.end_date,
+        stop_loss_pct=req.stop_loss_pct,
+        take_profit_pct=req.take_profit_pct,
+    )
+    result = await run_composite_backtest(params)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
