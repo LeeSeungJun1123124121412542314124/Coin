@@ -73,6 +73,7 @@ interface BacktestParams {
   short_threshold: number
   leverage: number
   position_size_pct: number
+  score_exit_buffer: number
 }
 
 interface CompositeResult {

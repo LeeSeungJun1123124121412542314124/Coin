@@ -519,6 +519,7 @@ def _run_backtest_sync(
             exit_price = close  # 기본값: 종가 체결
 
             # 1순위: 손절 (SL) — 저가/고가로 체크, SL 정확한 가격에 체결
+            # 동일 캔들에서 SL·TP 동시 발생 시 SL 우선 (보수적 백테스트 원칙)
             sl_pct = params.stop_loss_pct / 100
             tp_pct = params.take_profit_pct / 100
 
@@ -768,6 +769,7 @@ async def run_composite_backtest(params: CompositeBacktestParams) -> dict:
             "short_threshold": params.short_threshold,
             "leverage": params.leverage,
             "position_size_pct": params.position_size_pct,
+            "score_exit_buffer": params.score_exit_buffer,
         },
     }
 
