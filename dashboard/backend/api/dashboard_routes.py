@@ -8,7 +8,8 @@ import logging
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from dashboard.backend.collectors.coingecko import fetch_prices, fetch_global, fetch_stablecoin_caps
+from dashboard.backend.collectors.coingecko import fetch_prices, fetch_global, fetch_stablecoin_caps, fetch_market_cap_chart
+from dashboard.backend.collectors.altcoin_season import fetch_altcoin_season
 from dashboard.backend.collectors.yahoo_finance import fetch_us_market
 from dashboard.backend.collectors.bybit_derivatives import (
     fetch_open_interest,
@@ -42,6 +43,8 @@ async def get_dashboard():
         stablecoins,
         hashrate,
         oi_change,
+        market_cap_chart,
+        altcoin_season,
     ) = await asyncio.gather(
         fetch_prices(),
         fetch_global(),
@@ -53,6 +56,8 @@ async def get_dashboard():
         fetch_stablecoin_caps(),
         fetch_hashrate(),
         fetch_oi_change("BTCUSDT"),
+        fetch_market_cap_chart(),
+        fetch_altcoin_season(),
         return_exceptions=True,
     )
 
@@ -67,6 +72,8 @@ async def get_dashboard():
     stablecoins = None if isinstance(stablecoins, Exception) else stablecoins
     hashrate = None if isinstance(hashrate, Exception) else hashrate
     oi_change = None if isinstance(oi_change, Exception) else oi_change
+    market_cap_chart = None if isinstance(market_cap_chart, Exception) else market_cap_chart
+    altcoin_season = None if isinstance(altcoin_season, Exception) else altcoin_season
 
     # BTC 가격 (코인 목록에서 추출)
     btc_price = None
@@ -88,6 +95,11 @@ async def get_dashboard():
     # 김치 프리미엄 히스토리 (최근 7일, DB에서 조회)
     kimchi_history = _get_kimchi_history(days=7)
 
+    # 글로벌 데이터에 시총 차트 병합 (market_cap_chart가 None이면 null로 직렬화됨 — 프론트에서 null 처리 필요)
+    # global_data가 None(fetch 실패)이면 market_cap_chart도 응답에서 누락되는 것은 의도된 동작
+    if global_data:
+        global_data["market_cap_chart"] = market_cap_chart
+
     return JSONResponse({
         "coins": coins,
         "global": global_data,
@@ -105,6 +117,7 @@ async def get_dashboard():
         "onchain": onchain,
         "stablecoins": stablecoins,
         "hashrate": hashrate,
+        "altcoin_season": altcoin_season,
     })
 
 

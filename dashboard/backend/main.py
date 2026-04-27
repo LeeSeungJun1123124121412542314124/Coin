@@ -166,6 +166,13 @@ def _build_app() -> FastAPI:
             logger.info("시작 시 SPF 초기 수집 완료")
         except Exception as e:
             logger.error("시작 시 SPF 초기 수집 실패: %s", e, exc_info=True)
+        try:
+            from dashboard.backend.collectors.bybit_ohlcv import collect_coin_ohlcv_1h
+
+            await collect_coin_ohlcv_1h()
+            logger.info("시작 시 1시간봉 초기 수집 완료")
+        except Exception as e:
+            logger.error("시작 시 1시간봉 초기 수집 실패: %s", e, exc_info=True)
 
     @app.on_event("shutdown")
     async def on_shutdown():
@@ -173,9 +180,22 @@ def _build_app() -> FastAPI:
         logger.info("스케줄러 종료")
 
     # ── 프론트엔드 정적 파일 서빙 ──────────────────────────────
+    # StaticFiles(html=True)는 SPA 라우팅을 지원하지 않음 — /volume 같은 React Router
+    # 경로를 브라우저가 직접 요청하면 dist/volume 파일이 없어 404를 반환함.
+    # catch-all 라우트로 실제 파일은 그대로 서빙하고, 나머지는 index.html 반환.
     if _FRONTEND_DIST.exists():
-        app.mount("/", StaticFiles(directory=str(_FRONTEND_DIST), html=True), name="frontend")
-        logger.info("프론트엔드 서빙: %s", _FRONTEND_DIST)
+        from fastapi.responses import FileResponse as _FileResponse
+
+        _index_html = str(_FRONTEND_DIST / "index.html")
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def spa_fallback(full_path: str):
+            candidate = _FRONTEND_DIST / full_path
+            if candidate.is_file():
+                return _FileResponse(str(candidate))
+            return _FileResponse(_index_html)
+
+        logger.info("프론트엔드 서빙 (SPA): %s", _FRONTEND_DIST)
     else:
         logger.warning("프론트엔드 빌드 없음 (npm run build 필요): %s", _FRONTEND_DIST)
 
@@ -220,6 +240,10 @@ def _mount_dashboard_routers(app: FastAPI) -> None:
     from dashboard.backend.api.whale_routes import router as whale_router
     from dashboard.backend.api.research_routes import router as research_router
     from dashboard.backend.api.visitor_routes import router as visitor_router
+    from dashboard.backend.api.coin_slots_routes import router as coin_slots_router
+    from dashboard.backend.api.stock_index_routes import router as stock_index_router
+    from dashboard.backend.api.stock_slots_routes import router as stock_slots_router
+    from dashboard.backend.api.sim_routes import router as sim_router
     from dashboard.backend.middleware.auth import require_auth
 
     # 인증 불필요 — PIN 검증 엔드포인트
@@ -237,6 +261,10 @@ def _mount_dashboard_routers(app: FastAPI) -> None:
     app.include_router(research_router, prefix="/api", dependencies=_auth_dep)
     app.include_router(visitor_router, prefix="/api", dependencies=_auth_dep)
     app.include_router(alert_router, prefix="/api", dependencies=_auth_dep)
+    app.include_router(coin_slots_router, prefix="/api", dependencies=_auth_dep)
+    app.include_router(stock_index_router, prefix="/api", dependencies=_auth_dep)
+    app.include_router(stock_slots_router, prefix="/api", dependencies=_auth_dep)
+    app.include_router(sim_router, prefix="/api", dependencies=_auth_dep)
 
 
 def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
@@ -246,6 +274,8 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     from dashboard.backend.jobs.collect_whales import collect_whales
     from dashboard.backend.jobs.collect_kimchi import collect_kimchi
     from dashboard.backend.jobs.update_predictions import update_predictions
+    from dashboard.backend.jobs.settle_predictions import settle_expired_predictions
+    from dashboard.backend.collectors.bybit_ohlcv import collect_coin_ohlcv_1h
 
     # SPF 데이터 수집 — 매일 00:10 UTC
     scheduler.add_job(collect_spf, CronTrigger(hour=0, minute=10))
@@ -261,6 +291,12 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
 
     # 김치 프리미엄 히스토리 — 2시간마다
     scheduler.add_job(collect_kimchi, IntervalTrigger(hours=2))
+
+    # 코인 1시간봉 수집 — 매 시간 1분 (1시간 봉 마감 후)
+    scheduler.add_job(collect_coin_ohlcv_1h, CronTrigger(minute=1))
+
+    # 만료 예측 자동 채점 — 매 시간 5분 (OHLCV 수집 완료 후)
+    scheduler.add_job(settle_expired_predictions, CronTrigger(minute=5), id="settle_predictions")
 
     # 봇 분석 — 매시간 이벤트 알림 (긴급/고래)
     @async_retry(max_retries=3, backoff_base=2.0, on_failure=notify_job_failure)

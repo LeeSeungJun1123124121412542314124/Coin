@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
+
 import httpx
 
 from dashboard.backend.cache import cached
@@ -20,6 +22,7 @@ _TICKERS = {
     "GC=F":     {"name": "Gold",       "category": "commodity"},
     "SI=F":     {"name": "Silver",     "category": "commodity"},
     "^KS11":    {"name": "KOSPI",      "category": "korea"},
+    "^KQ11":    {"name": "KOSDAQ",     "category": "korea"},
 }
 
 
@@ -30,10 +33,12 @@ async def _fetch_single_yahoo(client: httpx.AsyncClient, ticker: str) -> dict | 
         resp.raise_for_status()
         data = resp.json()
         result = data["chart"]["result"][0]
-        closes = result["indicators"]["quote"][0]["close"]
-        closes = [c for c in closes if c is not None]
+        quote = result["indicators"]["quote"][0]
+        closes = [c for c in quote.get("close", []) if c is not None]
         if not closes:
             return None
+        highs = [h for h in quote.get("high", []) if h is not None]
+        lows = [l for l in quote.get("low", []) if l is not None]
         current = closes[-1]
         prev = closes[-2] if len(closes) >= 2 else closes[-1]
         change_pct = (current - prev) / prev * 100 if prev else 0
@@ -44,6 +49,8 @@ async def _fetch_single_yahoo(client: httpx.AsyncClient, ticker: str) -> dict | 
             "price": round(current, 4),
             "change_pct": round(change_pct, 2),
             "sparkline": [round(c, 4) for c in closes[-5:]],
+            "high": round(highs[-1], 4) if highs else None,
+            "low": round(lows[-1], 4) if lows else None,
         }
     except Exception:
         return None
@@ -61,6 +68,8 @@ async def _fetch_single_yfinance(ticker: str) -> dict | None:
         current = closes[-1]
         prev = closes[-2] if len(closes) >= 2 else closes[-1]
         change_pct = (current - prev) / prev * 100 if prev else 0
+        highs = hist["High"].tolist()
+        lows = hist["Low"].tolist()
         return {
             "ticker": ticker,
             "name": _TICKERS[ticker]["name"],
@@ -68,6 +77,8 @@ async def _fetch_single_yfinance(ticker: str) -> dict | None:
             "price": round(current, 4),
             "change_pct": round(change_pct, 2),
             "sparkline": [round(c, 4) for c in closes[-5:]],
+            "high": round(highs[-1], 4) if highs else None,
+            "low": round(lows[-1], 4) if lows else None,
         }
     except Exception as e:
         logger.error("yfinance 폴백 실패 (%s): %s", ticker, e)
@@ -76,7 +87,7 @@ async def _fetch_single_yfinance(ticker: str) -> dict | None:
 
 @cached(ttl=300, key_prefix="yahoo_market")
 async def fetch_us_market() -> list | None:
-    """10개 미국 시장 지표 조회."""
+    """미국·한국 시장 지표 조회."""
     import asyncio
 
     async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
@@ -101,3 +112,199 @@ async def fetch_us_market() -> list | None:
 
     final.sort(key=lambda x: x[0])
     return [r for _, r in final] if final else None
+
+
+async def _fetch_single_yahoo_stock(
+    client: httpx.AsyncClient, ticker: str, name: str, tv_symbol: str | None
+) -> dict | None:
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+    try:
+        resp = await client.get(url, params={"interval": "1d", "range": "5d"})
+        resp.raise_for_status()
+        data = resp.json()
+        result = data["chart"]["result"][0]
+        quote = result["indicators"]["quote"][0]
+        closes = [c for c in quote.get("close", []) if c is not None]
+        highs = [h for h in quote.get("high", []) if h is not None]
+        lows = [l for l in quote.get("low", []) if l is not None]
+        if not closes:
+            return None
+        current = closes[-1]
+        prev = closes[-2] if len(closes) >= 2 else closes[-1]
+        change_pct = (current - prev) / prev * 100 if prev else 0
+        return {
+            "ticker": ticker,
+            "name": name,
+            "tv_symbol": tv_symbol,
+            "price": round(current, 4),
+            "change_pct": round(change_pct, 2),
+            "sparkline": [round(c, 4) for c in closes[-5:]],
+            "high": round(highs[-1], 4) if highs else None,
+            "low": round(lows[-1], 4) if lows else None,
+        }
+    except Exception:
+        return None
+
+
+@cached(ttl=300, key_prefix="stock_prices")
+async def fetch_stock_prices(slots: tuple[tuple[str, str, str | None], ...]) -> list[dict]:
+    """개별 주식 현재가 + 스파크라인 (5분 캐시). slots: ((ticker, name, tv_symbol), ...)"""
+    import asyncio
+
+    async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+        results = await asyncio.gather(
+            *[_fetch_single_yahoo_stock(client, ticker, name, tv_symbol) for ticker, name, tv_symbol in slots]
+        )
+    return [r for r in results if r is not None]
+
+
+async def lookup_stock_info(ticker: str) -> dict | None:
+    """Yahoo Finance quoteSummary로 ticker → name/exchange 조회 (캐시 없음, 항상 fresh).
+
+    Args:
+        ticker: 조회할 종목 티커 (예: "AAPL", "005930.KS")
+
+    Returns:
+        성공 시 {"name": str, "exchange": str}, 실패/종목없음 시 None
+        exchange 값은 원본 그대로 반환 (NYSE, NasdaqGS, KRX 등).
+    """
+    url = f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{ticker}"
+    try:
+        async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+            resp = await client.get(url, params={"modules": "price"})
+            resp.raise_for_status()
+            data = resp.json()
+            result = data.get("quoteSummary", {}).get("result")
+            if result is None:
+                logger.warning("lookup_stock_info: result=null, 존재하지 않는 티커일 수 있음 (%s)", ticker)
+                return None
+            if not result:
+                logger.warning("lookup_stock_info: result 빈 배열 (%s)", ticker)
+                return None
+            price_module = result[0].get("price", {})
+            name = price_module.get("shortName") or price_module.get("longName")
+            exchange = price_module.get("exchangeName")
+            if not name or not exchange:
+                logger.warning("lookup_stock_info: name/exchange 누락 (%s) data=%s", ticker, price_module)
+                return None
+            return {"name": name, "exchange": exchange}
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            logger.info("lookup_stock_info: 존재하지 않는 티커 (%s)", ticker)
+        else:
+            logger.warning("lookup_stock_info HTTP 오류 (%s) %s", ticker, e.response.status_code)
+        return None
+    except Exception as e:
+        logger.warning("lookup_stock_info 조회 실패 (%s): %s", ticker, e)
+        return None
+
+
+async def search_stocks(query: str, market: str) -> list[dict]:
+    """Yahoo Finance /v1/finance/search로 종목 검색. 결과를 market에 맞게 필터링.
+
+    Returns: [{"ticker": str, "name": str}, ...] (최대 5개)
+    """
+    _KR_EXCHANGES = {"KSE", "KOE", "KPQ"}  # 코스피, 코스닥, 코넥스
+    _US_EXCHANGES = {"NasdaqGS", "NasdaqCM", "NasdaqGM", "NYQ", "NYSEArca", "NYSEAmerican", "NGM"}
+
+    url = "https://query1.finance.yahoo.com/v1/finance/search"
+    try:
+        async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+            resp = await client.get(url, params={"q": query, "quotesCount": 10, "newsCount": 0, "listsCount": 0})
+            resp.raise_for_status()
+            quotes = resp.json().get("quotes", [])
+
+            allowed = _KR_EXCHANGES if market == "kr" else _US_EXCHANGES
+            results = []
+            for q in quotes:
+                exchange = q.get("exchange", "")
+                ticker = q.get("symbol", "")
+                name = q.get("shortname") or q.get("longname") or ticker
+                if exchange in allowed and ticker:
+                    results.append({"ticker": ticker, "name": name})
+                if len(results) >= 5:
+                    break
+            return results
+    except Exception as e:
+        logger.warning("search_stocks 실패 (%s, %s): %s", query, market, e)
+        return []
+
+
+@cached(ttl=3600, key_prefix="yahoo_ohlcv")
+async def fetch_stock_ohlcv(ticker: str, interval: str = "1d") -> list[dict] | None:
+    """개별 종목 OHLCV 히스토리 — 차트 모달용.
+
+    Args:
+        ticker: 종목 티커 (예: "AAPL", "005930.KS")
+        interval: 봉 단위 ("1d", "1wk", "1mo")
+
+    Returns:
+        성공 시 [{"date": "YYYY-MM-DD", "open": float, "high": float, "low": float, "close": float, "volume": int}],
+        실패 시 None
+    """
+    # interval → Yahoo Finance range 파라미터 매핑
+    _INTERVAL_RANGE: dict[str, str] = {
+        "1d": "1y",
+        "1wk": "5y",
+        "1mo": "max",
+    }
+    yahoo_range = _INTERVAL_RANGE.get(interval, "1y")
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+    try:
+        async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+            resp = await client.get(url, params={"interval": interval, "range": yahoo_range})
+            resp.raise_for_status()
+            chart_result = resp.json().get("chart", {}).get("result")
+            if not chart_result:
+                logger.warning("Yahoo OHLCV 빈 응답 (%s)", ticker)
+                return None
+            result = chart_result[0]
+            timestamps = result.get("timestamp", [])
+            quote = result.get("indicators", {}).get("quote", [{}])[0]
+            opens = quote.get("open", [])
+            highs = quote.get("high", [])
+            lows = quote.get("low", [])
+            closes = quote.get("close", [])
+            volumes = quote.get("volume", [])
+            rows = []
+            for t, o, h, l, c, v in zip(timestamps, opens, highs, lows, closes, volumes):
+                # close가 None인 행 제외
+                if c is None:
+                    continue
+                rows.append({
+                    "date": datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%d"),
+                    "open": round(o, 4) if o is not None else None,
+                    "high": round(h, 4) if h is not None else None,
+                    "low": round(l, 4) if l is not None else None,
+                    "close": round(c, 4),
+                    "volume": int(v) if v is not None else 0,
+                })
+            return rows
+    except Exception as e:
+        logger.warning("OHLCV 히스토리 조회 실패 (%s): %s", ticker, e)
+        return None
+
+
+@cached(ttl=3600, key_prefix="yahoo_history")
+async def fetch_index_history(ticker: str, days: int = 30) -> list[dict] | None:
+    """지수 30일 종가 히스토리 — 모달 차트용."""
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+    try:
+        async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+            resp = await client.get(url, params={"interval": "1d", "range": f"{days}d"})
+            resp.raise_for_status()
+            chart_result = resp.json().get("chart", {}).get("result")
+            if not chart_result:
+                logger.warning("Yahoo 빈 응답 (%s)", ticker)
+                return None
+            result = chart_result[0]
+            timestamps = result.get("timestamp", [])
+            closes = result.get("indicators", {}).get("quote", [{}])[0].get("close", [])
+            return [
+                {"date": datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%d"), "close": round(c, 4)}
+                for t, c in zip(timestamps, closes)
+                if c is not None
+            ]
+    except Exception as e:
+        logger.warning("지수 히스토리 조회 실패 (%s): %s", ticker, e)
+        return None
