@@ -16,6 +16,14 @@ interface CategoryAnalysis {
   updated_at: string
 }
 
+interface SignalItem {
+  id: string
+  name: string
+  status: 'green' | 'yellow' | 'red'
+  label: string
+  note: string
+}
+
 interface ResearchData {
   generated_at: string
   categories: CategoryAnalysis[]
@@ -234,6 +242,49 @@ function _renderDetails(key: string, details: Record<string, unknown>) {
             {' — '}{ins.body}
           </div>
         ))}
+      </div>
+    )
+  }
+
+  if (key === 'samsung_signals') {
+    const signals = (details.signals as SignalItem[]) ?? []
+    const peakCount = (details.peak_count as number) ?? 0
+    const total = (details.total as number) ?? 0
+
+    const statusColorMap: Record<string, string> = {
+      green: '#22c55e',
+      yellow: '#f59e0b',
+      red: '#ef4444',
+    }
+
+    return (
+      <div>
+        {peakCount >= 1 && (
+          <div style={{ fontSize: 11, color: '#f59e0b', marginBottom: 10, fontWeight: 600 }}>
+            ⚠️ {peakCount}/{total} 모니터링
+          </div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {signals.map((signal) => {
+            const statusColor = statusColorMap[signal.status] ?? '#94a3b8'
+            return (
+              <div key={signal.id} style={{ marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, color: statusColor }}>●</span>
+                    <span style={{ fontSize: 12, color: '#cbd5e1' }}>{signal.name}</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: statusColor, fontWeight: 600 }}>{signal.label}</span>
+                </div>
+                {signal.note && (
+                  <div style={{ fontSize: 11, color: '#64748b', marginLeft: 16, marginTop: 2 }}>
+                    {signal.note}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
     )
   }
