@@ -225,6 +225,7 @@ export function CompositeSimulator() {
   const [leverage, setLeverage] = useState(1.0)
   const [positionSizePct, setPositionSizePct] = useState(100.0)
   const [initialCapital, setInitialCapital] = useState(10000)
+  const [scoreExitBuffer, setScoreExitBuffer] = useState(15)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<CompositeResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -254,6 +255,7 @@ export function CompositeSimulator() {
         leverage: leverage,
         position_size_pct: positionSizePct,
         initial_capital: initialCapital,
+        score_exit_buffer: scoreExitBuffer,
       }),
     })
       .then((data) => setResult(data))
@@ -488,6 +490,19 @@ export function CompositeSimulator() {
               style={{ ...numberInputStyle, width: 90 }}
             />
             <span style={{ color: '#475569', fontSize: '0.78rem' }}>$</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>청산버퍼:</span>
+            <input
+              type="number"
+              value={scoreExitBuffer}
+              step={5}
+              min={0}
+              max={49}
+              onChange={(e) => setScoreExitBuffer(Number(e.target.value))}
+              style={numberInputStyle}
+            />
+            <span style={{ color: '#475569', fontSize: '0.78rem' }}>pt</span>
           </label>
         </div>
       </div>

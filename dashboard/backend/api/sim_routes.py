@@ -82,6 +82,7 @@ class CompositeBacktestRequest(BaseModel):
     leverage: float = Field(default=1.0, ge=1, le=100, description="레버리지 (1~100배)")
     position_size_pct: float = Field(default=100.0, gt=0, le=100, description="포지션 크기 (%)")
     initial_capital: float = Field(default=10000.0, gt=0, description="초기 자본 (USDT)")
+    score_exit_buffer: float = Field(default=15.0, ge=0, lt=100, description="score_exit 완충값 — exit 기준 = threshold - buffer")
 
 
 # ============================================================
@@ -949,6 +950,7 @@ async def composite_backtest_endpoint(req: CompositeBacktestRequest):
         leverage=req.leverage,
         position_size_pct=req.position_size_pct,
         initial_capital=req.initial_capital,
+        score_exit_buffer=req.score_exit_buffer,
     )
     result = await run_composite_backtest(params)
     if "error" in result:
