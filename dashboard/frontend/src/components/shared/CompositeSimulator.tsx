@@ -40,15 +40,20 @@ interface TradeSummary {
   losing_trades: number
   max_drawdown_pct: number  // 음수
   final_capital: number
+  long_trade_count: number
+  short_trade_count: number
+  liquidated: boolean
 }
 
 interface TradeEntry {
-  type: 'buy' | 'sell'
+  type: 'entry' | 'exit'
+  direction: 'long' | 'short'
   timestamp: string
   price: number
   pnl_pct: number | null
   reason: string | null
-  composite_score: number
+  long_score: number
+  short_score: number
 }
 
 interface EquityPoint {
@@ -64,7 +69,10 @@ interface BacktestParams {
   stop_loss_pct: number
   take_profit_pct: number
   macro_level: string
-  macro_bullish_score: number
+  long_threshold: number
+  short_threshold: number
+  leverage: number
+  position_size_pct: number
 }
 
 interface CompositeResult {
@@ -85,7 +93,10 @@ const REASON_MAP: Record<string, string> = {
   stop_loss: '손절',
   take_profit: '익절',
   score_signal: '시그널',
+  score_exit: '점수이탈',
+  flip: '포지션전환',
   period_end: '기간종료',
+  liquidation: '청산',
 }
 
 // ────────────────────────────────────────
@@ -210,6 +221,11 @@ export function CompositeSimulator() {
   const [endDate, setEndDate] = useState(defaultEnd)
   const [stopLoss, setStopLoss] = useState(3.0)
   const [takeProfit, setTakeProfit] = useState(5.0)
+  const [longThreshold, setLongThreshold] = useState(70.0)
+  const [shortThreshold, setShortThreshold] = useState(70.0)
+  const [leverage, setLeverage] = useState(1.0)
+  const [positionSizePct, setPositionSizePct] = useState(100.0)
+  const [initialCapital, setInitialCapital] = useState(10000)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<CompositeResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -229,6 +245,11 @@ export function CompositeSimulator() {
         end_date: endDate,
         stop_loss_pct: stopLoss,
         take_profit_pct: takeProfit,
+        long_threshold: longThreshold,
+        short_threshold: shortThreshold,
+        leverage: leverage,
+        position_size_pct: positionSizePct,
+        initial_capital: initialCapital,
       }),
     })
       .then((data) => setResult(data))
@@ -248,7 +269,7 @@ export function CompositeSimulator() {
   const winLossSub = summary ? `${summary.winning_trades}승 ${summary.losing_trades}패` : ''
 
   // 자본 곡선 초기 자본 (첫 번째 값)
-  const initialCapital = result?.equity_curve?.[0]?.value ?? 10000
+  const equityStartCapital = result?.equity_curve?.[0]?.value ?? initialCapital
 
   // 표시할 거래 내역 (최대 50개)
   const displayTrades = result?.trades.slice(0, 50) ?? []
@@ -363,6 +384,80 @@ export function CompositeSimulator() {
             {loading ? '분석 중...' : '🚀 테스트 실행'}
           </button>
         </div>
+
+        {/* 행 3: 임계값, 레버리지, 포지션크기, 초기자본 */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: 14,
+          marginTop: 12,
+        }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>롱임계값:</span>
+            <input
+              type="number"
+              value={longThreshold}
+              step={1}
+              min={1}
+              max={99}
+              onChange={(e) => setLongThreshold(Number(e.target.value))}
+              style={numberInputStyle}
+            />
+            <span style={{ color: '#475569', fontSize: '0.78rem' }}>%</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>숏임계값:</span>
+            <input
+              type="number"
+              value={shortThreshold}
+              step={1}
+              min={1}
+              max={99}
+              onChange={(e) => setShortThreshold(Number(e.target.value))}
+              style={numberInputStyle}
+            />
+            <span style={{ color: '#475569', fontSize: '0.78rem' }}>%</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>레버리지:</span>
+            <input
+              type="number"
+              value={leverage}
+              step={1}
+              min={1}
+              max={100}
+              onChange={(e) => setLeverage(Number(e.target.value))}
+              style={numberInputStyle}
+            />
+            <span style={{ color: '#475569', fontSize: '0.78rem' }}>x</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>포지션크기:</span>
+            <input
+              type="number"
+              value={positionSizePct}
+              step={10}
+              min={10}
+              max={100}
+              onChange={(e) => setPositionSizePct(Number(e.target.value))}
+              style={numberInputStyle}
+            />
+            <span style={{ color: '#475569', fontSize: '0.78rem' }}>%</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>초기자본:</span>
+            <input
+              type="number"
+              value={initialCapital}
+              step={1000}
+              min={100}
+              onChange={(e) => setInitialCapital(Number(e.target.value))}
+              style={{ ...numberInputStyle, width: 90 }}
+            />
+            <span style={{ color: '#475569', fontSize: '0.78rem' }}>$</span>
+          </label>
+        </div>
       </div>
 
       {/* ── 에러 박스 ── */}
@@ -383,6 +478,22 @@ export function CompositeSimulator() {
       {/* ── 결과 패널 ── */}
       {result && (
         <>
+          {/* 청산 경고 배지 */}
+          {result.summary.liquidated && (
+            <div style={{
+              background: 'rgba(239,68,68,0.15)',
+              border: '1px solid #ef4444',
+              borderRadius: 8,
+              padding: '8px 16px',
+              color: '#ef4444',
+              fontSize: '0.82rem',
+              marginBottom: 12,
+              fontWeight: 600,
+            }}>
+              ⚠️ 청산 발생 — 자본이 0에 도달했습니다
+            </div>
+          )}
+
           {/* 요약 카드 3개 */}
           <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
             <SummaryCard
@@ -434,7 +545,7 @@ export function CompositeSimulator() {
                   />
                   <Tooltip content={<EquityTooltip />} />
                   <ReferenceLine
-                    y={initialCapital}
+                    y={equityStartCapital}
                     stroke="#475569"
                     strokeDasharray="4 4"
                   />
@@ -468,7 +579,7 @@ export function CompositeSimulator() {
               fontSize: '0.75rem',
               fontWeight: 600,
             }}>
-              현재 매크로: {result.params.macro_level} (강세점수 {result.params.macro_bullish_score})
+              현재 매크로: {result.params.macro_level}
             </span>
             <span style={{ color: '#475569', fontSize: '0.68rem' }}>
               * 매크로 점수는 현재 시점 기준 정적 적용
@@ -486,12 +597,12 @@ export function CompositeSimulator() {
             {/* 테이블 헤더 */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1.6fr 56px 1.1fr 80px 80px 70px',
+              gridTemplateColumns: '1.4fr 56px 52px 1.0fr 80px 80px 60px 60px',
               padding: '10px 16px',
               borderBottom: '1px solid #1e293b',
               background: '#0f1117',
             }}>
-              {['날짜', '유형', '가격', '수익률', '사유', '점수'].map((col) => (
+              {['날짜', '유형', '방향', '가격', '수익률', '사유', '롱점수', '숏점수'].map((col) => (
                 <div key={col} style={{
                   color: '#64748b',
                   fontSize: '0.68rem',
@@ -515,7 +626,8 @@ export function CompositeSimulator() {
               </div>
             ) : (
               displayTrades.map((trade, idx) => {
-                const isBuy = trade.type === 'buy'
+                const isEntry = trade.type === 'entry'
+                const isLong = trade.direction === 'long'
                 const pnlColor = trade.pnl_pct === null
                   ? '#94a3b8'
                   : trade.pnl_pct >= 0 ? '#22c55e' : '#ef4444'
@@ -529,7 +641,7 @@ export function CompositeSimulator() {
                     key={idx}
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: '1.6fr 56px 1.1fr 80px 80px 70px',
+                      gridTemplateColumns: '1.4fr 56px 52px 1.0fr 80px 80px 60px 60px',
                       padding: '8px 16px',
                       borderBottom: idx < displayTrades.length - 1 ? '1px solid #1e293b' : 'none',
                       background: idx % 2 === 0 ? '#111827' : 'rgba(30,41,59,0.25)',
@@ -542,12 +654,13 @@ export function CompositeSimulator() {
                     </div>
 
                     {/* 유형 */}
-                    <div style={{
-                      color: isBuy ? '#22c55e' : pnlColor,
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                    }}>
-                      {isBuy ? '🟢 매수' : '🔴 매도'}
+                    <div style={{ color: '#94a3b8', fontSize: '0.78rem', fontWeight: 600 }}>
+                      {isEntry ? '진입' : '청산'}
+                    </div>
+
+                    {/* 방향 */}
+                    <div style={{ color: isLong ? '#22c55e' : '#f97316', fontSize: '0.78rem', fontWeight: 600 }}>
+                      {isLong ? '🟢롱' : '🔴숏'}
                     </div>
 
                     {/* 가격 */}
@@ -565,9 +678,14 @@ export function CompositeSimulator() {
                       {reasonStr}
                     </div>
 
-                    {/* 점수 */}
-                    <div style={{ color: '#60a5fa', fontSize: '0.75rem' }}>
-                      {trade.composite_score.toFixed(1)}
+                    {/* 롱점수 */}
+                    <div style={{ color: '#22c55e', fontSize: '0.72rem' }}>
+                      {trade.long_score.toFixed(0)}
+                    </div>
+
+                    {/* 숏점수 */}
+                    <div style={{ color: '#f97316', fontSize: '0.72rem' }}>
+                      {trade.short_score.toFixed(0)}
                     </div>
                   </div>
                 )
