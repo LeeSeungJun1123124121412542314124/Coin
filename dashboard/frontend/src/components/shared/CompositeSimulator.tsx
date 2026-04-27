@@ -680,12 +680,12 @@ export function CompositeSimulator() {
 
                     {/* 롱점수 */}
                     <div style={{ color: '#22c55e', fontSize: '0.72rem' }}>
-                      {trade.long_score.toFixed(0)}
+                      {trade.long_score?.toFixed(0) ?? '-'}
                     </div>
 
                     {/* 숏점수 */}
                     <div style={{ color: '#f97316', fontSize: '0.72rem' }}>
-                      {trade.short_score.toFixed(0)}
+                      {trade.short_score?.toFixed(0) ?? '-'}
                     </div>
                   </div>
                 )
