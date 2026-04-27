@@ -498,7 +498,7 @@ export function CompositeSimulator() {
               value={scoreExitBuffer}
               step={5}
               min={0}
-              max={49}
+              max={Math.max(0, Math.min(longThreshold, shortThreshold) - 1)}
               onChange={(e) => setScoreExitBuffer(Number(e.target.value))}
               style={numberInputStyle}
             />
