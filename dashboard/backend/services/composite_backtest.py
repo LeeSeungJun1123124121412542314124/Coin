@@ -11,7 +11,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
 
 import pandas as pd
 
@@ -32,12 +31,23 @@ class CompositeBacktestParams:
     take_profit_pct: float = 5.0
     initial_capital: float = 10000.0
 
+    def __post_init__(self):
+        if self.stop_loss_pct <= 0:
+            raise ValueError(f"stop_loss_pct must be > 0, got {self.stop_loss_pct}")
+        if self.take_profit_pct <= 0:
+            raise ValueError(f"take_profit_pct must be > 0, got {self.take_profit_pct}")
+        if self.initial_capital <= 0:
+            raise ValueError(f"initial_capital must be > 0, got {self.initial_capital}")
+
 
 # ---------------------------------------------------------------------------
 # 심볼 포맷 변환 (BTCUSDT → BTC/USDT)
 # ---------------------------------------------------------------------------
 
 _KNOWN_QUOTES = ["USDT", "BTC", "ETH", "BNB", "BUSD", "USDC"]
+
+# 인터벌별 밀리초 단위 캔들 크기
+_INTERVAL_MS = {"1h": 3_600_000, "4h": 14_400_000, "1d": 86_400_000}
 
 
 def _normalize_symbol(symbol: str) -> str:
@@ -89,10 +99,10 @@ def calc_tech_bullish_score(details: dict) -> float:
     if rsi_val is not None:
         if rsi_val < 30:
             scores.append(85.0)   # 과매도
-        elif rsi_val < 45:
-            scores.append(65.0)
-        elif rsi_val < 60:
-            scores.append(45.0)
+        elif rsi_val < 50:
+            scores.append(60.0)   # 중립~약한 강세
+        elif rsi_val < 70:
+            scores.append(45.0)   # 중립
         else:
             scores.append(20.0)   # 과매수
 
@@ -147,66 +157,75 @@ def calc_composite(macro_bullish: float, tech_bullish: float) -> float:
 
 
 # ---------------------------------------------------------------------------
-# 개별 지표 직접 계산 (window_df 기반)
+# 전체 DataFrame 기반 지표 일괄 계산 (O(n) 최적화)
 # ---------------------------------------------------------------------------
 
-def _compute_indicators(window_df: pd.DataFrame) -> dict:
-    """RSI·MACD·BB·ADX를 직접 계산해 calc_tech_bullish_score용 details dict를 반환한다."""
-    from app.analyzers.indicators import (  # noqa: WPS433
-        adx as adx_mod,
-        bollinger_bands as bb_mod,
-        rsi as rsi_mod,
+def _safe_float(series: pd.Series, loc) -> float | None:
+    """Series에서 loc 위치 값을 안전하게 float으로 반환한다."""
+    try:
+        val = series.loc[loc]
+        return None if pd.isna(val) else float(val)
+    except Exception:
+        return None
+
+
+def _compute_all_indicators(full_df: pd.DataFrame) -> dict[str, pd.Series]:
+    """전체 OHLCV DataFrame에 대해 RSI/MACD/BB/ADX를 한 번만 계산 후 Series 반환."""
+    close = full_df["close"]
+    high = full_df["high"]
+    low = full_df["low"]
+
+    # RSI (14 period)
+    delta = close.diff()
+    gain = delta.clip(lower=0).rolling(14).mean()
+    loss = (-delta.clip(upper=0)).rolling(14).mean()
+    rs = gain / loss.replace(0, float("nan"))
+    rsi_series = 100 - 100 / (1 + rs)
+
+    # MACD
+    ema12 = close.ewm(span=12, adjust=False).mean()
+    ema26 = close.ewm(span=26, adjust=False).mean()
+    macd_line = ema12 - ema26
+    signal_line = macd_line.ewm(span=9, adjust=False).mean()
+    histogram_series = macd_line - signal_line
+    prev_histogram_series = histogram_series.shift(1)
+
+    # BB %B (20 period)
+    sma20 = close.rolling(20).mean()
+    std20 = close.rolling(20).std()
+    upper = sma20 + 2 * std20
+    lower_band = sma20 - 2 * std20
+    band_width = upper - lower_band
+    bb_series = (close - lower_band) / band_width.replace(0, float("nan"))
+
+    # ADX (14 period)
+    tr = pd.concat(
+        [high - low, (high - close.shift()).abs(), (low - close.shift()).abs()],
+        axis=1,
+    ).max(axis=1)
+    atr = tr.rolling(14).mean()
+    plus_dm = high.diff().clip(lower=0)
+    minus_dm = (-low.diff()).clip(lower=0)
+    plus_dm = plus_dm.where(plus_dm > minus_dm, 0)
+    minus_dm = minus_dm.where(minus_dm > plus_dm, 0)
+    plus_di_series = 100 * plus_dm.rolling(14).mean() / atr
+    minus_di_series = 100 * minus_dm.rolling(14).mean() / atr
+    dx = (
+        (plus_di_series - minus_di_series).abs()
+        / (plus_di_series + minus_di_series).replace(0, float("nan"))
+        * 100
     )
+    adx_series = dx.rolling(14).mean()
 
-    details: dict = {}
-
-    # RSI
-    try:
-        rsi_result = rsi_mod.calculate(window_df)
-        details["rsi"] = rsi_result.get("rsi")
-    except Exception as exc:
-        logger.debug("RSI 계산 실패: %s", exc)
-        details["rsi"] = None
-
-    # MACD — prev_histogram은 histogram 시리즈에서 직접 추출
-    try:
-        close = window_df["close"]
-        ema_fast = close.ewm(span=12, adjust=False).mean()
-        ema_slow = close.ewm(span=26, adjust=False).mean()
-        macd_line = ema_fast - ema_slow
-        signal_line = macd_line.ewm(span=9, adjust=False).mean()
-        histogram = macd_line - signal_line
-        current_hist = float(histogram.iloc[-1])
-        prev_hist = float(histogram.iloc[-2]) if len(histogram) >= 2 else current_hist
-        details["macd"] = {
-            "histogram": current_hist,
-            "prev_histogram": prev_hist,
-        }
-    except Exception as exc:
-        logger.debug("MACD 계산 실패: %s", exc)
-        details["macd"] = None
-
-    # BB (%B)
-    try:
-        bb_result = bb_mod.calculate(window_df)
-        details["bb"] = bb_result.get("percent_b")
-    except Exception as exc:
-        logger.debug("BB 계산 실패: %s", exc)
-        details["bb"] = None
-
-    # ADX
-    try:
-        adx_result = adx_mod.calculate(window_df)
-        details["adx"] = {
-            "adx": adx_result.get("adx", 0.0),
-            "plus_di": adx_result.get("plus_di", 0.0),
-            "minus_di": adx_result.get("minus_di", 0.0),
-        }
-    except Exception as exc:
-        logger.debug("ADX 계산 실패: %s", exc)
-        details["adx"] = None
-
-    return details
+    return {
+        "rsi": rsi_series,
+        "histogram": histogram_series,
+        "prev_histogram": prev_histogram_series,
+        "bb": bb_series,
+        "adx": adx_series,
+        "plus_di": plus_di_series,
+        "minus_di": minus_di_series,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -216,8 +235,7 @@ def _compute_indicators(window_df: pd.DataFrame) -> dict:
 def _fetch_ohlcv(params: CompositeBacktestParams) -> pd.DataFrame | None:
     """DataCollector._get_exchange()로 OHLCV를 수집해 datetime 인덱스 DataFrame을 반환한다.
 
-    워밍업 200개 + 기간 내 캔들을 한 번에 요청한다.
-    ccxt limit 제한(1000봉)을 고려해 충분한 limit으로 요청한다.
+    start_date 기준 워밍업 200봉 이전 시점부터 since를 계산해 요청한다.
     """
     try:
         from app.data.data_collector import DataCollector
@@ -226,10 +244,20 @@ def _fetch_ohlcv(params: CompositeBacktestParams) -> pd.DataFrame | None:
         exchange = collector._get_exchange()
         ccxt_symbol = _normalize_symbol(params.symbol)
 
-        # 넉넉한 limit으로 요청 (워밍업 200 + 백테스트 기간 + 여유)
-        limit = 2000
+        # since 계산: start_date에서 워밍업(200봉) 만큼 앞선 시점
+        if params.start_date:
+            start_ts_ms = int(pd.Timestamp(params.start_date, tz="UTC").timestamp() * 1000)
+            warmup_ms = 200 * _INTERVAL_MS.get(params.interval, 3_600_000)
+            since = start_ts_ms - warmup_ms
+        else:
+            since = None
 
-        raw = exchange.fetch_ohlcv(ccxt_symbol, timeframe=params.interval, limit=limit)
+        raw = exchange.fetch_ohlcv(
+            ccxt_symbol,
+            timeframe=params.interval,
+            limit=2000,
+            since=since,
+        )
         if not raw:
             logger.warning("OHLCV 데이터 없음: symbol=%s", ccxt_symbol)
             return None
@@ -282,24 +310,34 @@ def _run_backtest_sync(
         if not target_indices:
             return {"error": f"워밍업 캔들 부족: 최소 {warmup_min}개 선행 데이터 필요"}
 
+    # 전체 DataFrame 기준으로 지표 일괄 계산 (O(n), 루프 외부)
+    indicator_series = _compute_all_indicators(full_df)
+
     capital = params.initial_capital
     position: dict | None = None
     trades: list[dict] = []
     equity_curve: list[dict] = []
 
     for seq, idx in enumerate(target_indices):
-        # 슬라이딩 윈도우 (현재 캔들 포함)
-        window_df = full_df.iloc[: idx + 1]
         candle_row = full_df.iloc[idx]
-        ts_str = full_df.index[idx].isoformat()
+        loc = full_df.index[idx]
+        ts_str = loc.isoformat()
         close_price = float(candle_row["close"])
 
-        # 기술적 지표 계산
-        try:
-            details = _compute_indicators(window_df)
-        except Exception as exc:
-            logger.warning("지표 계산 실패 (idx=%d): %s", idx, exc)
-            details = {}
+        # 인덱스 조회만으로 지표값 추출 (재계산 없음)
+        details = {
+            "rsi": _safe_float(indicator_series["rsi"], loc),
+            "macd": {
+                "histogram": _safe_float(indicator_series["histogram"], loc),
+                "prev_histogram": _safe_float(indicator_series["prev_histogram"], loc),
+            },
+            "bb": _safe_float(indicator_series["bb"], loc),
+            "adx": {
+                "adx": _safe_float(indicator_series["adx"], loc),
+                "plus_di": _safe_float(indicator_series["plus_di"], loc),
+                "minus_di": _safe_float(indicator_series["minus_di"], loc),
+            },
+        }
 
         tech_bullish = calc_tech_bullish_score(details)
         composite = calc_composite(macro_bullish, tech_bullish)
@@ -409,6 +447,14 @@ async def run_composite_backtest(params: CompositeBacktestParams) -> dict:
         summary, trades, equity_curve, params 키를 포함한 결과 딕셔너리.
         오류 시 {"error": str} 반환 (예외 raise 금지).
     """
+    # 날짜 형식 사전 검증
+    for date_field in (params.start_date, params.end_date):
+        if date_field:
+            try:
+                pd.Timestamp(date_field)
+            except Exception:
+                return {"error": f"날짜 형식 오류: {date_field!r} (예: '2024-01-01')"}
+
     loop = asyncio.get_running_loop()
 
     # 심볼 정규화
