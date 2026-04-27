@@ -325,7 +325,7 @@ export function Research() {
   const [activeCategory, setActiveCategory] = useState('전체')
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
 
-  const { data, loading, error, refetch, lastUpdated } = useApi<ResearchData>('/api/research-analysis', 120_000)
+  const { data, loading, error, refetch, lastUpdated } = useApi<ResearchData>('/api/research-analysis', 600_000)
 
   const categories = data?.categories ?? []
   const filtered = activeCategory === '전체'

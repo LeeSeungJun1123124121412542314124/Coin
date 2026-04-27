@@ -29,7 +29,6 @@ SAMSUNG_SIGNALS = [
 ]
 
 
-@cached(ttl=120, key_prefix="research_analysis")
 async def analyze_all() -> dict:
     """8개 카테고리 분석을 병렬 실행하여 통합 결과 반환."""
     results = await asyncio.gather(
@@ -90,6 +89,7 @@ def _score_to_level(score: int) -> str:
 
 # ─── 파생상품 ────────────────────────────────────────────────────────
 
+@cached(ttl=600, key_prefix="research_derivatives")
 async def _analyze_derivatives() -> dict:
     from dashboard.backend.services.spf_service import (
         get_today_spf, calc_bearish_score, calc_bullish_score,
@@ -168,6 +168,7 @@ async def _analyze_derivatives() -> dict:
 
 # ─── 기술적분석 ──────────────────────────────────────────────────────
 
+@cached(ttl=600, key_prefix="research_technical")
 async def _analyze_technical() -> dict:
     loop = asyncio.get_running_loop()
 
@@ -241,6 +242,7 @@ async def _analyze_technical() -> dict:
 
 # ─── 시장분석 ────────────────────────────────────────────────────────
 
+@cached(ttl=600, key_prefix="research_market")
 async def _analyze_market() -> dict:
     from dashboard.backend.api.market_routes import _get_dashboard_snapshot
     from dashboard.backend.services.market_insight import (
@@ -280,6 +282,7 @@ async def _analyze_market() -> dict:
 
 # ─── 온체인 ─────────────────────────────────────────────────────────
 
+@cached(ttl=600, key_prefix="research_onchain")
 async def _analyze_onchain() -> dict:
     try:
         from app.data.data_collector import DataCollector
@@ -330,20 +333,10 @@ async def _analyze_onchain() -> dict:
         logger.error("온체인 분석 실패: %s", e)
         return _error_category("onchain", "온체인")
 
-    return {
-        "key": "onchain",
-        "name": "온체인",
-        "level": result["level"],
-        "score": result["score"],
-        "title": result["title"],
-        "summary": result["summary"],
-        "details": result["details"],
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }
-
 
 # ─── 매크로 ─────────────────────────────────────────────────────────
 
+@cached(ttl=86400, key_prefix="research_macro")
 async def _analyze_macro() -> dict:
     from dashboard.backend.collectors.fred import fetch_tga, fetch_m2, fetch_soma, calc_tga_yoy, calc_m2_yoy
     from dashboard.backend.collectors.yahoo_finance import fetch_us_market
@@ -481,6 +474,7 @@ async def _analyze_macro() -> dict:
 
 # ─── 알트코인 ────────────────────────────────────────────────────────
 
+@cached(ttl=600, key_prefix="research_altcoin")
 async def _analyze_altcoin() -> dict:
     from dashboard.backend.collectors.coingecko import fetch_prices, fetch_global
 
@@ -554,6 +548,7 @@ async def _analyze_altcoin() -> dict:
 
 # ─── 기타(고래) ──────────────────────────────────────────────────────
 
+@cached(ttl=600, key_prefix="research_whale")
 async def _analyze_whale() -> dict:
     from dashboard.backend.collectors.hyperliquid import fetch_top_whale_positions
     from dashboard.backend.db.connection import get_db
@@ -653,6 +648,7 @@ async def _analyze_whale() -> dict:
 
 # ─── 반도체 정점 시그널 ────────────────────────────────────────────
 
+@cached(ttl=86400, key_prefix="research_samsung")
 async def _analyze_samsung_signals() -> dict:
     """삼성 반도체 정점 임박 시그널 6개 분석.
 
