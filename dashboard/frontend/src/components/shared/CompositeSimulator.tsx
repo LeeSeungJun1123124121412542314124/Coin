@@ -9,6 +9,8 @@ import {
   ReferenceLine,
 } from 'recharts'
 import { apiFetch } from '../../lib/api'
+import { TuningResultTable } from './TuningResultTable'
+import type { TuningParamsForReplay } from './TuningResultTable'
 
 // ────────────────────────────────────────
 // 날짜 유틸
@@ -507,6 +509,25 @@ export function CompositeSimulator() {
           </label>
         </div>
       </div>
+
+      {/* ── 자동 튜닝 패널 (Walk-Forward) ── */}
+      <TuningResultTable
+        symbol={symbol}
+        interval={interval}
+        startDate={startDate}
+        endDate={endDate}
+        initialCapital={initialCapital}
+        onSelectParams={(p: TuningParamsForReplay) => {
+          // 행 클릭 시 입력 패널 7개 핵심 파라미터 갱신
+          setLongThreshold(p.long_threshold)
+          setShortThreshold(p.short_threshold)
+          setScoreExitBuffer(p.score_exit_buffer)
+          setStopLoss(p.stop_loss_pct)
+          setTakeProfit(p.take_profit_pct)
+          setPositionSizePct(p.position_size_pct)
+          setLeverage(p.leverage)
+        }}
+      />
 
       {/* ── 에러 박스 ── */}
       {error && (
