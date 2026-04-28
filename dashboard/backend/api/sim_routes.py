@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from asyncio import gather
 from datetime import datetime, timezone
 from typing import Literal, Optional
 
-from fastapi import APIRouter, HTTPException, Path, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Path, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
@@ -16,6 +17,10 @@ from dashboard.backend.collectors.bybit_derivatives import fetch_funding_rate, f
 from dashboard.backend.collectors.fred import calc_m2_yoy, calc_tga_yoy, fetch_m2, fetch_tga
 from dashboard.backend.db.connection import get_db
 from dashboard.backend.services.auto_backtest import run_backtest
+from dashboard.backend.services.backtest_tuner import (
+    get_job_path,
+    run_walk_forward,
+)
 from dashboard.backend.services.composite_backtest import (
     CompositeBacktestParams,
     run_composite_backtest,
@@ -956,3 +961,68 @@ async def composite_backtest_endpoint(req: CompositeBacktestRequest):
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return result
+
+
+# ============================================================
+# POST /sim/tune — 자동 튜닝(Walk-forward) 시작
+# ============================================================
+
+class TuningRequest(BaseModel):
+    symbol: str = Field(default="BTCUSDT", description="거래 심볼 (튜닝 자체는 단일 심볼)")
+    interval: str = Field(default="1h", description="캔들 단위: 1h | 4h | 1d")
+    start_date: str = Field(..., description="튜닝 데이터 시작일 (YYYY-MM-DD)")
+    end_date: str = Field(..., description="튜닝 데이터 종료일 (YYYY-MM-DD)")
+    initial_capital: float = Field(default=10000.0, gt=0, description="초기 자본 (USDT)")
+    n_trials: int = Field(default=200, ge=20, le=1000, description="윈도우당 Optuna trial 수")
+    n_windows: int = Field(default=9, ge=3, le=12, description="walk-forward 윈도우 수")
+
+
+class TuningStartResponse(BaseModel):
+    job_id: str
+    status: str = "queued"
+
+
+@router.post("/sim/tune", response_model=TuningStartResponse)
+async def start_tuning(req: TuningRequest, background_tasks: BackgroundTasks):
+    """자동 튜닝 작업을 비동기로 큐잉하고 job_id를 반환한다.
+
+    실제 실행은 BackgroundTasks가 별 thread에서 호출 (FastAPI는 sync def
+    background에 thread pool을 자동 사용).
+    """
+    job_id = str(uuid.uuid4())
+
+    base_params = CompositeBacktestParams(
+        symbol=req.symbol,
+        interval=req.interval,
+        start_date=req.start_date,
+        end_date=req.end_date,
+        initial_capital=req.initial_capital,
+    )
+
+    background_tasks.add_task(
+        run_walk_forward,
+        job_id,
+        base_params,
+        req.n_trials,
+        req.n_windows,
+    )
+
+    return TuningStartResponse(job_id=job_id, status="queued")
+
+
+# ============================================================
+# GET /sim/tune/{job_id} — 진행률 + 결과 조회
+# ============================================================
+
+@router.get("/sim/tune/{job_id}")
+async def get_tuning_status(job_id: str = Path(..., description="튜닝 작업 ID")):
+    """튜닝 작업 상태를 반환한다 (queued/running/completed/failed)."""
+    path = get_job_path(job_id)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"job_id={job_id} 작업을 찾을 수 없습니다")
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as exc:
+        logger.exception("튜닝 결과 파일 읽기 실패: %s", path)
+        raise HTTPException(status_code=500, detail=f"결과 파일 읽기 실패: {exc}")

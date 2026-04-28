@@ -40,6 +40,13 @@ Thumbs.db
 
 # 로그
 *.log
+logs/
+
+# 백테스트 자동 튜닝 결과 (대용량, 반복 생성 자산 — git 미커밋)
+backtest/results/tuning/
+
+# Superpowers 로컬 캐시
+docs/superpowers/
 
 # Git worktrees
 .worktrees/
