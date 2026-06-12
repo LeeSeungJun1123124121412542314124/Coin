@@ -127,3 +127,19 @@ def test_technical_analyzer_surfaces_direction_inputs(sample_ohlcv_df):
     assert d["ha_direction"] in ("bullish", "bearish", "neutral")
     assert d["hma_cross"] in ("golden", "death", None)
     assert d["macd_cross"] in ("golden", "death", None)
+
+
+def test_aggregator_attaches_direction():
+    from app.analyzers.base import AnalysisResult
+    from app.analyzers.score_aggregator import ScoreAggregator
+
+    onchain = AnalysisResult(score=50, signal="NEUTRAL",
+                             details={"flow_ratio": 0.8, "mvrv": 0.5, "whale_alert": False})
+    technical = AnalysisResult(score=50, signal="LOW",
+                               details={"ha_direction": "bullish", "hma_cross": "golden",
+                                        "macd_cross": "golden"})
+    sentiment = AnalysisResult(score=50, signal="NEUTRAL", details={"fear_greed_index": 10})
+
+    agg = ScoreAggregator().aggregate(onchain, technical, sentiment, derivatives=None)
+    assert agg.direction is not None
+    assert agg.direction.final_direction == "long"

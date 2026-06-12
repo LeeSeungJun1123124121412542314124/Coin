@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.analyzers.base import AnalysisResult
+from app.analyzers.direction_model import DirectionBias, compute_direction
 
 _HIGH_THRESHOLD = 85      # 백테스트 기반: 75% 정밀도
 _MEDIUM_THRESHOLD = 65
@@ -35,6 +36,7 @@ class AggregatedResult:
     whale_alert: bool
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     details: dict[str, Any] = field(default_factory=dict)
+    direction: DirectionBias | None = None
 
 
 class ScoreAggregator:
@@ -94,10 +96,25 @@ class ScoreAggregator:
             details["oi_3d_chg_pct"] = derivatives.details.get("oi_3d_chg_pct", 0.0)
             details["funding_rate"] = derivatives.details.get("funding_rate", 0.0)
 
+        details["final_score"] = score
+
+        tdet = technical.details
+        direction = compute_direction(
+            ha_bullish=tdet.get("ha_direction") == "bullish",
+            ha_bearish=tdet.get("ha_direction") == "bearish",
+            hma_cross=tdet.get("hma_cross"),
+            macd_cross=tdet.get("macd_cross"),
+            funding_rate=(derivatives.details.get("funding_rate") if derivatives else None),
+            flow_ratio=onchain.details.get("flow_ratio"),
+            mvrv=onchain.details.get("mvrv"),
+            fear_greed=sentiment.details.get("fear_greed_index"),
+        )
+
         return AggregatedResult(
             final_score=score,
             alert_score=tech_score,
             alert_level=alert_level,
             whale_alert=whale_alert,
             details=details,
+            direction=direction,
         )
