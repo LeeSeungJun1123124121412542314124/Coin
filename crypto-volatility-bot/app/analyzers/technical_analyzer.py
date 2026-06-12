@@ -71,6 +71,10 @@ class TechnicalAnalyzer(BaseAnalyzer):
         details["base_score"] = base_score
         details["signal_boost"] = boost_details
 
+        # 방향 모델용 raw 입력 surface (부스터 게이트와 무관하게 항상 계산)
+        ha_mode = self._ha_filter_cfg.get("mode", "simple")
+        details.update(self._compute_direction_inputs(df, ha_mode))
+
         high_th = self._signals["high_threshold"]
         med_th = self._signals["medium_threshold"]
         min_base = self._signals.get("min_base_for_signal", 0)
@@ -300,6 +304,39 @@ class TechnicalAnalyzer(BaseAnalyzer):
             "atr_series": atr_series,
             "hma": hma_series,
         }
+
+    @staticmethod
+    def _compute_direction_inputs(df: pd.DataFrame, ha_mode: str = "simple") -> dict[str, Any]:
+        """방향 모델용 raw 입력: HA 캔들 방향 + HMA/MACD 크로스."""
+        from app.analyzers.indicators import heikin_ashi, hull_ma, macd
+
+        ha = heikin_ashi.calculate(df, mode=ha_mode)
+        if ha["ha_bullish"]:
+            ha_direction = "bullish"
+        elif ha["ha_bearish"]:
+            ha_direction = "bearish"
+        else:
+            ha_direction = "neutral"
+
+        close = df["close"]
+        mhull = hull_ma.hma(close, 30)
+        shull = hull_ma.hma(close, 10)
+        hma_cross: str | None = None
+        if (
+            len(mhull) >= 2
+            and not pd.isna(mhull.iloc[-1]) and not pd.isna(shull.iloc[-1])
+            and not pd.isna(mhull.iloc[-2]) and not pd.isna(shull.iloc[-2])
+        ):
+            pm, ps = float(mhull.iloc[-2]), float(shull.iloc[-2])
+            cm, cs = float(mhull.iloc[-1]), float(shull.iloc[-1])
+            if pm <= ps and cm > cs:
+                hma_cross = "golden"
+            elif pm >= ps and cm < cs:
+                hma_cross = "death"
+
+        macd_cross = macd.calculate(df)["crossover"]  # "golden" / "death" / None
+
+        return {"ha_direction": ha_direction, "hma_cross": hma_cross, "macd_cross": macd_cross}
 
     def _evaluate_booster(
         self,

@@ -117,3 +117,13 @@ def test_confidence_below_cutoff_neutral():
     assert b.confidence == 25.0
     assert b.primary_direction == "long"
     assert b.final_direction == "neutral"
+
+
+def test_technical_analyzer_surfaces_direction_inputs(sample_ohlcv_df):
+    from app.analyzers.technical_analyzer import TechnicalAnalyzer
+
+    result = TechnicalAnalyzer().analyze(sample_ohlcv_df)
+    d = result.details
+    assert d["ha_direction"] in ("bullish", "bearish", "neutral")
+    assert d["hma_cross"] in ("golden", "death", None)
+    assert d["macd_cross"] in ("golden", "death", None)
