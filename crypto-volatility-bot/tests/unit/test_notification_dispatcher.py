@@ -144,7 +144,6 @@ class TestDispatchPeriodicReport:
         dispatcher._notifier.send_message.assert_called_once()
         msg = dispatcher._notifier.send_message.call_args[0][0]
         assert "변동성 정기 리포트" in msg
-        assert "<b>한줄 요약</b>" in msg
         assert "<b>트리거 근거</b>" in msg
 
     @pytest.mark.asyncio

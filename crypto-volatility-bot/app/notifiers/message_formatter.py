@@ -39,6 +39,55 @@ _SIGNAL_EMOJI = {
     "LIQUIDATION_RISK": "💥",
 }
 
+_DIRECTION_LABEL = {"long": "롱", "short": "숏", "neutral": "중립"}
+
+# 변동성 등급 버킷 (alert_level → LOW/MID/HIGH)
+_VOL_BUCKET = {
+    "CONFIRMED_HIGH": "HIGH", "HIGH": "HIGH", "LIQUIDATION_RISK": "HIGH",
+    "MEDIUM": "MID", "LOW": "LOW",
+}
+
+_RECO_MATRIX = {
+    ("LOW", "long"): "변동성 낮음, 롱 우위(약)",
+    ("LOW", "short"): "변동성 낮음, 숏 우위(약)",
+    ("LOW", "neutral"): "변동성 낮음, 관망",
+    ("MID", "long"): "변동성 보통, 롱 우위",
+    ("MID", "short"): "변동성 보통, 숏 우위",
+    ("MID", "neutral"): "변동성 보통, 방향 불명확",
+    ("HIGH", "long"): "단기 롱 우위, 변동성 확대 주의",
+    ("HIGH", "short"): "단기 숏 우위, 변동성 확대 주의",
+    ("HIGH", "neutral"): "변동성 확대 경보, 방향 불명확 — 포지션 축소 권고",
+}
+_RECO_FALLBACK = {"LOW": "변동성 낮음", "MID": "변동성 보통", "HIGH": "변동성 확대 경보"}
+
+
+def _direction_recommendation(alert_level: str, bias: Any, mvrv: Any) -> str:
+    """alert_level × 방향 9칸 매트릭스 + <30 폴백 + MVRV 중간 과열 부기."""
+    from app.analyzers import direction_constants as DC
+
+    bucket = _VOL_BUCKET.get(str(alert_level), "MID")
+    if bias is None or bias.confidence < DC.CONFIDENCE_CUTOFF:
+        reco = _RECO_FALLBACK[bucket]
+    else:
+        reco = _RECO_MATRIX[(bucket, bias.final_direction)]
+
+    mvrv_val = _to_float(mvrv, float("nan"))
+    if mvrv_val == mvrv_val and DC.MVRV_RISK_LOW <= mvrv_val <= DC.MVRV_OVERHEATED:
+        reco += " · MVRV 과열 위험"
+    return reco
+
+
+def _format_direction_section(bias: Any) -> list[str]:
+    """신설 '방향' 섹션."""
+    if bias is None:
+        return []
+    label = _DIRECTION_LABEL.get(bias.final_direction, "중립")
+    return [
+        "<b>🧭 방향</b>",
+        f"방향: {label} (신뢰도 {bias.confidence:.0f}/100)",
+        f"근거: {bias.evidence}",
+    ]
+
 
 def _fr_pct(fr: float) -> str:
     """펀딩레이트를 퍼센트 문자열로 변환."""
@@ -131,7 +180,7 @@ def _format_tech_detail(d: dict[str, Any]) -> list[str]:
 
     lines = [
         "<b>📈 기술적 분석</b>",
-        f"종합 {_to_float(d.get('final_score_', tech_score)):.0f}/100 | 기술 {tech_score:.1f}",
+        f"종합 {_to_float(d.get('final_score', tech_score)):.1f}/100 | 기술 {tech_score:.1f}",
     ]
 
     # OBV divergence
@@ -304,6 +353,10 @@ class MessageFormatter:
             "",
         ]
         lines += _format_tech_detail(d)
+        # 신설 '방향' 섹션
+        direction_lines = _format_direction_section(getattr(result, "direction", None))
+        if direction_lines:
+            lines += [""] + direction_lines
         lines += [
             "",
             "<b>핵심 지표</b>",
@@ -320,7 +373,8 @@ class MessageFormatter:
             lines.append("- 기술 점수 분해 데이터 없음")
         lines.append(f"- 활성 부스터: {booster_top3}")
 
-        lines += ["", f"💡 {_recommendation(result.alert_level)}"]
+        reco = _direction_recommendation(result.alert_level, getattr(result, "direction", None), d.get("mvrv"))
+        lines += ["", f"💡 {reco}"]
         return "\n".join(lines)
 
     def daily_summary(self, symbol: str, stats: dict[str, Any]) -> str:

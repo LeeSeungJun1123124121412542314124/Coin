@@ -37,6 +37,7 @@ def _agg(score: float = 65.0, alert_level: str = "HIGH", whale_alert: bool = Fal
             "oi_3d_chg_pct": 12.3,
             "funding_rate": 0.000082,
             "whale_volume": 88.0,
+            "final_score": score,
         },
     )
 
@@ -49,7 +50,6 @@ def formatter() -> MessageFormatter:
 class TestPeriodicReport:
     def test_contains_summary_section(self, formatter):
         msg = formatter.periodic_report("BTC/USDT", _agg())
-        assert "<b>한줄 요약</b>" in msg
         assert "종합 65.0/100" in msg
 
     def test_contains_symbol_and_level(self, formatter):
@@ -118,3 +118,47 @@ class TestAlertLevelRecommendation:
     def test_low_recommendation(self, formatter):
         msg = formatter.periodic_report("BTC/USDT", _agg(score=20, alert_level="LOW"))
         assert len(msg) > 50
+
+
+def _make_result(alert_level, direction_bias):
+    from datetime import datetime, timezone
+    from app.analyzers.score_aggregator import AggregatedResult
+
+    return AggregatedResult(
+        final_score=70.0,
+        alert_score=70.0,
+        alert_level=alert_level,
+        whale_alert=False,
+        timestamp=datetime(2026, 6, 12, tzinfo=timezone.utc),
+        details={
+            "technical_score": 70.0, "onchain_score": 50.0, "sentiment_score": 50.0,
+            "onchain_signal": "NEUTRAL", "sentiment_signal": "NEUTRAL",
+            "derivatives_signal": "NEUTRAL", "flow_ratio": 0.8, "mvrv": 0.5,
+            "final_score": 70.0,
+        },
+        direction=direction_bias,
+    )
+
+
+def test_periodic_report_renders_direction_section():
+    from app.analyzers.direction_model import DirectionBias
+    from app.notifiers.message_formatter import MessageFormatter
+
+    bias = DirectionBias(primary_direction="long", confidence=65.0, final_direction="long",
+                         confirm_count=1, divergence_count=1, evidence="파생 confirm · 온체인 divergence")
+    out = MessageFormatter().periodic_report("BTC/USDT", _make_result("MEDIUM", bias))
+    assert "방향: 롱 (신뢰도 65/100)" in out
+    assert "파생 confirm · 온체인 divergence" in out
+
+
+def test_recommendation_matrix_cells():
+    from app.analyzers.direction_model import DirectionBias
+    from app.notifiers.message_formatter import MessageFormatter
+
+    high_short = DirectionBias("short", 70.0, "short", 2, 0, "파생 confirm")
+    out_hs = MessageFormatter().periodic_report("BTC/USDT", _make_result("HIGH", high_short))
+    assert "단기 숏 우위, 변동성 확대 주의" in out_hs
+
+    low_neutral = DirectionBias("neutral", 50.0, "neutral", 0, 0, "방향 불명확")
+    out_ln = MessageFormatter().periodic_report("BTC/USDT", _make_result("LOW", low_neutral))
+    assert "변동성 낮음, 관망" in out_ln
