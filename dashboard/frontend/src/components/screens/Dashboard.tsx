@@ -20,6 +20,7 @@ import { StockCard } from '../shared/StockCard'
 import { StockSlotEditor } from '../shared/StockSlotEditor'
 import { EconomicNewsSection } from '../shared/EconomicNewsSection'
 import { AltcoinSeasonCard } from '../shared/AltcoinSeasonCard'
+import { MacroHealthCard } from '../shared/MacroHealthCard'
 import { KrStockChart } from '../shared/KrStockChart'
 
 interface DashboardData {
@@ -359,6 +360,11 @@ export function Dashboard() {
             )
           })}
         </div>
+      </section>
+
+      {/* ── 데이터 상태 (방향 모델 입력 신선도) ── */}
+      <section>
+        <MacroHealthCard />
       </section>
 
       {/* ── 알트코인 시즌 지수 ── */}
