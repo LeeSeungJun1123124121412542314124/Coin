@@ -161,3 +161,24 @@ def test_recommendation_matrix_cells():
     neutral_tilt = DirectionTilt("neutral", 10.0, 0.05, {}, 0)
     out_ln = MessageFormatter().periodic_report("BTC/USDT", _make_result("LOW"), market_tilt=neutral_tilt)
     assert "변동성 낮음, 관망" in out_ln
+
+
+def test_dashboard_summary_interpretations():
+    from app.notifiers.message_formatter import _format_dashboard_summary, _interp_fng, _interp_kimchi
+
+    assert _interp_fng(28) == "공포"
+    assert _interp_fng(10) == "극단적 공포"
+    assert _interp_fng(80) == "극단적 탐욕"
+    assert _interp_kimchi(2.3) == "국내 수요 우위"
+    assert _interp_kimchi(-2.0) == "역프·국내 약세"
+
+    ctx = {
+        "kimchi_pct": 2.3, "oi_change_24h_pct": 5.2,
+        "stablecoins": [{"symbol": "USDT", "market_cap": 1.65e11, "change_24h": 0.3}],
+    }
+    text = "\n".join(_format_dashboard_summary(
+        {"fear_greed_index": 28, "mvrv": 1.19, "mvrv_signal": "UNDERVALUED"}, ctx))
+    assert "F&G: 28 (공포)" in text
+    assert "김프: +2.30% (국내 수요 우위)" in text
+    assert "OI 변화: +5.2% (24h, 레버리지 확대)" in text
+    assert "유동성 유입" in text

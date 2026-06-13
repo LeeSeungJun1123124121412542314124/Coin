@@ -118,8 +118,32 @@ def _recommendation(level: str) -> str:
     return _RECOMMENDATIONS.get(level, "변동성 변화 구간입니다. 리스크 관리 비중을 유지하세요.")
 
 
+def _interp_kimchi(pct: float) -> str:
+    """김치 프리미엄 해석 (표준 임계값)."""
+    if pct > 3.0:
+        return "과열·국내 과매수"
+    if pct >= 1.0:
+        return "국내 수요 우위"
+    if pct >= -1.0:
+        return "중립"
+    return "역프·국내 약세"
+
+
+def _interp_fng(v: int) -> str:
+    """공포탐욕지수 해석 (표준 밴드)."""
+    if v < 25:
+        return "극단적 공포"
+    if v < 45:
+        return "공포"
+    if v <= 55:
+        return "중립"
+    if v <= 75:
+        return "탐욕"
+    return "극단적 탐욕"
+
+
 def _format_dashboard_summary(d: dict[str, Any], ctx: dict[str, Any] | None) -> list[str]:
-    """대시보드 시장 상황 요약 섹션 생성.
+    """대시보드 시장 상황 요약 섹션 생성 (수치 + 짧은 해석).
 
     Args:
         d: AggregatedResult.details
@@ -130,7 +154,7 @@ def _format_dashboard_summary(d: dict[str, Any], ctx: dict[str, Any] | None) -> 
     # 김치 프리미엄
     kimchi_pct = _to_float(ctx.get("kimchi_pct") if ctx else None, float("nan"))
     if kimchi_pct == kimchi_pct:  # NaN 체크
-        lines.append(f"• 김프: {kimchi_pct:+.2f}%")
+        lines.append(f"• 김프: {kimchi_pct:+.2f}% ({_interp_kimchi(kimchi_pct)})")
 
     # MVRV
     mvrv = d.get("mvrv")
@@ -147,7 +171,8 @@ def _format_dashboard_summary(d: dict[str, Any], ctx: dict[str, Any] | None) -> 
     # Fear & Greed
     fgi = d.get("fear_greed_index")
     if fgi is not None:
-        lines.append(f"• F&G: {int(_to_float(fgi))}")
+        fgi_v = int(_to_float(fgi))
+        lines.append(f"• F&G: {fgi_v} ({_interp_fng(fgi_v)})")
 
     # 스테이블코인 시총
     if ctx:
@@ -157,10 +182,14 @@ def _format_dashboard_summary(d: dict[str, Any], ctx: dict[str, Any] | None) -> 
             if cap:
                 cap_b = cap / 1e9
                 change = sc.get("change_24h")
-                chg_str = f" ({change:+.1f}%)" if change is not None else ""
+                if change is None:
+                    chg_str = ""
+                else:
+                    flow = "유동성 유입" if change > 0 else ("유동성 유출" if change < 0 else "보합")
+                    chg_str = f" ({change:+.1f}%, {flow})"
                 lines.append(f"• {sc['symbol']} 시총: ${cap_b:.1f}B{chg_str}")
 
-        # 해시레이트
+        # 해시레이트 (레벨 단독으론 임계 해석 불가 — 수치만)
         hashrate_eh = ctx.get("hashrate_eh")
         if hashrate_eh is not None:
             lines.append(f"• 해시레이트: {hashrate_eh:.0f} EH/s")
@@ -168,7 +197,8 @@ def _format_dashboard_summary(d: dict[str, Any], ctx: dict[str, Any] | None) -> 
         # OI 변화율
         oi_24h = ctx.get("oi_change_24h_pct")
         if oi_24h is not None:
-            lines.append(f"• OI 변화: {oi_24h:+.1f}% (24h)")
+            oi_interp = "레버리지 확대" if oi_24h > 3 else ("디레버리징" if oi_24h < -3 else "보합")
+            lines.append(f"• OI 변화: {oi_24h:+.1f}% (24h, {oi_interp})")
 
     return lines
 
