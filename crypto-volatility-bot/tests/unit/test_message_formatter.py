@@ -120,7 +120,7 @@ class TestAlertLevelRecommendation:
         assert len(msg) > 50
 
 
-def _make_result(alert_level, direction_bias):
+def _make_result(alert_level):
     from datetime import datetime, timezone
     from app.analyzers.score_aggregator import AggregatedResult
 
@@ -136,29 +136,28 @@ def _make_result(alert_level, direction_bias):
             "derivatives_signal": "NEUTRAL", "flow_ratio": 0.8, "mvrv": 0.5,
             "final_score": 70.0,
         },
-        direction=direction_bias,
     )
 
 
-def test_periodic_report_renders_direction_section():
-    from app.analyzers.direction_model import DirectionBias
+def test_periodic_report_renders_market_direction():
+    from app.macro.direction_composite import DirectionTilt
     from app.notifiers.message_formatter import MessageFormatter
 
-    bias = DirectionBias(primary_direction="long", confidence=65.0, final_direction="long",
-                         confirm_count=1, divergence_count=1, evidence="파생 confirm · 온체인 divergence")
-    out = MessageFormatter().periodic_report("BTC/USDT", _make_result("MEDIUM", bias))
-    assert "방향: 롱 (신뢰도 65/100)" in out
-    assert "파생 confirm · 온체인 divergence" in out
+    tilt = DirectionTilt(direction="long", confidence=65.0, composite_z=0.65,
+                         contributions={"net_liquidity_13w": 0.8, "dxy_13w": -0.5, "rsi14": 0.3}, n_factors=3)
+    out = MessageFormatter().periodic_report("BTC/USDT", _make_result("MEDIUM"), market_tilt=tilt)
+    assert "강세 (신뢰도 65/100)" in out
+    assert "유동성" in out  # 기여 상위 팩터 근거
 
 
 def test_recommendation_matrix_cells():
-    from app.analyzers.direction_model import DirectionBias
+    from app.macro.direction_composite import DirectionTilt
     from app.notifiers.message_formatter import MessageFormatter
 
-    high_short = DirectionBias("short", 70.0, "short", 2, 0, "파생 confirm")
-    out_hs = MessageFormatter().periodic_report("BTC/USDT", _make_result("HIGH", high_short))
+    short_tilt = DirectionTilt("short", 70.0, -0.7, {}, 0)
+    out_hs = MessageFormatter().periodic_report("BTC/USDT", _make_result("HIGH"), market_tilt=short_tilt)
     assert "단기 숏 우위, 변동성 확대 주의" in out_hs
 
-    low_neutral = DirectionBias("neutral", 50.0, "neutral", 0, 0, "방향 불명확")
-    out_ln = MessageFormatter().periodic_report("BTC/USDT", _make_result("LOW", low_neutral))
+    neutral_tilt = DirectionTilt("neutral", 10.0, 0.05, {}, 0)
+    out_ln = MessageFormatter().periodic_report("BTC/USDT", _make_result("LOW"), market_tilt=neutral_tilt)
     assert "변동성 낮음, 관망" in out_ln

@@ -39,14 +39,13 @@ _SIGNAL_EMOJI = {
     "LIQUIDATION_RISK": "💥",
 }
 
-_DIRECTION_LABEL = {"long": "롱", "short": "숏", "neutral": "중립"}
-
 # 변동성 등급 버킷 (alert_level → LOW/MID/HIGH)
 _VOL_BUCKET = {
     "CONFIRMED_HIGH": "HIGH", "HIGH": "HIGH", "LIQUIDATION_RISK": "HIGH",
     "MEDIUM": "MID", "LOW": "LOW",
 }
 
+# 변동성 등급 × 시장 방향 9칸 추천
 _RECO_MATRIX = {
     ("LOW", "long"): "변동성 낮음, 롱 우위(약)",
     ("LOW", "short"): "변동성 낮음, 숏 우위(약)",
@@ -58,34 +57,38 @@ _RECO_MATRIX = {
     ("HIGH", "short"): "단기 숏 우위, 변동성 확대 주의",
     ("HIGH", "neutral"): "변동성 확대 경보, 방향 불명확 — 포지션 축소 권고",
 }
-_RECO_FALLBACK = {"LOW": "변동성 낮음", "MID": "변동성 보통", "HIGH": "변동성 확대 경보"}
+
+# 복합 팩터명 → 리포트 한글 라벨
+_FACTOR_KR = {
+    "net_liquidity_13w": "유동성", "dxy_13w": "달러", "ust10y_13w": "금리",
+    "vix_level": "VIX", "mvrv_level": "MVRV", "active_addr_13w": "활성주소",
+    "rsi14": "RSI", "sma50_dist": "추세", "momentum_30d": "모멘텀",
+}
+_MVRV_RISK_LOW = 2.5      # MVRV 2.5~3.5 중간 과열 → 위험 부기
+_MVRV_OVERHEATED = 3.5
 
 
-def _direction_recommendation(alert_level: str, bias: Any, mvrv: Any) -> str:
-    """alert_level × 방향 9칸 매트릭스 + <30 폴백 + MVRV 중간 과열 부기."""
-    from app.analyzers import direction_constants as DC
-
+def _direction_recommendation(alert_level: str, tilt: Any, mvrv: Any) -> str:
+    """변동성 등급 × 시장 방향(복합 tilt) 9칸 매트릭스 + MVRV 중간 과열 부기."""
     bucket = _VOL_BUCKET.get(str(alert_level), "MID")
-    if bias is None or bias.confidence < DC.CONFIDENCE_CUTOFF:
-        reco = _RECO_FALLBACK[bucket]
-    else:
-        reco = _RECO_MATRIX[(bucket, bias.final_direction)]
-
+    direction = tilt.direction if tilt is not None else "neutral"
+    reco = _RECO_MATRIX[(bucket, direction)]
     mvrv_val = _to_float(mvrv, float("nan"))
-    if mvrv_val == mvrv_val and DC.MVRV_RISK_LOW <= mvrv_val <= DC.MVRV_OVERHEATED:
+    if mvrv_val == mvrv_val and _MVRV_RISK_LOW <= mvrv_val <= _MVRV_OVERHEATED:
         reco += " · MVRV 과열 위험"
     return reco
 
 
-def _format_direction_section(bias: Any) -> list[str]:
-    """신설 '방향' 섹션."""
-    if bias is None:
+def _format_market_direction(tilt: Any) -> list[str]:
+    """시장 방향 섹션 — 거시·온체인·기술 9팩터 복합 tilt."""
+    if tilt is None:
         return []
-    label = _DIRECTION_LABEL.get(bias.final_direction, "중립")
+    top = sorted(tilt.contributions.items(), key=lambda kv: -abs(kv[1]))[:3]
+    basis = ", ".join(f"{_FACTOR_KR.get(k, k)}({v:+.1f})" for k, v in top) if top else "데이터 부족"
     return [
-        "<b>🧭 방향</b>",
-        f"방향: {label} (신뢰도 {bias.confidence:.0f}/100)",
-        f"근거: {bias.evidence}",
+        "<b>🧭 시장 방향 (거시·온체인·기술)</b>",
+        f"{tilt.direction_kr} (신뢰도 {tilt.confidence:.0f}/100)",
+        f"주요 근거: {basis}",
     ]
 
 
@@ -320,7 +323,8 @@ class MessageFormatter:
         return "\n".join(lines)
 
     def periodic_report(
-        self, symbol: str, result: AggregatedResult, dashboard_ctx: dict[str, Any] | None = None
+        self, symbol: str, result: AggregatedResult,
+        dashboard_ctx: dict[str, Any] | None = None, market_tilt: Any = None,
     ) -> str:
         """12h 정기 리포트 — 시장 상황 + 기술적 분석 포함."""
         ts = result.timestamp.strftime("%Y-%m-%d %H:%M UTC")
@@ -353,8 +357,8 @@ class MessageFormatter:
             "",
         ]
         lines += _format_tech_detail(d)
-        # 신설 '방향' 섹션
-        direction_lines = _format_direction_section(getattr(result, "direction", None))
+        # 시장 방향 섹션 (거시·온체인·기술 복합 tilt)
+        direction_lines = _format_market_direction(market_tilt)
         if direction_lines:
             lines += [""] + direction_lines
         lines += [
@@ -373,7 +377,7 @@ class MessageFormatter:
             lines.append("- 기술 점수 분해 데이터 없음")
         lines.append(f"- 활성 부스터: {booster_top3}")
 
-        reco = _direction_recommendation(result.alert_level, getattr(result, "direction", None), d.get("mvrv"))
+        reco = _direction_recommendation(result.alert_level, market_tilt, d.get("mvrv"))
         lines += ["", f"💡 {reco}"]
         return "\n".join(lines)
 

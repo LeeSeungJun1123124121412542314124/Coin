@@ -10,8 +10,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
@@ -111,9 +113,29 @@ class NotificationDispatcher:
         await self._send_errors(errors)
 
         ctx = await self._collect_dashboard_context()
+        market_tilt = await asyncio.to_thread(self._compute_market_tilt)
         for symbol, result in results:
-            report = self._formatter.periodic_report(symbol, result, dashboard_ctx=ctx)
+            report = self._formatter.periodic_report(
+                symbol, result, dashboard_ctx=ctx, market_tilt=market_tilt
+            )
             await self._notifier.send_message(report)
+
+    def _compute_market_tilt(self):
+        """거시·온체인·기술 9팩터 복합 시장 방향 tilt (실패 시 None — 방향 없이 발송).
+
+        거시 소스는 일 1회 캐시(get_sources). 로컬 Avast 환경은 MACRO_CA_BUNDLE 필요
+        (docs/RESEARCH_direction-signals.md §3), 프로덕션(Railway)은 plain HTTPS로 동작.
+        """
+        try:
+            from app.macro.collectors import get_sources
+            from app.macro.direction_composite import build_factors, latest_tilt
+
+            cache_path = os.getenv("MACRO_CACHE_PATH", "macro_cache.csv")
+            sources = get_sources(cache_path)
+            return latest_tilt(build_factors(**sources))
+        except Exception as e:
+            logger.warning("시장 방향 tilt 계산 실패 (방향 없이 발송): %s", e)
+            return None
 
     async def _send_errors(self, errors: AnalysisErrors) -> None:
         for _symbol, error_msg in errors:

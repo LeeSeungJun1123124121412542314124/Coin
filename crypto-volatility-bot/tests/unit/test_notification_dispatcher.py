@@ -58,6 +58,7 @@ def dispatcher():
     config = _make_config()
     d = NotificationDispatcher(config)
     d._notifier = AsyncMock()
+    d._compute_market_tilt = lambda: None  # 거시 tilt 네트워크 호출 회피 (별도 모듈서 검증)
     return d
 
 
