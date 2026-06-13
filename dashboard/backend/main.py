@@ -7,6 +7,7 @@ apscheduler로 스케줄 작업을 내장 실행한다.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import sys
@@ -278,6 +279,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     from dashboard.backend.jobs.update_predictions import update_predictions
     from dashboard.backend.jobs.settle_predictions import settle_expired_predictions
     from dashboard.backend.jobs.paper_rebalance import run_paper_rebalance
+    from dashboard.backend.jobs.direction_watch import check_direction_and_health
     from dashboard.backend.collectors.bybit_ohlcv import collect_coin_ohlcv_1h
 
     # SPF 데이터 수집 — 매일 00:10 UTC
@@ -303,6 +305,17 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
 
     # 페이퍼 리더보드 리밸런스 — 매일 00:05 UTC (지표별 포트폴리오 1일 갱신)
     scheduler.add_job(run_paper_rebalance, CronTrigger(hour=0, minute=5), id="paper_rebalance")
+
+    # 방향 전환·데이터 헬스 알림 — 매일 00:20 UTC (매크로 수집 갱신 후)
+    @async_retry(max_retries=2, backoff_base=2.0, on_failure=notify_job_failure)
+    async def _direction_health_watch():
+        msgs = await asyncio.to_thread(check_direction_and_health)
+        for m in msgs:
+            await dispatcher._notifier.send_message(m)
+        if msgs:
+            logger.info("방향/헬스 알림 %d건 발송", len(msgs))
+
+    scheduler.add_job(_direction_health_watch, CronTrigger(hour=0, minute=20), id="direction_health_watch")
 
     # 봇 분석 — 매시간 이벤트 알림 (긴급/고래)
     @async_retry(max_retries=3, backoff_base=2.0, on_failure=notify_job_failure)

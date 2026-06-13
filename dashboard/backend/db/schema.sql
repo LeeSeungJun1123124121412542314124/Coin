@@ -284,6 +284,13 @@ CREATE TABLE IF NOT EXISTS auto_backtest_cache (
 );
 CREATE INDEX IF NOT EXISTS idx_abt_cache ON auto_backtest_cache(symbol, horizon_h, computed_at);
 
+-- 봇 상태 키-값 (방향 전환·헬스 알림의 직전 상태 추적)
+CREATE TABLE IF NOT EXISTS bot_state (
+    key        TEXT PRIMARY KEY,
+    value      TEXT,
+    updated_at TEXT NOT NULL
+);
+
 -- ============================================================
 -- 지표 리더보드 (포워드 모의투자) — 지표별 가상 포트폴리오
 -- ============================================================
