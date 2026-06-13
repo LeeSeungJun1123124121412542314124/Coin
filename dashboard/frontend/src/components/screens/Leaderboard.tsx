@@ -110,8 +110,9 @@ export function Leaderboard() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <p style={{ color: '#94a3b8', fontSize: '0.8rem', margin: 0 }}>
-          각 지표가 동일 시드로 자기 신호대로 자동매매 — 포워드(미래 미관측) 성과로 실전 쓸모를 검증
+        <p style={{ color: '#94a3b8', fontSize: '0.8rem', margin: 0, maxWidth: 620, lineHeight: 1.5 }}>
+          💰 <b>지표 수익 검증</b> — 각 지표가 동일 시드로 자기 신호대로 자동매매, 포워드 성과(수익)로 어느 지표가 실제 돈이 되나 비교.
+          <span style={{ color: '#475569' }}> 시장 방향 전망은 SPF 탭에서.</span>
         </p>
         <button
           onClick={handleReset}

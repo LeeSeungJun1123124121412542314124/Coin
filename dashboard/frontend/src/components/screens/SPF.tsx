@@ -115,6 +115,11 @@ export function SPF() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <LastUpdated timestamp={lastUpdated} />
+      {/* 역할 라벨 — 시뮬레이터(수익 검증)와 구분 */}
+      <div style={{ color: '#64748b', fontSize: '0.8rem', lineHeight: 1.5 }}>
+        🧭 <b style={{ color: '#94a3b8' }}>시장 방향 전망 · 선물 포지션 흐름</b> — 지금 어디로 향하나(복합 모델)와 시장이 어떤 상태인가(OI/FR 쏠림)를 봅니다.
+        <span style={{ color: '#475569' }}> 지표별 수익 검증은 시뮬레이터 탭에서.</span>
+      </div>
       {/* OI 급등 경고 배너 */}
       {current?.oi_surge_alert && (
         <div style={{
