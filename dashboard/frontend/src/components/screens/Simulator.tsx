@@ -734,6 +734,9 @@ function NewPredictionForm({ market, onSubmit, onClose }: NewPredictionFormProps
 // 메인 시뮬레이터 컴포넌트
 // ────────────────────────────────────────
 
+// 수동예측 UI 비활성(코드·백엔드 보존). 재활성하려면 true로.
+const SHOW_MANUAL_PREDICTION = false
+
 export function Simulator() {
   const [simView, setSimView] = useState<'leaderboard' | 'manual'>('leaderboard')
   const [activeMarket, setActiveMarket] = useState<MarketTab>('crypto')
@@ -946,7 +949,8 @@ export function Simulator() {
         시뮬레이터
       </h1>
 
-      {/* ── 뷰 전환: 지표 리더보드 / 수동 예측 ── */}
+      {/* ── 뷰 전환(수동예측 비활성 — 코드 보존, 플래그로 재활성) ── */}
+      {SHOW_MANUAL_PREDICTION && (
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         {([['leaderboard', '지표 리더보드'], ['manual', '수동 예측']] as const).map(([v, label]) => (
           <button
@@ -968,6 +972,7 @@ export function Simulator() {
           </button>
         ))}
       </div>
+      )}
 
       {simView === 'leaderboard' ? (
         <Leaderboard />
