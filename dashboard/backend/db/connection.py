@@ -66,6 +66,20 @@ def _migrate_sim_positions_v2(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_alert_history_direction(conn: sqlite3.Connection) -> None:
+    """alert_history에 방향 컬럼 추가 (없으면 ALTER TABLE, 기존 행은 null 유지)."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(alert_history)").fetchall()}
+    for col_name, col_type in [
+        ("asset_direction", "TEXT"),
+        ("market_direction", "TEXT"),
+        ("market_tilt_confidence", "REAL"),
+        ("market_tilt_z", "REAL"),
+    ]:
+        if col_name not in existing:
+            conn.execute(f"ALTER TABLE alert_history ADD COLUMN {col_name} {col_type}")
+    conn.commit()
+
+
 def _init_schema(conn: sqlite3.Connection) -> None:
     schema = _SCHEMA_PATH.read_text(encoding="utf-8")
     conn.executescript(schema)
@@ -73,6 +87,8 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     _migrate_coin_slots_constraint(conn)
     # sim_positions v2 컬럼 마이그레이션 (신호/매크로/예측)
     _migrate_sim_positions_v2(conn)
+    # alert_history 방향 컬럼 마이그레이션
+    _migrate_alert_history_direction(conn)
     # 마이그레이션 후 position 6 기본값 삽입 (schema.sql의 INSERT OR IGNORE는 구 제약 때문에 실패)
     conn.execute(
         "INSERT OR IGNORE INTO dashboard_coin_slots (position, coin_id, symbol, tv_symbol) VALUES (?,?,?,?)",

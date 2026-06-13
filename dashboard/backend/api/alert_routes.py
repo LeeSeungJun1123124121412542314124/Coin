@@ -26,7 +26,8 @@ async def get_alert_history(limit: int = 50, symbol: str | None = None):
             if symbol:
                 rows = conn.execute(
                     """SELECT id, timestamp, symbol, alert_level, alert_score,
-                              final_score, details, message_sent
+                              final_score, details, message_sent,
+                              asset_direction, market_direction, market_tilt_confidence, market_tilt_z
                        FROM alert_history
                        WHERE symbol = ?
                        ORDER BY timestamp DESC
@@ -36,7 +37,8 @@ async def get_alert_history(limit: int = 50, symbol: str | None = None):
             else:
                 rows = conn.execute(
                     """SELECT id, timestamp, symbol, alert_level, alert_score,
-                              final_score, details, message_sent
+                              final_score, details, message_sent,
+                              asset_direction, market_direction, market_tilt_confidence, market_tilt_z
                        FROM alert_history
                        ORDER BY timestamp DESC
                        LIMIT ?""",
@@ -53,6 +55,10 @@ async def get_alert_history(limit: int = 50, symbol: str | None = None):
                 "final_score": row[5],
                 "details": row[6],
                 "message_sent": bool(row[7]),
+                "asset_direction": row[8],
+                "market_direction": row[9],
+                "market_tilt_confidence": row[10],
+                "market_tilt_z": row[11],
             }
             for row in rows
         ]

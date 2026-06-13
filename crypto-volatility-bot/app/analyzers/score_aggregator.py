@@ -35,6 +35,7 @@ class AggregatedResult:
     whale_alert: bool
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     details: dict[str, Any] = field(default_factory=dict)
+    asset_direction: str | None = None   # 종목 기술방향 long/short/neutral (technical에서 surface)
 
 
 class ScoreAggregator:
@@ -102,4 +103,5 @@ class ScoreAggregator:
             alert_level=alert_level,
             whale_alert=whale_alert,
             details=details,
+            asset_direction=technical.details.get("asset_direction"),
         )

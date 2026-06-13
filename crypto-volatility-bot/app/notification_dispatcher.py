@@ -100,9 +100,11 @@ class NotificationDispatcher:
         """즉시 이벤트 알림 — 매시간 체크."""
         await self._send_errors(errors)
 
+        # 복합 시장방향 1회 계산 → 이 사이클 모든 종목 알림이 공유 (실패 시 None)
+        market_tilt = await asyncio.to_thread(self._compute_market_tilt)
         for symbol, result in results:
-            await self._check_high_alerts(symbol, result)
-            await self._check_whale(symbol, result)
+            await self._check_high_alerts(symbol, result, market_tilt)
+            await self._check_whale(symbol, result, market_tilt)
 
     async def dispatch_periodic_report(
         self,
@@ -175,7 +177,7 @@ class NotificationDispatcher:
             logger.warning("대시보드 컨텍스트 수집 실패 (알림은 정상 발송): %s", e)
         return ctx
 
-    async def _check_high_alerts(self, symbol: str, result: AggregatedResult) -> None:
+    async def _check_high_alerts(self, symbol: str, result: AggregatedResult, market_tilt=None) -> None:
         """CONFIRMED_HIGH / HIGH / LIQUIDATION_RISK 순서로 체크."""
         level = result.alert_level
 
@@ -183,54 +185,63 @@ class NotificationDispatcher:
             key = f"{symbol}:confirmed_high"
             if not self._cooldown.is_active(key, "confirmed_high"):
                 ctx = await self._collect_dashboard_context()
-                msg = self._formatter.confirmed_high_alert(symbol, result, dashboard_ctx=ctx)
+                msg = self._formatter.confirmed_high_alert(symbol, result, dashboard_ctx=ctx, market_tilt=market_tilt)
                 await self._notifier.send_message(msg)
                 self._cooldown.set(key, "confirmed_high")
-                _save_alert_history(symbol, level, result)
+                _save_alert_history(symbol, level, result, market_tilt)
 
         elif level == "HIGH":
             key = f"{symbol}:high"
             if not self._cooldown.is_active(key, "high"):
                 ctx = await self._collect_dashboard_context()
-                msg = self._formatter.high_alert(symbol, result, dashboard_ctx=ctx)
+                msg = self._formatter.high_alert(symbol, result, dashboard_ctx=ctx, market_tilt=market_tilt)
                 await self._notifier.send_message(msg)
                 self._cooldown.set(key, "high")
-                _save_alert_history(symbol, level, result)
+                _save_alert_history(symbol, level, result, market_tilt)
 
         elif level == "LIQUIDATION_RISK":
             key = f"{symbol}:liquidation_risk"
             if not self._cooldown.is_active(key, "liquidation_risk"):
                 ctx = await self._collect_dashboard_context()
-                msg = self._formatter.liquidation_risk_alert(symbol, result, dashboard_ctx=ctx)
+                msg = self._formatter.liquidation_risk_alert(symbol, result, dashboard_ctx=ctx, market_tilt=market_tilt)
                 await self._notifier.send_message(msg)
                 self._cooldown.set(key, "liquidation_risk")
-                _save_alert_history(symbol, level, result)
+                _save_alert_history(symbol, level, result, market_tilt)
 
-    async def _check_whale(self, symbol: str, result: AggregatedResult) -> None:
+    async def _check_whale(self, symbol: str, result: AggregatedResult, market_tilt=None) -> None:
         if result.whale_alert:
             key = f"{symbol}:whale"
             if not self._cooldown.is_active(key, "whale"):
-                msg = self._formatter.whale_alert(symbol, result)
+                msg = self._formatter.whale_alert(symbol, result, market_tilt=market_tilt)
                 await self._notifier.send_message(msg)
                 self._cooldown.set(key, "whale")
-                _save_alert_history(symbol, "WHALE", result)
+                _save_alert_history(symbol, "WHALE", result, market_tilt)
 
 
-def _save_alert_history(symbol: str, alert_level: str, result: "AggregatedResult") -> None:
-    """알림 발송 이력을 alert_history 테이블에 저장."""
+def _save_alert_history(symbol: str, alert_level: str, result: "AggregatedResult", market_tilt=None) -> None:
+    """알림 발송 이력을 alert_history 테이블에 저장 (종목·시장 방향 포함)."""
     try:
         details = getattr(result, "details", {})
+        # 시장 복합방향 (실패/None이면 전부 null)
+        m_dir = getattr(market_tilt, "direction", None) if market_tilt else None
+        m_conf = getattr(market_tilt, "confidence", None) if market_tilt else None
+        m_z = getattr(market_tilt, "composite_z", None) if market_tilt else None
         with _get_db() as conn:
             conn.execute(
                 """INSERT INTO alert_history
-                   (symbol, alert_level, alert_score, final_score, details)
-                   VALUES (?, ?, ?, ?, ?)""",
+                   (symbol, alert_level, alert_score, final_score, details,
+                    asset_direction, market_direction, market_tilt_confidence, market_tilt_z)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     symbol,
                     alert_level,
                     getattr(result, "alert_score", None),
                     getattr(result, "final_score", None),
                     json.dumps(details) if details else None,
+                    getattr(result, "asset_direction", None),
+                    m_dir,
+                    m_conf,
+                    m_z,
                 ),
             )
     except Exception as e:

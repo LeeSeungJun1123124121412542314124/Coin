@@ -42,7 +42,11 @@ def _isolate_alert_cooldown_db(monkeypatch):
             alert_score REAL,
             final_score REAL,
             details TEXT,
-            message_sent INTEGER DEFAULT 1
+            message_sent INTEGER DEFAULT 1,
+            asset_direction TEXT,
+            market_direction TEXT,
+            market_tilt_confidence REAL,
+            market_tilt_z REAL
         )
     """)
     _mem_conn.commit()
@@ -63,7 +67,7 @@ def _isolate_alert_cooldown_db(monkeypatch):
     import app.notification_dispatcher as nd_module
     monkeypatch.setattr(nd_module, "_get_db", _fake_get_db)
 
-    yield
+    yield _mem_conn  # 테스트에서 직접 조회할 수 있도록 인메모리 커넥션 노출
 
     _mem_conn.close()
 

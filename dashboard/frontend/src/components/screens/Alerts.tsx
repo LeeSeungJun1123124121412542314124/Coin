@@ -13,6 +13,10 @@ interface AlertRecord {
   alert_score: number | null
   final_score: number | null
   message_sent: boolean
+  asset_direction: string | null
+  market_direction: string | null
+  market_tilt_confidence: number | null
+  market_tilt_z: number | null
 }
 
 interface AlertsData {
@@ -37,6 +41,27 @@ const LEVEL_LABEL: Record<string, string> = {
 function formatTs(ts: string): string {
   // "2026-04-10T12:34:56.000000" → "04-10 12:34"
   return ts.slice(5, 16).replace('T', ' ')
+}
+
+// 방향 라벨/색 — long=급등(녹), short=급락(적), neutral=중립(회)
+const DIR: Record<string, { label: string; color: string }> = {
+  long: { label: '급등', color: '#4ade80' },
+  short: { label: '급락', color: '#f87171' },
+  neutral: { label: '중립', color: '#94a3b8' },
+}
+
+function DirBadge({ kind, dir, tooltip }: { kind: string; dir: string | null; tooltip?: string }) {
+  const d = dir ? DIR[dir] : null
+  return (
+    <div style={{ textAlign: 'center' }} title={tooltip}>
+      <div style={{ color: '#64748b', fontSize: '0.65rem' }}>{kind}</div>
+      {d ? (
+        <span style={{ color: d.color, fontSize: '0.8rem', fontWeight: 600 }}>{d.label}</span>
+      ) : (
+        <span style={{ color: '#475569', fontSize: '0.8rem' }}>–</span>
+      )}
+    </div>
+  )
 }
 
 export function Alerts() {
@@ -105,8 +130,18 @@ export function Alerts() {
                     </div>
                   </div>
 
-                  {/* 우측: 점수 */}
+                  {/* 우측: 방향 + 점수 */}
                   <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                    <DirBadge kind="종목방향" dir={alert.asset_direction} />
+                    <DirBadge
+                      kind="시장방향"
+                      dir={alert.market_direction}
+                      tooltip={
+                        alert.market_tilt_confidence != null
+                          ? `신뢰도 ${alert.market_tilt_confidence.toFixed(0)} · z ${alert.market_tilt_z?.toFixed(2) ?? '–'}`
+                          : undefined
+                      }
+                    />
                     {alert.alert_score != null && (
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ color: '#94a3b8', fontSize: '0.7rem' }}>기술 점수</div>

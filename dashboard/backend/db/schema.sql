@@ -117,7 +117,11 @@ CREATE TABLE IF NOT EXISTS alert_history (
     alert_score  REAL,
     final_score  REAL,
     details      TEXT,   -- JSON
-    message_sent INTEGER DEFAULT 1
+    message_sent INTEGER DEFAULT 1,
+    asset_direction        TEXT,   -- 종목 기술방향 long/short/neutral (nullable)
+    market_direction       TEXT,   -- 복합 시장방향 long/short/neutral (nullable)
+    market_tilt_confidence REAL,   -- 시장방향 신뢰도 (nullable)
+    market_tilt_z          REAL    -- 시장방향 복합 z (nullable)
 );
 
 CREATE INDEX IF NOT EXISTS idx_alert_history_ts

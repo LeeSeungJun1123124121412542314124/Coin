@@ -70,6 +70,7 @@ class TechnicalAnalyzer(BaseAnalyzer):
         final_score = self._clamp(base_score + boost_total)
         details["base_score"] = base_score
         details["signal_boost"] = boost_details
+        details["asset_direction"] = self._asset_direction(df)
 
         high_th = self._signals["high_threshold"]
         med_th = self._signals["medium_threshold"]
@@ -107,6 +108,22 @@ class TechnicalAnalyzer(BaseAnalyzer):
             signal = "LOW"
 
         return AnalysisResult(score=final_score, signal=signal, details=details, source="technical")
+
+    @staticmethod
+    def _asset_direction(df: pd.DataFrame, lookback: int = 14, deadband: float = 0.005) -> str:
+        """종가 모멘텀 부호로 종목 방향 산출 — long(급등)/short(급락)/neutral(중립).
+
+        급등/급락 라벨링용(현재 추세 묘사). 예측이 아니므로 단순 모멘텀 부호로 충분.
+        """
+        close = df["close"]
+        if len(close) <= lookback:
+            return "neutral"
+        mom = close.iloc[-1] / close.iloc[-1 - lookback] - 1
+        if mom > deadband:
+            return "long"
+        if mom < -deadband:
+            return "short"
+        return "neutral"
 
     # ------------------------------------------------------------------
     # Layer 1: Base volatility score (existing YAML-driven weighted avg)

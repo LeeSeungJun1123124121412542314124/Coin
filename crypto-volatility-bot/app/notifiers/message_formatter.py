@@ -92,6 +92,20 @@ def _format_market_direction(tilt: Any) -> list[str]:
     ]
 
 
+_ASSET_DIR_KR = {"long": "급등", "short": "급락", "neutral": "중립"}
+
+
+def _format_alert_direction(result: AggregatedResult, tilt: Any) -> list[str]:
+    """이벤트 알림용 방향 한 줄 — 종목 기술방향 + 복합 시장방향(있으면). 둘 다 없으면 줄 생략."""
+    parts: list[str] = []
+    asset = getattr(result, "asset_direction", None)
+    if asset in _ASSET_DIR_KR:
+        parts.append(f"종목 {_ASSET_DIR_KR[asset]}")
+    if tilt is not None:
+        parts.append(f"시장 {tilt.direction_kr}(신뢰도 {tilt.confidence:.0f})")
+    return [f"🧭 방향: {' · '.join(parts)}"] if parts else []
+
+
 def _fr_pct(fr: float) -> str:
     """펀딩레이트를 퍼센트 문자열로 변환."""
     return f"{fr * 100:.4f}%"
@@ -233,7 +247,8 @@ def _format_tech_detail(d: dict[str, Any]) -> list[str]:
 
 class MessageFormatter:
     def confirmed_high_alert(
-        self, symbol: str, result: AggregatedResult, dashboard_ctx: dict[str, Any] | None = None
+        self, symbol: str, result: AggregatedResult, dashboard_ctx: dict[str, Any] | None = None,
+        market_tilt: Any = None,
     ) -> str:
         """92% 신뢰도 — 기술적 HIGH + 파생상품 확인."""
         ts = result.timestamp.strftime("%Y-%m-%d %H:%M UTC")
@@ -247,6 +262,7 @@ class MessageFormatter:
         lines = [
             "🚨 <b>변동성 확인 경보</b>",
             f"심볼: {symbol} | 시간: {ts}",
+            *_format_alert_direction(result, market_tilt),
             "",
         ]
         lines += _format_dashboard_summary(d, dashboard_ctx)
@@ -268,7 +284,8 @@ class MessageFormatter:
         return "\n".join(lines)
 
     def high_alert(
-        self, symbol: str, result: AggregatedResult, dashboard_ctx: dict[str, Any] | None = None
+        self, symbol: str, result: AggregatedResult, dashboard_ctx: dict[str, Any] | None = None,
+        market_tilt: Any = None,
     ) -> str:
         """75% 신뢰도 — 기술적 HIGH 단독."""
         ts = result.timestamp.strftime("%Y-%m-%d %H:%M UTC")
@@ -282,6 +299,7 @@ class MessageFormatter:
         lines = [
             "📊 <b>변동성 경보</b>",
             f"심볼: {symbol} | 시간: {ts}",
+            *_format_alert_direction(result, market_tilt),
             "",
         ]
         lines += _format_dashboard_summary(d, dashboard_ctx)
@@ -303,7 +321,8 @@ class MessageFormatter:
         return "\n".join(lines)
 
     def liquidation_risk_alert(
-        self, symbol: str, result: AggregatedResult, dashboard_ctx: dict[str, Any] | None = None
+        self, symbol: str, result: AggregatedResult, dashboard_ctx: dict[str, Any] | None = None,
+        market_tilt: Any = None,
     ) -> str:
         """신규 — 기술적 LOW이지만 OI+FR 극단 동시."""
         ts = result.timestamp.strftime("%Y-%m-%d %H:%M UTC")
@@ -317,6 +336,7 @@ class MessageFormatter:
         lines = [
             "⚡ <b>청산 위험 경보</b>",
             f"심볼: {symbol} | 시간: {ts}",
+            *_format_alert_direction(result, market_tilt),
             "",
         ]
         lines += _format_dashboard_summary(d, dashboard_ctx)
@@ -331,7 +351,7 @@ class MessageFormatter:
         ]
         return "\n".join(lines)
 
-    def whale_alert(self, symbol: str, result: AggregatedResult) -> str:
+    def whale_alert(self, symbol: str, result: AggregatedResult, market_tilt: Any = None) -> str:
         ts = result.timestamp.strftime("%Y-%m-%d %H:%M UTC")
         d = result.details
         onchain_score = _to_float(d.get("onchain_score"), 0.0)
@@ -342,6 +362,7 @@ class MessageFormatter:
         lines = [
             "🐋 <b>고래 활동 감지</b>",
             f"심볼: {symbol} | 시간: {ts}",
+            *_format_alert_direction(result, market_tilt),
             "",
             "<b>핵심 지표</b>",
             f"- 온체인: {onchain_score:.1f} ({onchain_sig})",
