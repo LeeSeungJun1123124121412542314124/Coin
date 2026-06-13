@@ -51,5 +51,9 @@ docs/superpowers/
 # Git worktrees
 .worktrees/
 
-# Git worktrees
-.worktrees/
+# 방향신호 리서치 산출물 (재현 스크립트·수집데이터·머신고유 인증서)
+research/
+*.pem
+
+# 봇 거시 소스 일일 캐시 (런타임 생성, 재생성 가능)
+macro_cache.csv
