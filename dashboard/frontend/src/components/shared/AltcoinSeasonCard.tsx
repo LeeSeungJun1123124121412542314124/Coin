@@ -1,8 +1,23 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   ComposedChart, Area, Line, XAxis, YAxis, ReferenceLine,
   ResponsiveContainer, Tooltip, Legend,
 } from 'recharts'
+
+// 모바일 뷰포트 감지 — 인라인 스타일 카드라 미디어쿼리 대신 JS로 분기
+function useIsMobile(breakpoint = 768): boolean {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' && window.innerWidth <= breakpoint
+  )
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`)
+    const handler = () => setIsMobile(mq.matches)
+    handler()
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [breakpoint])
+  return isMobile
+}
 
 interface HistoryPoint {
   date: string
@@ -75,6 +90,7 @@ export function AltcoinSeasonCard(props: AltcoinSeasonProps) {
   } = props
 
   const [period, setPeriod] = useState<Period>('90d')
+  const isMobile = useIsMobile()
   const cfg = SEASON_CONFIG[season_label]
 
   const sliderPct = index_value
@@ -95,10 +111,18 @@ export function AltcoinSeasonCard(props: AltcoinSeasonProps) {
 
   return (
     <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 12, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', gap: 0 }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 0 }}>
 
-        {/* ── 좌측 패널 ── */}
-        <div style={{ width: 280, minWidth: 280, padding: '20px 20px', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* ── 좌측 패널 (모바일에선 상단 전체폭) ── */}
+        <div style={{
+          width: isMobile ? '100%' : 280,
+          minWidth: isMobile ? 0 : 280,
+          padding: '20px 20px',
+          borderRight: isMobile ? 'none' : '1px solid #1e293b',
+          borderBottom: isMobile ? '1px solid #1e293b' : 'none',
+          display: 'flex', flexDirection: 'column', gap: 20,
+          boxSizing: 'border-box',
+        }}>
 
           {/* 헤더 + 현재값 */}
           <div>
@@ -161,8 +185,8 @@ export function AltcoinSeasonCard(props: AltcoinSeasonProps) {
         <div style={{ flex: 1, padding: '20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
 
           {/* 차트 헤더 */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
               <span style={{ color: '#e2e8f0', fontSize: '0.88rem', fontWeight: 600 }}>알트코인 시즌 지수 차트</span>
               <div style={{ display: 'flex', gap: 12, fontSize: '0.72rem', color: '#94a3b8' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
