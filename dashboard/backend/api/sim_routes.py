@@ -1026,3 +1026,30 @@ async def get_tuning_status(job_id: str = Path(..., description="튜닝 작업 I
     except Exception as exc:
         logger.exception("튜닝 결과 파일 읽기 실패: %s", path)
         raise HTTPException(status_code=500, detail=f"결과 파일 읽기 실패: {exc}")
+
+
+# ============================================================
+# 지표 리더보드 (포워드 모의투자) — paper_engine
+# ============================================================
+@router.get("/sim/leaderboard")
+async def get_leaderboard():
+    """지표별 총수익·승률·MDD·Sharpe·vs매수보유 순위."""
+    from dashboard.backend.services.paper_engine import leaderboard
+    return {"leaderboard": leaderboard()}
+
+
+@router.get("/sim/leaderboard/{indicator}")
+async def get_leaderboard_detail(indicator: str = Path(..., description="지표명")):
+    """특정 지표의 에쿼티 곡선 + 포지션 이력."""
+    from dashboard.backend.services.paper_engine import portfolio_detail
+    detail = portfolio_detail(indicator)
+    if detail is None:
+        raise HTTPException(status_code=404, detail=f"포트폴리오 없음: {indicator}")
+    return detail
+
+
+@router.post("/sim/leaderboard/reset")
+async def reset_leaderboard(indicator: str | None = Query(default=None, description="없으면 전체 리셋")):
+    """시드 리셋 (전체 또는 지표별)."""
+    from dashboard.backend.services.paper_engine import reset
+    return {"reset": reset(indicator)}

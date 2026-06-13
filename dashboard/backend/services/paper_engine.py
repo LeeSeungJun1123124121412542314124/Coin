@@ -187,3 +187,101 @@ def rebalance(indicator: str, signals: dict[str, float], prices: dict[str, dict]
         )
 
     return {"equity": equity, "capital": capital, "trades": trades}
+
+
+# ── 집계 (리더보드) ──────────────────────────────────────────
+def _curve_stats(equities: list[float], daily_returns: list[float], seed: float) -> dict:
+    """에쿼티 곡선 → 총수익·MDD·Sharpe."""
+    if not equities:
+        return {"total_return_pct": 0.0, "mdd_pct": 0.0, "sharpe": 0.0, "equity": seed}
+    last = equities[-1]
+    peak, mdd = equities[0], 0.0
+    for e in equities:
+        peak = max(peak, e)
+        mdd = min(mdd, e / peak - 1)
+    sharpe = 0.0
+    if len(daily_returns) > 1:
+        m = sum(daily_returns) / len(daily_returns)
+        var = sum((x - m) ** 2 for x in daily_returns) / (len(daily_returns) - 1)
+        sd = var ** 0.5
+        if sd > 0:
+            sharpe = m / sd * (252 ** 0.5)  # 일별→연율화
+    return {
+        "total_return_pct": (last / seed - 1) * 100,
+        "mdd_pct": mdd * 100,
+        "sharpe": sharpe,
+        "equity": last,
+    }
+
+
+def leaderboard() -> list[dict]:
+    """지표별 총수익·승률·MDD·Sharpe·vs매수보유, 총수익 내림차순."""
+    with get_db() as conn:
+        pfs = conn.execute("SELECT * FROM paper_portfolios").fetchall()
+        out = []
+        for pf in pfs:
+            eq = conn.execute(
+                "SELECT equity, return_pct FROM paper_equity WHERE portfolio_id=? ORDER BY date",
+                (pf["id"],),
+            ).fetchall()
+            closed = conn.execute(
+                "SELECT pnl FROM paper_positions WHERE portfolio_id=? AND status='closed'", (pf["id"],)
+            ).fetchall()
+            wins = sum(1 for c in closed if c["pnl"] and c["pnl"] > 0)
+            n = len(closed)
+            st = _curve_stats(
+                [r["equity"] for r in eq],
+                [r["return_pct"] / 100 for r in eq if r["return_pct"] is not None],
+                pf["seed"],
+            )
+            st.update(
+                indicator=pf["indicator"], seed=pf["seed"], capital=pf["capital"],
+                win_rate=(wins / n * 100 if n else None), n_trades=n,
+            )
+            out.append(st)
+    bh = next((r["total_return_pct"] for r in out if r["indicator"] == BENCHMARK), None)
+    for r in out:
+        r["vs_buyhold_pct"] = (r["total_return_pct"] - bh) if bh is not None else None
+    out.sort(key=lambda r: r["total_return_pct"], reverse=True)
+    return out
+
+
+def portfolio_detail(indicator: str) -> dict | None:
+    """특정 지표의 에쿼티 곡선 + 포지션 이력."""
+    with get_db() as conn:
+        pf = conn.execute("SELECT * FROM paper_portfolios WHERE indicator=?", (indicator,)).fetchone()
+        if pf is None:
+            return None
+        eq = conn.execute(
+            "SELECT date, equity, return_pct FROM paper_equity WHERE portfolio_id=? ORDER BY date",
+            (pf["id"],),
+        ).fetchall()
+        pos = conn.execute(
+            "SELECT asset, direction, qty, entry_price, leverage, liq_price, opened_at, closed_at, exit_price, pnl, status "
+            "FROM paper_positions WHERE portfolio_id=? ORDER BY opened_at DESC, id DESC",
+            (pf["id"],),
+        ).fetchall()
+    return {
+        "indicator": pf["indicator"], "seed": pf["seed"], "capital": pf["capital"],
+        "equity_curve": [dict(r) for r in eq],
+        "positions": [dict(p) for p in pos],
+    }
+
+
+def reset(indicator: str | None = None, seed: float = SEED) -> int:
+    """시드 리셋 — 포지션·에쿼티 삭제 + 자본 복원. indicator=None이면 전체. 리셋 수 반환."""
+    now = datetime.now(timezone.utc).isoformat()
+    with get_db() as conn:
+        if indicator:
+            row = conn.execute("SELECT id FROM paper_portfolios WHERE indicator=?", (indicator,)).fetchone()
+            ids = [row["id"]] if row else []
+        else:
+            ids = [r["id"] for r in conn.execute("SELECT id FROM paper_portfolios").fetchall()]
+        for pid in ids:
+            conn.execute("DELETE FROM paper_positions WHERE portfolio_id=?", (pid,))
+            conn.execute("DELETE FROM paper_equity WHERE portfolio_id=?", (pid,))
+            conn.execute(
+                "UPDATE paper_portfolios SET seed=?, capital=?, updated_at=? WHERE id=?",
+                (seed, seed, now, pid),
+            )
+    return len(ids)

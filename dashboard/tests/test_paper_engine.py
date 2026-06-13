@@ -6,11 +6,15 @@ import pytest
 
 from dashboard.backend.services import paper_engine as pe
 from dashboard.backend.services.paper_engine import (
+    _curve_stats,
     compute_target,
     ensure_portfolios,
+    leaderboard,
     liquidation_hit,
+    portfolio_detail,
     realized_pnl,
     rebalance,
+    reset,
 )
 
 
@@ -110,3 +114,49 @@ def test_benchmark_ignores_deadband(paper_db):
     ensure_portfolios(["매수보유"])
     r = rebalance("매수보유", {"BTC": 0.0}, {"BTC": _px(100)}, "2026-01-01T00:00:00")
     assert any("open:long" in t for t in r["trades"])  # z=0이어도 롱 진입
+
+
+# ── 집계 (리더보드) ──────────────────────────────────────────
+def test_curve_stats_mdd_and_total():
+    st = _curve_stats([100, 110, 90, 120], [0.1, -0.18, 0.33], seed=100)
+    assert st["total_return_pct"] == pytest.approx(20.0)
+    assert st["mdd_pct"] == pytest.approx(-18.1818, abs=1e-3)  # 110→90
+
+
+def _two_days(indicator, z1, z2, p1, p2):
+    rebalance(indicator, {"BTC": z1}, {"BTC": _px(p1)}, "2026-01-01T00:00:00")
+    rebalance(indicator, {"BTC": z2}, {"BTC": _px(p2)}, "2026-01-02T00:00:00")
+
+
+def test_leaderboard_ranking_and_keys(paper_db):
+    ensure_portfolios(["복합방향", "매수보유"])
+    _two_days("복합방향", 1.0, -1.0, 100, 110)   # 롱→flip, 100→110 이익 실현
+    _two_days("매수보유", 0.0, 0.0, 100, 90)      # 롱 보유, 하락 손실
+
+    lb = leaderboard()
+    assert {r["indicator"] for r in lb} == {"복합방향", "매수보유"}
+    # 총수익 내림차순 정렬
+    assert lb[0]["total_return_pct"] >= lb[1]["total_return_pct"]
+    # 필수 키
+    for r in lb:
+        assert {"win_rate", "mdd_pct", "sharpe", "vs_buyhold_pct", "n_trades"} <= set(r)
+    bh = next(r for r in lb if r["indicator"] == "매수보유")
+    assert bh["vs_buyhold_pct"] == pytest.approx(0.0)  # 벤치마크 자기 자신
+
+
+def test_portfolio_detail(paper_db):
+    ensure_portfolios(["복합방향"])
+    _two_days("복합방향", 1.0, -1.0, 100, 110)
+    d = portfolio_detail("복합방향")
+    assert len(d["equity_curve"]) == 2
+    assert any(p["status"] == "closed" for p in d["positions"])
+    assert portfolio_detail("없는지표") is None
+
+
+def test_reset(paper_db):
+    ensure_portfolios(["복합방향"])
+    _two_days("복합방향", 1.0, 1.0, 100, 130)
+    assert reset("복합방향") == 1
+    d = portfolio_detail("복합방향")
+    assert d["equity_curve"] == [] and d["positions"] == []
+    assert d["capital"] == pytest.approx(pe.SEED)
