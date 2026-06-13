@@ -22,9 +22,8 @@ from dashboard.backend.services.spf_service import (
     classify_flow,
     calc_bearish_score,
     calc_bullish_score,
+    composite_prediction,
     find_similar_patterns,
-    generate_prediction,
-    get_bot_alert_level,
 )
 
 logger = logging.getLogger(__name__)
@@ -97,15 +96,12 @@ async def collect_spf() -> None:
     # BTC 가격 (봇 DataCollector 재활용)
     btc_price = await _get_btc_price()
 
-    # 포지션 흐름 분류
+    # 포지션 흐름 분류 (정보 뷰용)
     flow = classify_flow(oi_c3d, cum_fr_3d)
 
-    # 봇 alert_level
-    bot_level = get_bot_alert_level("BTC/USDT")
-
-    # 점수 계산
-    bearish = calc_bearish_score(oi_c3d, oi_c7d, cum_fr_3d, cum_fr_7d, consecutive_up, flow, bot_level)
-    bullish = calc_bullish_score(oi_c3d, cum_fr_3d, cum_fr_7d, flow, bot_level)
+    # 점수 계산 (정보 뷰용 — 방향 결정엔 미사용. 봇 alert_level 보정 제거)
+    bearish = calc_bearish_score(oi_c3d, oi_c7d, cum_fr_3d, cum_fr_7d, consecutive_up, flow, None)
+    bullish = calc_bullish_score(oi_c3d, cum_fr_3d, cum_fr_7d, flow, None)
 
     # OI 급등 경고
     oi_surge = "CRITICAL" if oi_c3d > 0.20 else "WARNING" if oi_c3d > 0.10 else None
@@ -144,17 +140,42 @@ async def collect_spf() -> None:
 
     logger.info("SPF 레코드 저장: %s | 하락%d 반등%d | %s", today, bearish, bullish, flow)
 
-    # 예측 생성 및 저장
-    await _save_prediction(today, record, bearish, bullish)
+    # 예측 생성 및 저장 (방향은 복합 모델, OI/FR은 정보 뷰)
+    tilt = _compute_tilt()
+    await _save_prediction(today, record, tilt)
 
 
-async def _save_prediction(today: str, record: dict, bearish: int, bullish: int) -> None:
-    """오늘 예측을 predictions 테이블에 저장."""
+def _compute_tilt():
+    """9팩터 복합 시장방향 tilt 계산 (실패 시 None — 방향 없이 폴백).
+
+    매크로 소스 일 1회 캐시(get_sources) 재사용. app.macro는 런타임 sys.path로 임포트.
+    """
+    import os
+    try:
+        from app.macro.collectors import get_sources
+        from app.macro.direction_composite import build_factors, latest_tilt
+        sources = get_sources(os.getenv("MACRO_CACHE_PATH", "macro_cache.csv"))
+        return latest_tilt(build_factors(**sources))
+    except Exception as e:
+        logger.warning("복합 tilt 계산 실패 (방향 없이 저장): %s", e)
+        return None
+
+
+async def _save_prediction(today: str, record: dict, tilt) -> None:
+    """오늘 예측을 predictions 테이블에 저장. 방향=복합 tilt, top_patterns=OI/FR 유사패턴(뷰)."""
     similar = find_similar_patterns(record)
-    pred = generate_prediction(
-        bearish, bullish, similar,
-        record["flow"], record["cum_fr_3d"], record["oi_change_3d"],
-    )
+    pred = composite_prediction(tilt)
+
+    # 근거: 복합 상위 기여 팩터 + 포지션 흐름 라벨
+    reasons = []
+    if tilt is not None and getattr(tilt, "contributions", None):
+        top = sorted(tilt.contributions.items(), key=lambda kv: -abs(kv[1]))[:3]
+        reasons += [f"{k} {v:+.2f}" for k, v in top]
+    flow_labels = {
+        "long_entry": "롱 신규 진입", "short_entry": "숏 신규 진입",
+        "long_exit": "롱 청산", "short_exit": "숏 청산", "neutral": "포지션 변동 미미",
+    }
+    reasons.append(flow_labels.get(record["flow"], record["flow"]))
 
     with get_db() as conn:
         conn.execute(
@@ -166,15 +187,15 @@ async def _save_prediction(today: str, record: dict, bearish: int, bullish: int)
                 today,
                 pred["direction"],
                 pred["confidence"],
-                bullish,
-                bearish,
+                record["bullish_score"],
+                record["bearish_score"],
                 pred["up_prob"],
                 pred["down_prob"],
                 json.dumps(similar, ensure_ascii=False),
-                json.dumps(pred["reasons"], ensure_ascii=False),
+                json.dumps(reasons, ensure_ascii=False),
             ),
         )
-    logger.info("예측 저장: %s | %s (%d%%)", today, pred["direction"], pred["confidence"])
+    logger.info("예측 저장: %s | %s (%d%%, z=%s)", today, pred["direction"], pred["confidence"], pred["composite_z"])
 
 
 async def _get_btc_price() -> float | None:

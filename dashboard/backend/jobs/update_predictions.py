@@ -37,10 +37,43 @@ async def update_predictions() -> None:
         # 14일 전
         _update_after_price(conn, today - timedelta(days=14), btc_today, "price_after_14d")
 
-        # 3일 전 예측 hit/miss 판정
+        # 3일 전 예측 hit/miss 판정 (구 컬럼 — 하위호환)
         _judge_prediction(conn, today - timedelta(days=3), btc_today)
 
+        # 복합 다horizon 판정 (7/14/30일)
+        for days, col in ((7, "result_7d"), (14, "result_14d"), (30, "result_30d")):
+            _judge_horizon(conn, today - timedelta(days=days), btc_today, col)
+
     logger.info("예측 결과 업데이트 완료")
+
+
+def _judge_horizon(conn, target_date: date, price_now: float, col: str) -> None:
+    """복합 방향 예측을 해당 horizon 가격으로 판정 (±1% 고정 임계, 중립은 'neutral').
+
+    상승 & 변화>+1% → hit / 하락 & 변화<−1% → hit / 중립 → 'neutral' / 그 외 → miss.
+    col은 result_7d/14d/30d 중 하나(고정 집합).
+    """
+    row = conn.execute(
+        f"""SELECT p.direction, s.price AS price_then
+            FROM predictions p JOIN spf_records s ON s.date = p.date
+            WHERE p.date = ? AND p.{col} IS NULL""",
+        (target_date.isoformat(),),
+    ).fetchone()
+    if not row or not row["price_then"]:
+        return
+    change_pct = (price_now - row["price_then"]) / row["price_then"] * 100
+    direction = row["direction"]
+    if direction == "중립":
+        result = "neutral"
+    elif direction == "상승" and change_pct > 1.0:
+        result = "hit"
+    elif direction == "하락" and change_pct < -1.0:
+        result = "hit"
+    else:
+        result = "miss"
+    conn.execute(
+        f"UPDATE predictions SET {col} = ? WHERE date = ?", (result, target_date.isoformat())
+    )
 
 
 def _update_after_price(conn, target_date: date, current_price: float, col: str) -> None:

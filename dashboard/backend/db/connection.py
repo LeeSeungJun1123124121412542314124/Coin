@@ -80,6 +80,15 @@ def _migrate_alert_history_direction(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_predictions_horizons(conn: sqlite3.Connection) -> None:
+    """predictions에 horizon별 판정 컬럼 추가 (없으면 ALTER TABLE)."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(predictions)").fetchall()}
+    for col_name in ("result_7d", "result_14d", "result_30d"):
+        if col_name not in existing:
+            conn.execute(f"ALTER TABLE predictions ADD COLUMN {col_name} TEXT")
+    conn.commit()
+
+
 def _init_schema(conn: sqlite3.Connection) -> None:
     schema = _SCHEMA_PATH.read_text(encoding="utf-8")
     conn.executescript(schema)
@@ -89,6 +98,8 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     _migrate_sim_positions_v2(conn)
     # alert_history 방향 컬럼 마이그레이션
     _migrate_alert_history_direction(conn)
+    # predictions horizon별 판정 컬럼 마이그레이션
+    _migrate_predictions_horizons(conn)
     # 마이그레이션 후 position 6 기본값 삽입 (schema.sql의 INSERT OR IGNORE는 구 제약 때문에 실패)
     conn.execute(
         "INSERT OR IGNORE INTO dashboard_coin_slots (position, coin_id, symbol, tv_symbol) VALUES (?,?,?,?)",

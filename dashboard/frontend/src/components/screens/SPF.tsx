@@ -41,10 +41,10 @@ interface TodayPrediction {
   reasons: string  // JSON string
 }
 
-interface PredStats {
-  total: number
-  hits: number
-  accuracy_pct: number | null
+interface HorizonStat {
+  expected: number          // 백테스트 기대 적중률(%)
+  realized: number | null   // 운영 실측 적중률(%) — 표본 없으면 null
+  n: number                 // 판정된 방향 커밋 예측 수
 }
 
 interface SpfData {
@@ -60,10 +60,13 @@ interface PredHistory {
     direction: string
     confidence: number
     result: string | null
+    result_7d: string | null
+    result_14d: string | null
+    result_30d: string | null
     up_prob: number
     down_prob: number
   }>
-  stats: PredStats
+  stats: Record<string, HorizonStat>  // "7" | "14" | "30"
 }
 
 const FLOW_LABELS: Record<string, string> = {
@@ -174,21 +177,29 @@ export function SPF() {
           )}
         </Card>
 
-        {/* 성적표 */}
+        {/* 성적표 — 기간별 방향 적중률 (기대=백테스트, 실측=운영 누적) */}
         <Card>
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>누적 적중률</div>
-          {predData?.stats.accuracy_pct != null ? (
-            <>
-              <div style={{ fontSize: '2rem', fontWeight: 700, color: predData.stats.accuracy_pct >= 60 ? '#4ade80' : '#f87171' }}>
-                {predData.stats.accuracy_pct}%
-              </div>
-              <div style={{ color: '#64748b', fontSize: '0.8rem', marginTop: 4 }}>
-                {predData.stats.total}전 {predData.stats.hits}승
-              </div>
-            </>
-          ) : (
-            <div style={{ color: '#64748b', fontSize: '0.85rem' }}>데이터 축적 중</div>
-          )}
+          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>방향 적중률 (기간별)</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {['7', '14', '30'].map(h => {
+              const s = predData?.stats?.[h]
+              const rc = s?.realized != null
+                ? (s.realized >= 55 ? '#4ade80' : s.realized >= 45 ? '#fbbf24' : '#f87171')
+                : '#64748b'
+              return (
+                <div key={h} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #1e293b', paddingBottom: 6 }}>
+                  <span style={{ color: '#e2e8f0', fontSize: '0.85rem', fontWeight: 600 }}>{h}일</span>
+                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                    기대 {s ? s.expected : '–'}% · <span style={{ color: rc }}>실측 {s?.realized != null ? `${s.realized}%` : '–'}</span>
+                    {s && s.n > 0 ? <span style={{ color: '#475569' }}> (n={s.n})</span> : null}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          <div style={{ color: '#475569', fontSize: '0.68rem', marginTop: 8 }}>
+            기대=2018~2026 백테스트, 실측=운영 누적(방향 커밋만, 중립 제외)
+          </div>
         </Card>
       </div>
 

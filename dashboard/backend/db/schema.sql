@@ -36,7 +36,10 @@ CREATE TABLE IF NOT EXISTS predictions (
     top_patterns      TEXT,   -- JSON
     reasons           TEXT,   -- JSON
     actual_price_3d   REAL,
-    result            TEXT    -- 'hit' | 'miss' | NULL(미판정)
+    result            TEXT,   -- (구) 3일 판정 'hit'|'miss'|NULL — 하위호환 보존
+    result_7d         TEXT,   -- 7일 판정 'hit'|'miss'|'neutral'|NULL
+    result_14d        TEXT,   -- 14일 판정
+    result_30d        TEXT    -- 30일 판정
 );
 
 -- 리서치 글 (탭 4)

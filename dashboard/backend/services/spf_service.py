@@ -16,7 +16,39 @@ from dashboard.backend.db.connection import get_db
 
 logger = logging.getLogger(__name__)
 
-# ── 포지션 흐름 분류 임계값 ────────────────────────────────────────
+# ── 방향 예측: 9팩터 복합 모델 (검증된 중기 신호) ──────────────────
+# 방향 커밋 적중률 (백테스트 2018-01~2026-06, 3085일, ±1% 고정 임계 기준)
+EXPECTED_ACCURACY = {7: 49.8, 14: 54.3, 30: 59.2}
+PRED_HORIZONS = (7, 14, 30)
+_TILT_DIR_KR = {"long": "상승", "short": "하락", "neutral": "중립"}
+
+
+def composite_prediction(tilt) -> dict:
+    """복합 tilt(direction/confidence/composite_z) → SPF 예측 dict.
+
+    방향은 복합 모델이 결정(OI/FR·봇 alert_level 무관). 중립이면 50:50·낮은 신뢰도.
+    tilt가 None(복합 계산 실패)이면 중립·신뢰도 0 폴백.
+    """
+    if tilt is None:
+        return {"direction": "중립", "confidence": 0, "up_prob": 50, "down_prob": 50, "composite_z": 0.0}
+    conf = int(round(getattr(tilt, "confidence", 0.0)))
+    d = getattr(tilt, "direction", "neutral")
+    if d == "long":
+        up = min(95, 50 + conf // 2); down = 100 - up
+    elif d == "short":
+        down = min(95, 50 + conf // 2); up = 100 - down
+    else:
+        up = down = 50
+    return {
+        "direction": _TILT_DIR_KR.get(d, "중립"),
+        "confidence": conf,
+        "up_prob": up,
+        "down_prob": down,
+        "composite_z": round(float(getattr(tilt, "composite_z", 0.0)), 3),
+    }
+
+
+# ── 포지션 흐름 분류 임계값 (정보 뷰용 — 방향 결정엔 미사용) ──────────
 _OI_SURGE_THRESHOLD = 0.10   # OI 3일 변화율 +10% 이상 → 급등
 _OI_DROP_THRESHOLD = -0.05   # OI 3일 변화율 -5% 이하 → 감소
 _FR_HEAT_THRESHOLD = 0.02    # FR > 0.02% → 롱 과밀집

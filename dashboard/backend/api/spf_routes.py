@@ -74,22 +74,31 @@ async def get_spf():
 
 @router.get("/prediction-history")
 async def get_pred_history():
-    """예측 기록 + 누적 적중률."""
+    """예측 기록 + horizon별(7/14/30) 기대·실측 적중률.
+
+    기대=백테스트 상수(EXPECTED_ACCURACY), 실측=result_Nd 누적 hit/(hit+miss).
+    중립('neutral')·미판정(NULL)은 분모 제외.
+    """
+    from dashboard.backend.services.spf_service import EXPECTED_ACCURACY, PRED_HORIZONS
+    from dashboard.backend.db.connection import get_db
+
     history = get_prediction_history(30)
+    stats: dict[str, dict] = {}
+    with get_db() as conn:
+        for h in PRED_HORIZONS:
+            col = f"result_{h}d"
+            row = conn.execute(
+                f"""SELECT
+                       SUM(CASE WHEN {col} = 'hit' THEN 1 ELSE 0 END) AS hits,
+                       SUM(CASE WHEN {col} IN ('hit','miss') THEN 1 ELSE 0 END) AS judged
+                    FROM predictions"""
+            ).fetchone()
+            hits = row["hits"] or 0
+            judged = row["judged"] or 0
+            realized = round(hits / judged * 100, 1) if judged else None
+            stats[str(h)] = {"expected": EXPECTED_ACCURACY[h], "realized": realized, "n": judged}
 
-    # 적중률 계산
-    judged = [p for p in history if p.get("result") in ("hit", "miss")]
-    hits = sum(1 for p in judged if p["result"] == "hit")
-    accuracy = round(hits / len(judged) * 100, 1) if judged else None
-
-    return JSONResponse({
-        "predictions": history,
-        "stats": {
-            "total": len(judged),
-            "hits": hits,
-            "accuracy_pct": accuracy,
-        },
-    })
+    return JSONResponse({"predictions": history, "stats": stats})
 
 
 @router.post("/spf-refresh")
