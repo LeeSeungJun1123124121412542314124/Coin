@@ -58,6 +58,17 @@ def _momentum_sig(ctx: SignalContext, asset: str) -> pd.Series:
     return _causal_z(c / c.shift(30) - 1)
 
 
+def _bollinger_sig(ctx: SignalContext, asset: str) -> pd.Series:
+    """볼린저밴드 평균회귀 — 상단(+2σ) 근접 시 숏, 하단(−2σ) 근접 시 롱 (횡보장 대응).
+
+    signal = -(종가−SMA20)/(2σ). 부호=방향, 크기=밴드 이탈 정도. 추세장에선 역행(리더보드가 판정).
+    """
+    c = ctx.closes[asset]
+    sma = c.rolling(20).mean()
+    denom = (2 * c.rolling(20).std()).where(lambda s: s > 0)  # σ=0 → NaN(제외)
+    return -((c - sma) / denom)
+
+
 def _dominance_sig(ctx: SignalContext, asset: str) -> pd.Series:
     """BTC vs 알트 30일 상대강도 → BTC 우위면 BTC 롱·알트 숏 (도미넌스 로테이션)."""
     def ret(c: pd.Series) -> pd.Series:
@@ -84,6 +95,7 @@ INDICATORS: dict[str, SignalFn] = {
     "MVRV": _macro("mvrv_level"),
     "RSI": _rsi_sig,
     "모멘텀30d": _momentum_sig,
+    "볼린저밴드": _bollinger_sig,
     "도미넌스": _dominance_sig,
     BENCHMARK: _buyhold_sig,
     # 새 지표 추가 = SignalFn 1개 + 여기 1줄

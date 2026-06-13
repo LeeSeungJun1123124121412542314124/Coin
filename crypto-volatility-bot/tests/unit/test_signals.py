@@ -52,8 +52,19 @@ def test_macro_is_asset_common():
 def test_technical_is_per_asset():
     """기술 지표는 자산별로 산출(키 존재)."""
     sig = latest_signals(_sources())
-    for ind in ("RSI", "모멘텀30d"):
+    for ind in ("RSI", "모멘텀30d", "볼린저밴드"):
         assert {"BTC", "ETH", "SOL"} <= set(sig[ind])
+
+
+def test_bollinger_mean_reversion_sign():
+    """볼밴 평균회귀: 상단 이탈→숏(음수), 하단 이탈→롱(양수)."""
+    from app.macro.signals import SignalContext, _bollinger_sig
+    idx = pd.date_range("2024-01-01", periods=40, freq="D")
+    empty = pd.Series(dtype=float)
+    up = SignalContext(closes={"BTC": pd.Series([100.0] * 39 + [130.0], index=idx)}, macro_z={}, composite=empty)
+    assert _bollinger_sig(up, "BTC").iloc[-1] < 0       # 급등 → 숏
+    down = SignalContext(closes={"BTC": pd.Series([100.0] * 39 + [70.0], index=idx)}, macro_z={}, composite=empty)
+    assert _bollinger_sig(down, "BTC").iloc[-1] > 0      # 급락 → 롱
 
 
 def test_dominance_btc_opposite_to_alts():

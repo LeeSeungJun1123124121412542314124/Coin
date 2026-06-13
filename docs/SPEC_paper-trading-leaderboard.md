@@ -51,6 +51,7 @@ INDICATORS: dict[str, IndicatorFn] = {
     "MVRV":       mvrv_signal,
     "RSI":        rsi_signal,          # 자산별
     "모멘텀30d":  momentum_signal,     # 자산별
+    "볼린저밴드": bollinger_signal,    # 자산별 평균회귀(횡보 대응)
     "도미넌스":   dominance_signal,    # BTC.D 로테이션 (별도 지표)
     "매수보유":   buyhold_signal,      # 벤치마크 (항상 롱)
     # 새 지표 추가 = 함수 1개 작성 + 여기 1줄 등록
