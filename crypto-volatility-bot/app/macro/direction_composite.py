@@ -64,8 +64,11 @@ def build_factors(
     vix: pd.Series,
     mvrv: pd.Series,
     active_addr: pd.Series,
+    **_ignored: pd.Series,
 ) -> dict[str, pd.Series]:
     """원시 소스(일봉 정렬) → 9팩터 변환 시계열. 누락 소스는 결과에서 제외.
+
+    (eth_close/sol_close 등 추가 소스는 **_ignored로 흡수 — build_factors(**sources) 호환)
 
     모든 입력은 동일한 일봉 DatetimeIndex로 정렬돼 있어야 한다(ffill된 거시/온체인 포함).
     """

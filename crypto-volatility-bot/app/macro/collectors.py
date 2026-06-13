@@ -21,7 +21,7 @@ _FRED_URL = "https://api.stlouisfed.org/fred/series/observations"
 _CM_URL = "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics"
 _BINANCE_URL = "https://api.binance.com/api/v3/klines"
 _HISTORY_DAYS = 420  # 250 워밍업 + 91(13주) + 여유
-_SOURCE_COLS = ["close", "net_liquidity", "dxy", "ust10y", "vix", "mvrv", "active_addr"]
+_SOURCE_COLS = ["close", "eth_close", "sol_close", "net_liquidity", "dxy", "ust10y", "vix", "mvrv", "active_addr"]
 
 
 def _verify():
@@ -82,7 +82,8 @@ def _fetch_coinmetrics(metric: str, start: str = "2018-01-01") -> pd.Series:
     return _parse_coinmetrics(out, metric)
 
 
-def _fetch_btc_daily(days: int = _HISTORY_DAYS) -> pd.Series:
+def _fetch_daily(symbol: str = "BTCUSDT", days: int = _HISTORY_DAYS) -> pd.Series:
+    """Binance 일봉 종가 시계열 (BTC/ETH/SOL 등)."""
     start = int((time.time() - days * 86400) * 1000)
     now = int(time.time() * 1000)
     rows: list[list] = []
@@ -90,7 +91,7 @@ def _fetch_btc_daily(days: int = _HISTORY_DAYS) -> pd.Series:
     for _ in range(10):
         r = requests.get(
             _BINANCE_URL,
-            params={"symbol": "BTCUSDT", "interval": "1d", "limit": 1000, "startTime": cur},
+            params={"symbol": symbol, "interval": "1d", "limit": 1000, "startTime": cur},
             timeout=20, verify=_verify(),
         )
         r.raise_for_status()
@@ -105,8 +106,12 @@ def _fetch_btc_daily(days: int = _HISTORY_DAYS) -> pd.Series:
 
 
 def fetch_sources() -> dict[str, pd.Series]:
-    """7개 소스 시계열을 BTC 일봉 인덱스에 ffill 정렬해 반환."""
-    close = _fetch_btc_daily()
+    """소스 시계열을 BTC 일봉 인덱스에 ffill 정렬해 반환.
+
+    매크로(공통) + BTC/ETH/SOL 일봉(자산별 기술지표·도미넌스 프록시용).
+    도미넌스는 별도 글로벌 시총 대신 BTC vs 알트 상대강도로 signals에서 계산(자급).
+    """
+    close = _fetch_daily("BTCUSDT")
     if close.empty:
         raise RuntimeError("BTC 일봉 수집 실패")
     idx = close.index
@@ -114,6 +119,8 @@ def fetch_sources() -> dict[str, pd.Series]:
     walcl, tga, rrp = _fetch_fred("WALCL"), _fetch_fred("WTREGEN"), _fetch_fred("RRPONTSYD")
     return {
         "close": close,
+        "eth_close": R(_fetch_daily("ETHUSDT")),
+        "sol_close": R(_fetch_daily("SOLUSDT")),
         "net_liquidity": R(walcl) - R(tga) - R(rrp) * 1000,
         "dxy": R(_fetch_fred("DTWEXBGS")),
         "ust10y": R(_fetch_fred("DGS10")),
