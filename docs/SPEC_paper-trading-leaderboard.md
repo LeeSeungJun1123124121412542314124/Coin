@@ -1,8 +1,14 @@
 # 스펙: 지표 리더보드 — 포워드 모의투자 엔진
 
 작성일: 2026-06-13
-상태: 구현 스펙 확정 (빌드 대기 — #1~6 디테일 포함 100%)
+상태: **구현 완료** (Phase 1~5, feature/paper-leaderboard). 빌드 중 확정한 2가지 변경은 아래 "구현 변경점" 참조.
 관련: 기존 수동예측 시뮬레이터 대체. [RESEARCH_direction-signals.md](RESEARCH_direction-signals.md)의 9팩터·생존 신호 재사용.
+
+## 구현 변경점 (스펙 대비)
+
+1. **도미넌스 데이터**: CoinGecko `/global`(현재값만, 과거 시계열 무료 불가) 대신 **BTC vs 알트(ETH/SOL) 30일 상대강도 프록시**로 자급 — 이미 수집하는 OHLCV만 사용, 추가 수집원 0. BTC 우위→BTC 롱·알트 숏 로테이션으로 의미 동일.
+2. **수동예측 제거 → 비활성 보존**: 회사 Railway 배포 기능 삭제 리스크를 피해 프론트 `SHOW_MANUAL_PREDICTION=false` 플래그로 **UI만 숨김**. 백엔드 엔드포인트·테이블·정산잡·프론트 코드는 전부 보존(플래그 true로 재활성).
+3. 구현 위치: 지표 레지스트리/수집 확장은 `crypto-volatility-bot/app/macro/`(signals.py·collectors.py), 엔진/집계/잡/API는 dashboard. (스펙의 `indicator_registry.py`는 `app/macro/signals.py`로 구현)
 
 ## 목표 (GOAL)
 
@@ -156,13 +162,13 @@ paper_equity(portfolio_id, date, equity, return_pct)
 - 매수보유 벤치마크가 리더보드에 항상 포함 (기준선)
 - 신규 지표 1개 추가가 함수+등록 1줄로 동작 (확장성 검증)
 
-## 구현 단계 (제안)
+## 구현 단계 (완료)
 
-1. **삭제**: 수동예측(프론트 폼·엔드포인트·정산잡·테이블) 제거
-2. **지표 레지스트리** + 신호 함수들 (app/macro 재사용) + 테스트
-3. **포트폴리오 엔진**: 신호→포지션, PnL(composite_backtest 재사용), 테이블, 리밸런스 잡 + 테스트
-4. **리더보드 API** + 집계 + 테스트
-5. **프론트 리더보드 UI** (Simulator.tsx 교체)
+1. ✅ **데이터 확장 + 지표 레지스트리** (collectors ETH/SOL·signals.py 10지표) + 테스트 7
+2. ✅ **포트폴리오 엔진**: 신호→포지션·PnL·VWAP정산·청산, paper_* 테이블, 리밸런스 잡(UTC 00:05) + 테스트 11
+3. ✅ **리더보드 API** + 집계(총수익·승률·MDD·Sharpe·vs매수보유) + 테스트 4
+4. ✅ **프론트 리더보드 UI** (Leaderboard.tsx + Simulator 뷰 토글)
+5. ✅ **수동예측 비활성 보존** (삭제 대신 플래그 숨김)
 
 ## 영향 파일
 
