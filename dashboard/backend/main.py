@@ -275,6 +275,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     from dashboard.backend.jobs.collect_kimchi import collect_kimchi
     from dashboard.backend.jobs.update_predictions import update_predictions
     from dashboard.backend.jobs.settle_predictions import settle_expired_predictions
+    from dashboard.backend.jobs.paper_rebalance import run_paper_rebalance
     from dashboard.backend.collectors.bybit_ohlcv import collect_coin_ohlcv_1h
 
     # SPF 데이터 수집 — 매일 00:10 UTC
@@ -297,6 +298,9 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
 
     # 만료 예측 자동 채점 — 매 시간 5분 (OHLCV 수집 완료 후)
     scheduler.add_job(settle_expired_predictions, CronTrigger(minute=5), id="settle_predictions")
+
+    # 페이퍼 리더보드 리밸런스 — 매일 00:05 UTC (지표별 포트폴리오 1일 갱신)
+    scheduler.add_job(run_paper_rebalance, CronTrigger(hour=0, minute=5), id="paper_rebalance")
 
     # 봇 분석 — 매시간 이벤트 알림 (긴급/고래)
     @async_retry(max_retries=3, backoff_base=2.0, on_failure=notify_job_failure)

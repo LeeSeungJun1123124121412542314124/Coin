@@ -160,3 +160,25 @@ def get_sources(cache_path: str, max_age_hours: float = 24.0, fetcher=fetch_sour
             logger.warning("거시 소스 fetch 실패 — stale 캐시 사용: %s", e)
             return _load_sources(cache_path)
         raise
+
+
+def latest_ohlc(symbols: dict[str, str]) -> dict[str, dict]:
+    """자산 → 직전 완성 일봉 {close, high, low}. (페이퍼 리밸런스 마크투마켓·청산판정용)
+
+    symbols 예: {"BTC": "BTCUSDT", "ETH": "ETHUSDT", "SOL": "SOLUSDT"}
+    klines[-1]은 진행중 봉이므로 완성봉 klines[-2]을 사용.
+    """
+    out: dict[str, dict] = {}
+    for asset, sym in symbols.items():
+        r = requests.get(
+            _BINANCE_URL,
+            params={"symbol": sym, "interval": "1d", "limit": 2},
+            timeout=20, verify=_verify(),
+        )
+        r.raise_for_status()
+        k = r.json()
+        if not k:
+            continue
+        bar = k[-2] if len(k) >= 2 else k[-1]
+        out[asset] = {"high": float(bar[2]), "low": float(bar[3]), "close": float(bar[4])}
+    return out

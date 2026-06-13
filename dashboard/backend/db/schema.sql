@@ -276,3 +276,44 @@ CREATE TABLE IF NOT EXISTS auto_backtest_cache (
     result_json TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_abt_cache ON auto_backtest_cache(symbol, horizon_h, computed_at);
+
+-- ============================================================
+-- 지표 리더보드 (포워드 모의투자) — 지표별 가상 포트폴리오
+-- ============================================================
+-- 지표별 포트폴리오 (시드·현재 현금자본)
+CREATE TABLE IF NOT EXISTS paper_portfolios (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    indicator    TEXT NOT NULL UNIQUE,
+    seed         REAL NOT NULL,
+    capital      REAL NOT NULL,          -- 실현 현금 잔고
+    leverage_cap REAL NOT NULL,
+    created_at   TEXT NOT NULL,
+    updated_at   TEXT NOT NULL
+);
+
+-- 현재/과거 포지션 (자산별)
+CREATE TABLE IF NOT EXISTS paper_positions (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    portfolio_id INTEGER NOT NULL REFERENCES paper_portfolios(id),
+    asset        TEXT NOT NULL,
+    direction    TEXT NOT NULL CHECK(direction IN ('long','short')),
+    qty          REAL NOT NULL,
+    entry_price  REAL NOT NULL,
+    leverage     REAL NOT NULL,
+    liq_price    REAL,
+    opened_at    TEXT NOT NULL,
+    closed_at    TEXT,
+    exit_price   REAL,
+    pnl          REAL,
+    status       TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','closed'))
+);
+CREATE INDEX IF NOT EXISTS idx_paper_pos ON paper_positions(portfolio_id, asset, status);
+
+-- 일별 에쿼티 스냅샷 (리더보드·곡선용)
+CREATE TABLE IF NOT EXISTS paper_equity (
+    portfolio_id INTEGER NOT NULL REFERENCES paper_portfolios(id),
+    date         TEXT NOT NULL,
+    equity       REAL NOT NULL,
+    return_pct   REAL,
+    PRIMARY KEY (portfolio_id, date)
+);
