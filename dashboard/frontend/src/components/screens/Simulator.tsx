@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { apiFetch } from '../../lib/api'
+import { Leaderboard } from './Leaderboard'
 import { Modal } from '../shared/Modal'
 import { SimScorecard } from '../shared/SimScorecard'
 import { AutoBacktest } from '../shared/AutoBacktest'
@@ -734,6 +735,7 @@ function NewPredictionForm({ market, onSubmit, onClose }: NewPredictionFormProps
 // ────────────────────────────────────────
 
 export function Simulator() {
+  const [simView, setSimView] = useState<'leaderboard' | 'manual'>('leaderboard')
   const [activeMarket, setActiveMarket] = useState<MarketTab>('crypto')
   const [backtestTab, setBacktestTab] = useState<'composite' | 'indicator'>('composite')
   const [accounts, setAccounts] = useState<SimAccount[]>([])
@@ -944,6 +946,33 @@ export function Simulator() {
         시뮬레이터
       </h1>
 
+      {/* ── 뷰 전환: 지표 리더보드 / 수동 예측 ── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        {([['leaderboard', '지표 리더보드'], ['manual', '수동 예측']] as const).map(([v, label]) => (
+          <button
+            key={v}
+            onClick={() => setSimView(v)}
+            style={{
+              padding: '8px 18px',
+              borderRadius: 8,
+              border: '1px solid #1e293b',
+              background: simView === v ? '#2563eb' : '#0f172a',
+              color: simView === v ? '#fff' : '#94a3b8',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: simView === v ? 600 : 400,
+              transition: 'all 0.15s',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {simView === 'leaderboard' ? (
+        <Leaderboard />
+      ) : (
+      <>
       {/* ── 마켓 탭 ── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         {(['crypto', 'kr_stock', 'us_stock'] as const).map(market => (
@@ -1663,6 +1692,8 @@ export function Simulator() {
           onClose={() => setShowNewPrediction(false)}
         />
       </Modal>
+      </>
+      )}
     </div>
   )
 }
