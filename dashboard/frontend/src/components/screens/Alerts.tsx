@@ -29,6 +29,7 @@ const LEVEL_COLOR: Record<string, string> = {
   HIGH: '#f97316',
   LIQUIDATION_RISK: '#a855f7',
   WHALE: '#60a5fa',
+  STALE_SIGNAL: '#2dd4bf',
 }
 
 const LEVEL_LABEL: Record<string, string> = {
@@ -36,6 +37,7 @@ const LEVEL_LABEL: Record<string, string> = {
   HIGH: '경보',
   LIQUIDATION_RISK: '청산 위험',
   WHALE: '고래 감지',
+  STALE_SIGNAL: '갱신 필요',
 }
 
 function formatTs(ts: string): string {

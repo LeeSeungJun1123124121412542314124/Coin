@@ -24,6 +24,12 @@ interface SignalItem {
   note?: string
 }
 
+interface SignalSection {
+  key: string
+  name: string
+  signals: SignalItem[]
+}
+
 interface ResearchData {
   generated_at: string
   categories: CategoryAnalysis[]
@@ -37,6 +43,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   '기술적분석': '#f59e0b',
   '시장분석': '#f87171',
   '기타': '#94a3b8',
+  '반도체 정점': '#2dd4bf',
 }
 
 
@@ -56,7 +63,7 @@ const LEVEL_ICONS: Record<string, string> = {
   neutral:  '⚪',
 }
 
-const CATEGORIES = ['전체', '매크로', '온체인', '파생상품', '알트코인', '기술적분석', '시장분석', '기타']
+const CATEGORIES = ['전체', '매크로', '온체인', '파생상품', '알트코인', '기술적분석', '시장분석', '기타', '반도체 정점']
 
 const STATUS_COLORS: Record<string, string> = {
   green: '#22c55e',
@@ -252,38 +259,52 @@ function _renderDetails(key: string, details: Record<string, unknown>) {
     )
   }
 
-  if (key === 'samsung_signals') {
-    const signals = (details.signals as SignalItem[]) ?? []
+  if (key === 'semiconductor_signals') {
+    const sections = (details.sections as SignalSection[]) ?? []
     const peakCount = (details.peak_count as number) ?? 0
     const total = (details.total as number) ?? 0
+    const asOf = details.as_of as string | undefined
+    const daysSince = details.days_since as number | undefined
 
     return (
       <div>
-        {peakCount >= 1 && (
-          <div style={{ fontSize: 11, color: '#f59e0b', marginBottom: 10, fontWeight: 600 }}>
-            ⚠️ {peakCount}/{total} 모니터링
-          </div>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {signals.map((signal) => {
-            const statusColor = STATUS_COLORS[signal.status] ?? '#94a3b8'
-            return (
-              <div key={signal.id}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 10, color: statusColor }}>●</span>
-                    <span style={{ fontSize: 12, color: '#cbd5e1' }}>{signal.name}</span>
-                  </div>
-                  <span style={{ fontSize: 11, color: statusColor, fontWeight: 600 }}>{signal.label}</span>
-                </div>
-                {signal.note && (
-                  <div style={{ fontSize: 11, color: '#64748b', marginLeft: 16, marginTop: 2 }}>
-                    {signal.note}
-                  </div>
-                )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          {peakCount >= 1 ? (
+            <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>⚠️ 정점 임박 {peakCount}/{total}</span>
+          ) : <span />}
+          {asOf && (
+            <span style={{ fontSize: 11, color: typeof daysSince === 'number' && daysSince > 21 ? '#f59e0b' : '#64748b' }}>
+              최종 확인: {asOf}{typeof daysSince === 'number' ? ` (${daysSince}일 전)` : ''}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {sections.map((section) => (
+            <div key={section.key}>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, marginBottom: 6 }}>{section.name}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {section.signals.map((signal) => {
+                  const statusColor = STATUS_COLORS[signal.status] ?? '#94a3b8'
+                  return (
+                    <div key={signal.id}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 10, color: statusColor }}>●</span>
+                          <span style={{ fontSize: 12, color: '#cbd5e1' }}>{signal.name}</span>
+                        </div>
+                        <span style={{ fontSize: 11, color: statusColor, fontWeight: 600 }}>{signal.label}</span>
+                      </div>
+                      {signal.note && (
+                        <div style={{ fontSize: 11, color: '#64748b', marginLeft: 16, marginTop: 2 }}>
+                          {signal.note}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       </div>
     )

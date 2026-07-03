@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from dashboard.backend.cache import cached
 
@@ -19,14 +19,81 @@ _FLOW_LABELS = {
     "neutral": "중립",
 }
 
-SAMSUNG_SIGNALS = [
-    {"id": "dram_price_momentum", "name": "DRAM 고정거래가 모멘텀 둔화",  "status": "green",  "label": "아직 아님",  "note": "1Q26 +65% QoQ, 2026 +148% 전망 지속"},
-    {"id": "memory_capex",        "name": "메모리 capex 폭발적 증가",      "status": "yellow", "label": "진행 중",    "note": "삼성 P4 라인 발주, 본격화 시작"},
-    {"id": "lta_price_floor",     "name": "LTA 가격 하한선 무력화",         "status": "green",  "label": "아직 아님",  "note": "골드만삭스: 이번엔 강력 구속력, 정점 신호 아님"},
-    {"id": "foreign_selling",     "name": "외국인 4주 누적 매도 가속",       "status": "yellow", "label": "모니터링",   "note": "4월 누적 +2.53조 매수, 직전 2일 -4조 매도 전환"},
-    {"id": "eps_consensus",       "name": "컨센서스 EPS 상향 정체/하향",    "status": "green",  "label": "아직 아님",  "note": "1Q26 +49% 서프, 컨센 상향 진행 중"},
-    {"id": "dram_inventory",      "name": "DRAM 재고 증가",                 "status": "green",  "label": "아직 아님",  "note": "1~2주 (역대 최저)"},
+# 사람이 9개 시그널을 마지막으로 검토한 UTC 날짜 (수동 갱신 기준일)
+SEMICONDUCTOR_SIGNALS_AS_OF = "2026-07-04"
+# as_of가 이 일수를 초과하면 direction_watch가 '갱신 필요' 알림을 발송
+_SEMI_STALE_DAYS = 21
+
+# 반도체 사이클 정점 시그널 — 업황 공통 3 + 삼성 3 + 하이닉스 3. 수동 갱신 상수.
+SEMICONDUCTOR_SIGNALS = [
+    {
+        "key": "industry",
+        "name": "업황 공통",
+        "signals": [
+            {"id": "dram_price_momentum", "name": "DRAM 고정거래가 모멘텀 둔화", "status": "yellow", "label": "둔화 진행", "note": "Q1 +95% → Q2 +48~63% → Q3 +40~50%, 증가율 3분기째 감소"},
+            {"id": "lta_price_floor",     "name": "LTA 가격 하한선 무력화",       "status": "green",  "label": "아직 아님", "note": "공급사 계약기간 단축·가격결정권 회복, 영업이익률 40~50%"},
+            {"id": "dram_inventory",      "name": "DRAM 재고 증가",               "status": "green",  "label": "아직 아님", "note": "역대 최저 2~3주(하이닉스 2주), 2026년 물량 완판"},
+        ],
+    },
+    {
+        "key": "samsung",
+        "name": "삼성전자 005930",
+        "signals": [
+            {"id": "samsung_foreign_selling", "name": "외국인 4주 누적 순매도",        "status": "red",    "label": "경보",     "note": "6월 -20.6조 순매도, 인버스 ETF 매수 전환"},
+            {"id": "samsung_eps_consensus",   "name": "EPS 컨센서스 상향 정체/하향",   "status": "green",  "label": "아직 아님", "note": "2Q 컨센 폭증(영업이익 전년比 18배), 상향 진행"},
+            {"id": "samsung_capex",           "name": "메모리 capex 폭발적 증가",      "status": "yellow", "label": "진행 중",   "note": "2026 730억달러, 평택 P5 60조 증설"},
+        ],
+    },
+    {
+        "key": "hynix",
+        "name": "SK하이닉스 000660",
+        "signals": [
+            {"id": "hynix_foreign_selling", "name": "외국인 4주 누적 순매도",        "status": "red",    "label": "경보",     "note": "6월 -15.9조 순매도"},
+            {"id": "hynix_eps_consensus",   "name": "EPS 컨센서스 상향 정체/하향",   "status": "green",  "label": "아직 아님", "note": "2Q 컨센 폭증(영업이익 전년比 6.9배), 상향 진행"},
+            {"id": "hynix_capex",           "name": "메모리 capex 폭발적 증가",      "status": "yellow", "label": "진행 중",   "note": "2026 170억달러+, 청주 M15X 20조"},
+        ],
+    },
 ]
+
+
+def _flat_signals() -> list[dict]:
+    return [s for sec in SEMICONDUCTOR_SIGNALS for s in sec["signals"]]
+
+
+def _aggregate_signals(signals: list[dict]) -> dict:
+    """시그널 상태를 카드 종합 지표로 집계 (level 임계 로직 유지)."""
+    red = sum(1 for s in signals if s["status"] == "red")
+    yellow = sum(1 for s in signals if s["status"] == "yellow")
+    total = len(signals)
+    peak_count = yellow + red
+    if red >= 1:
+        level = "critical"
+    elif yellow >= 3:
+        level = "warning"
+    elif yellow >= 1:
+        level = "neutral"
+    else:
+        level = "bullish"
+    score = (yellow * 50 + red * 100) // total if total else 0
+    score = max(0, min(100, score))
+    return {"peak_count": peak_count, "total": total, "level": level, "score": score}
+
+
+def semiconductor_stale_status(today: date | None = None) -> dict:
+    """반도체 시그널 데이터의 신선도 판정 (순수). as_of 초과 시 is_stale=True."""
+    if today is None:
+        today = datetime.now(timezone.utc).date()
+    days_since = (today - date.fromisoformat(SEMICONDUCTOR_SIGNALS_AS_OF)).days
+    agg = _aggregate_signals(_flat_signals())
+    return {
+        "as_of": SEMICONDUCTOR_SIGNALS_AS_OF,
+        "days_since": days_since,
+        "threshold_days": _SEMI_STALE_DAYS,
+        "is_stale": days_since > _SEMI_STALE_DAYS,
+        "peak_count": agg["peak_count"],
+        "total": agg["total"],
+        "level": agg["level"],
+    }
 
 
 async def analyze_all() -> dict:
@@ -39,13 +106,13 @@ async def analyze_all() -> dict:
         _analyze_technical(),
         _analyze_market(),
         _analyze_whale(),
-        _analyze_samsung_signals(),
+        _analyze_semiconductor_signals(),
         return_exceptions=True,
     )
 
     categories = []
     names = ["매크로", "온체인", "파생상품", "알트코인", "기술적분석", "시장분석", "기타", "반도체 정점"]
-    keys = ["macro", "onchain", "derivatives", "altcoin", "technical", "market", "whale", "samsung_signals"]
+    keys = ["macro", "onchain", "derivatives", "altcoin", "technical", "market", "whale", "semiconductor_signals"]
 
     for i, result in enumerate(results):
         if isinstance(result, Exception):
@@ -648,34 +715,18 @@ async def _analyze_whale() -> dict:
 
 # ─── 반도체 정점 시그널 ────────────────────────────────────────────
 
-@cached(ttl=86400, key_prefix="research_samsung")
-async def _analyze_samsung_signals() -> dict:
-    """삼성 반도체 정점 임박 시그널 6개 분석.
+@cached(ttl=86400, key_prefix="research_semiconductor")
+async def _analyze_semiconductor_signals() -> dict:
+    """삼성·SK하이닉스 반도체 정점 임박 시그널 9개(3섹션) 분석.
 
-    현재는 SAMSUNG_SIGNALS 상수 기반 정적 분석.
-    향후 Yahoo Finance(외국인 순매수) 등 async I/O 연동 예정.
+    SEMICONDUCTOR_SIGNALS 상수 기반 정적 분석 (자동 수집 없음, 수동 갱신).
+    as_of가 오래되면 direction_watch가 갱신 알림을 발송한다.
     """
-    signals = copy.deepcopy(SAMSUNG_SIGNALS)
-
-    # 신호 집계
-    red_count = sum(1 for s in signals if s["status"] == "red")
-    yellow_count = sum(1 for s in signals if s["status"] == "yellow")
-    peak_count = yellow_count + red_count
-    total = len(signals)
-
-    # level 판정
-    if red_count >= 1:
-        level = "critical"
-    elif yellow_count >= 3:
-        level = "warning"
-    elif yellow_count >= 1:
-        level = "neutral"
-    else:
-        level = "bullish"
-
-    # score 계산
-    score = (yellow_count * 50 + red_count * 100) // total
-    score = max(0, min(100, score))
+    sections = copy.deepcopy(SEMICONDUCTOR_SIGNALS)
+    flat = [s for sec in sections for s in sec["signals"]]
+    agg = _aggregate_signals(flat)
+    peak_count = agg["peak_count"]
+    total = agg["total"]
 
     # title 생성
     if peak_count > 0:
@@ -684,7 +735,7 @@ async def _analyze_samsung_signals() -> dict:
         title = f"정점 시그널 없음 — {total}개 정상"
 
     # summary 생성
-    alerted = [s["name"] for s in signals if s["status"] in ("yellow", "red")]
+    alerted = [s["name"] for s in flat if s["status"] in ("yellow", "red")]
     if alerted:
         if len(alerted) <= 3:
             summary = " · ".join(alerted) + " 모니터링 중"
@@ -693,15 +744,20 @@ async def _analyze_samsung_signals() -> dict:
     else:
         summary = f"모든 {total}개 시그널 정상"
 
+    today = datetime.now(timezone.utc).date()
+    days_since = (today - date.fromisoformat(SEMICONDUCTOR_SIGNALS_AS_OF)).days
+
     return {
-        "key": "samsung_signals",
+        "key": "semiconductor_signals",
         "name": "반도체 정점",
-        "level": level,
-        "score": score,
+        "level": agg["level"],
+        "score": agg["score"],
         "title": title,
         "summary": summary,
         "details": {
-            "signals": signals,
+            "sections": sections,
+            "as_of": SEMICONDUCTOR_SIGNALS_AS_OF,
+            "days_since": days_since,
             "peak_count": peak_count,
             "total": total,
         },
