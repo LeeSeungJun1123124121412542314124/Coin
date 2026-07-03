@@ -21,7 +21,7 @@ _FRED_URL = "https://api.stlouisfed.org/fred/series/observations"
 _CM_URL = "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics"
 _BINANCE_URL = "https://api.binance.com/api/v3/klines"
 _HISTORY_DAYS = 420  # 250 워밍업 + 91(13주) + 여유
-_SOURCE_COLS = ["close", "eth_close", "sol_close", "net_liquidity", "dxy", "ust10y", "vix", "mvrv", "active_addr"]
+_SOURCE_COLS = ["close", "eth_close", "sol_close", "net_liquidity", "tga", "dxy", "ust10y", "vix", "mvrv", "active_addr"]
 
 
 def _verify():
@@ -117,11 +117,13 @@ def fetch_sources() -> dict[str, pd.Series]:
     idx = close.index
     R = lambda s: s.reindex(idx, method="ffill")
     walcl, tga, rrp = _fetch_fred("WALCL"), _fetch_fred("WTREGEN"), _fetch_fred("RRPONTSYD")
+    tga_d = R(tga)  # TGA 원값(백만$) — 순유동성 성분이자 급변 알림·리더보드 지표 소스
     return {
         "close": close,
         "eth_close": R(_fetch_daily("ETHUSDT")),
         "sol_close": R(_fetch_daily("SOLUSDT")),
-        "net_liquidity": R(walcl) - R(tga) - R(rrp) * 1000,
+        "net_liquidity": R(walcl) - tga_d - R(rrp) * 1000,
+        "tga": tga_d,
         "dxy": R(_fetch_fred("DTWEXBGS")),
         "ust10y": R(_fetch_fred("DGS10")),
         "vix": R(_fetch_fred("VIXCLS")),
@@ -146,9 +148,18 @@ def _is_fresh(path: str, max_age_hours: float) -> bool:
     return (time.time() - os.path.getmtime(path)) / 3600.0 < max_age_hours
 
 
+def _cache_columns_ok(path: str) -> bool:
+    """캐시에 _SOURCE_COLS 전체가 있는지 — 구버전 캐시(예: tga 컬럼 부재) 마이그레이션 감지."""
+    try:
+        cols = pd.read_csv(path, index_col=0, nrows=0).columns
+        return set(_SOURCE_COLS).issubset(cols)
+    except Exception:
+        return False
+
+
 def get_sources(cache_path: str, max_age_hours: float = 24.0, fetcher=fetch_sources) -> dict[str, pd.Series]:
-    """캐시가 신선하면 캐시 사용, 아니면 fetch 후 저장. fetch 실패 시 stale 캐시 폴백."""
-    if _is_fresh(cache_path, max_age_hours):
+    """캐시가 신선하고 컬럼이 완전하면 캐시 사용, 아니면 fetch 후 저장. fetch 실패 시 stale 캐시 폴백."""
+    if _is_fresh(cache_path, max_age_hours) and _cache_columns_ok(cache_path):
         return _load_sources(cache_path)
     try:
         sources = fetcher()
@@ -156,7 +167,7 @@ def get_sources(cache_path: str, max_age_hours: float = 24.0, fetcher=fetch_sour
         _save_sources(sources, cache_path)
         return sources
     except Exception as e:
-        if os.path.exists(cache_path):
+        if os.path.exists(cache_path) and _cache_columns_ok(cache_path):
             logger.warning("거시 소스 fetch 실패 — stale 캐시 사용: %s", e)
             return _load_sources(cache_path)
         raise

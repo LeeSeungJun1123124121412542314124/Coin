@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import datetime, timezone
 
 from dashboard.backend.db.connection import get_db
@@ -120,5 +121,96 @@ def check_semiconductor_stale(status: dict | None = None) -> list[str]:
             _set_state(_SEMI_STALE_KEY, "1")
     elif prev == "1":
         _set_state(_SEMI_STALE_KEY, "0")  # 복구 → 리셋
+
+    return msgs
+
+
+# ── TGA(재무부 일반계정) 급변 이벤트 알림 ────────────────────
+# 임계 T: 캘리브레이션 2026-07-04 (docs/TGA_calibration_2026-07-04.md).
+# WTREGEN 5.5년 non-overlapping 4주 블록 + 히스테리시스 상태머신 시뮬 → 연 6회 발화.
+_TGA_THRESHOLD = 120_000     # 백만$ ($120B). 4주 변화 |Δ| 이 값 돌파 시 알림
+_TGA_RESET_RATIO = 0.7       # |Δ| < 0.7T 복귀 시 상태 리셋(재발화 진동 방지)
+_TGA_STATE_KEY = "tga_4w_alert_state"  # neutral / above_positive / above_negative
+
+
+def _current_tga_delta_4w() -> float | None:
+    """매크로 캐시의 tga 컬럼에서 4주(28일) 변화 산출. 캐시/컬럼 부재·이력부족 시 None."""
+    import pandas as pd
+    cache_path = os.getenv("MACRO_CACHE_PATH", "macro_cache.csv")
+    if not os.path.exists(cache_path):
+        return None
+    df = pd.read_csv(cache_path, index_col=0, parse_dates=True)
+    if "tga" not in df.columns:
+        return None
+    tga = df["tga"].dropna()
+    if len(tga) < 29:  # 28일 전 값 필요
+        return None
+    return float(tga.iloc[-1] - tga.iloc[-29])
+
+
+def _tga_message(delta_4w: float, direction: str) -> str:
+    b = abs(delta_4w) / 1000  # 백만$ → $B
+    if direction == "increase":
+        return (
+            f"💧 <b>TGA 4주 +${b:,.0f}B 급증</b>\n"
+            "재무부 유동성 흡수 국면 — 순유동성 압박(약세 압력)"
+        )
+    return (
+        f"💧 <b>TGA 4주 −${b:,.0f}B 급감</b>\n"
+        "재무부 유동성 방출 — 완화 국면"
+    )
+
+
+def _save_tga_alert(delta_4w: float, direction: str) -> None:
+    details = json.dumps(
+        {"delta_4w": round(delta_4w), "threshold": _TGA_THRESHOLD, "direction": direction},
+        ensure_ascii=False,
+    )
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO alert_history (symbol, alert_level, details) VALUES (?, ?, ?)",
+            ("TGA", "MACRO_EVENT", details),
+        )
+
+
+def check_tga_event(delta_4w: float | None = None) -> list[str]:
+    """TGA 4주 변화가 임계 상태로 '전이'된 순간에만 알림 (3상태 히스테리시스).
+
+    delta_4w 주입 가능(테스트용). 미주입 시 매크로 캐시에서 산출.
+    전이: neutral→above_±(발화), above_+↔above_−(방향전환 발화),
+    above_±→neutral(|Δ|<0.7T, 무발화 리셋). 동일 상태 유지 시 무발화.
+    """
+    if delta_4w is None:
+        delta_4w = _current_tga_delta_4w()
+    if delta_4w is None:
+        return []
+
+    T, reset = _TGA_THRESHOLD, _TGA_RESET_RATIO * _TGA_THRESHOLD
+    prev = _get_state(_TGA_STATE_KEY) or "neutral"
+    new_state = prev
+
+    if prev == "neutral":
+        if delta_4w >= T:
+            new_state = "above_positive"
+        elif delta_4w <= -T:
+            new_state = "above_negative"
+    elif prev == "above_positive":
+        if delta_4w <= -T:
+            new_state = "above_negative"
+        elif abs(delta_4w) < reset:
+            new_state = "neutral"
+    else:  # above_negative
+        if delta_4w >= T:
+            new_state = "above_positive"
+        elif abs(delta_4w) < reset:
+            new_state = "neutral"
+
+    msgs: list[str] = []
+    if new_state != prev:
+        _set_state(_TGA_STATE_KEY, new_state)
+        if new_state in ("above_positive", "above_negative"):
+            direction = "increase" if new_state == "above_positive" else "decrease"
+            _save_tga_alert(delta_4w, direction)
+            msgs.append(_tga_message(delta_4w, direction))
 
     return msgs

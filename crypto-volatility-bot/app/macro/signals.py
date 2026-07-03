@@ -53,6 +53,14 @@ def _rsi_sig(ctx: SignalContext, asset: str) -> pd.Series:
     return _causal_z(_rsi(ctx.closes[asset]))
 
 
+def _tga_sig(ctx: SignalContext, asset: str) -> pd.Series:
+    """TGA 13주 변화 — 부호 반전(TGA↑=유동성 흡수=약세). tga 소스 결측 시 NaN(자연 제외)."""
+    z = ctx.macro_z.get("tga_13w")
+    if z is None:
+        return pd.Series(float("nan"), index=ctx.closes[asset].index)
+    return -z
+
+
 def _momentum_sig(ctx: SignalContext, asset: str) -> pd.Series:
     c = ctx.closes[asset]
     return _causal_z(c / c.shift(30) - 1)
@@ -92,6 +100,7 @@ INDICATORS: dict[str, SignalFn] = {
     "달러": _macro("dxy_13w"),
     "금리": _macro("ust10y_13w"),
     "VIX": _macro("vix_level"),
+    "TGA": _tga_sig,
     "MVRV": _macro("mvrv_level"),
     "RSI": _rsi_sig,
     "모멘텀30d": _momentum_sig,

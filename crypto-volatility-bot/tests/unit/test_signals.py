@@ -38,7 +38,7 @@ def test_context_has_three_assets():
 
 def test_latest_signals_has_all_indicators():
     sig = latest_signals(_sources())
-    assert set(sig) == set(INDICATORS)  # 10개 지표 전부
+    assert set(sig) == set(INDICATORS)  # 등록된 지표 전부
 
 
 def test_macro_is_asset_common():
@@ -65,6 +65,25 @@ def test_bollinger_mean_reversion_sign():
     assert _bollinger_sig(up, "BTC").iloc[-1] < 0       # 급등 → 숏
     down = SignalContext(closes={"BTC": pd.Series([100.0] * 39 + [70.0], index=idx)}, macro_z={}, composite=empty)
     assert _bollinger_sig(down, "BTC").iloc[-1] > 0      # 급락 → 롱
+
+
+def test_tga_sign_negated():
+    """TGA 지표: tga_13w z 부호 반전(TGA↑=유동성 흡수=약세, 음수)."""
+    from app.macro.signals import SignalContext, _tga_sig
+    idx = pd.date_range("2024-01-01", periods=5, freq="D")
+    z = pd.Series([0.0, 0.0, 0.0, 0.0, 2.0], index=idx)  # tga_13w z = +2
+    ctx = SignalContext(closes={"BTC": pd.Series(range(5), index=idx, dtype=float)},
+                        macro_z={"tga_13w": z}, composite=pd.Series(dtype=float))
+    assert _tga_sig(ctx, "BTC").iloc[-1] == -2.0
+
+
+def test_tga_missing_source_excluded():
+    """tga 소스 결측 시 NaN 시리즈 → latest_signals에서 자연 제외(크래시 없음)."""
+    from app.macro.signals import SignalContext, _tga_sig
+    idx = pd.date_range("2024-01-01", periods=5, freq="D")
+    ctx = SignalContext(closes={"BTC": pd.Series(range(5), index=idx, dtype=float)},
+                        macro_z={}, composite=pd.Series(dtype=float))
+    assert _tga_sig(ctx, "BTC").isna().all()
 
 
 def test_dominance_btc_opposite_to_alts():

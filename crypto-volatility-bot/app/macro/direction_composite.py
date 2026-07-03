@@ -64,6 +64,7 @@ def build_factors(
     vix: pd.Series,
     mvrv: pd.Series,
     active_addr: pd.Series,
+    tga: pd.Series | None = None,
     **_ignored: pd.Series,
 ) -> dict[str, pd.Series]:
     """원시 소스(일봉 정렬) → 9팩터 변환 시계열. 누락 소스는 결과에서 제외.
@@ -85,6 +86,8 @@ def build_factors(
         "rsi14": _rsi(close) if close is not None else None,
         "sma50_dist": (close / close.rolling(50).mean() - 1) if close is not None else None,
         "momentum_30d": (close / close.shift(30) - 1) if close is not None else None,
+        # TGA 13주 변화 — 리더보드 단독 지표 소스. FACTORS(복합방향)엔 미편입.
+        "tga_13w": chg13(tga),
     }
     return {k: v for k, v in out.items() if v is not None}
 

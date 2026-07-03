@@ -33,6 +33,18 @@ def _aligned(bullish: bool) -> dict[str, pd.Series]:
     return d
 
 
+# ── build_factors: TGA 팩터 (리더보드용, 복합방향 미편입) ─────
+def test_build_factors_includes_tga_13w_without_touching_factors():
+    idx = pd.date_range("2020-01-01", periods=120, freq="D")
+    s = lambda: pd.Series(range(120), index=idx, dtype=float)
+    out = build_factors(
+        close=s(), net_liquidity=s(), dxy=s(), ust10y=s(),
+        vix=s(), mvrv=s(), active_addr=s(), tga=s(),
+    )
+    assert "tga_13w" in out                                  # 리더보드 소스 산출
+    assert "tga_13w" not in [name for name, _c, _s in FACTORS]  # 복합방향 FACTORS 무변경
+
+
 # ── compute_composite / latest_tilt ──────────────────────────
 def test_all_bullish_long():
     t = latest_tilt(_aligned(bullish=True))

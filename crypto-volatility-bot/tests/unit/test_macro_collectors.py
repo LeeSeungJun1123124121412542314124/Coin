@@ -78,3 +78,21 @@ def test_get_sources_no_cache_and_fetch_fail_raises(tmp_path):
 
     with pytest.raises(RuntimeError):
         C.get_sources(str(tmp_path / "missing.csv"), fetcher=boom)
+
+
+def test_get_sources_refetches_when_cache_missing_column(tmp_path):
+    """구버전 캐시(tga 컬럼 없음)는 mtime이 신선해도 폐기하고 재수집한다."""
+    path = str(tmp_path / "m.csv")
+    idx = pd.date_range("2020-01-01", periods=10, freq="D")
+    old_cols = [c for c in C._SOURCE_COLS if c != "tga"]
+    pd.DataFrame({c: pd.Series(range(10), index=idx, dtype=float) for c in old_cols}).to_csv(path)
+
+    calls = {"n": 0}
+
+    def fetch():
+        calls["n"] += 1
+        return _fake_sources()
+
+    s = C.get_sources(path, fetcher=fetch)  # 신선하지만 tga 컬럼 누락 → 재수집
+    assert calls["n"] == 1
+    assert "tga" in s
