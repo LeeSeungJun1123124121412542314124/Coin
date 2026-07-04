@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from statistics import median
 from typing import Any
 
 import ccxt
@@ -15,6 +16,10 @@ _COINMETRICS_BASE = "https://community-api.coinmetrics.io/v4"
 _BYBIT_BASE = "https://api.bybit.com"
 _MAX_RETRIES = 3
 _BACKOFF_BASE = 1.0
+
+# 고래 급증 감지 — 최신일 총유동량(in+out)이 직전 30일 중앙값의 배수 이상이면 발화
+_WHALE_SPIKE_RATIO = 3.0
+_WHALE_MIN_HISTORY = 8  # 판정에 필요한 최소 이력 일수 (미만이면 오탐 방지 위해 억제)
 
 # Coin Metrics asset name mapping (BTC/USDT → btc)
 _ASSET_MAP = {"btc": "btc", "eth": "eth", "xrp": "xrp"}
@@ -93,7 +98,12 @@ class DataCollector:
         return await _retry_async(_fetch)
 
     async def fetch_onchain_data(self, coin: str = "btc") -> dict[str, Any] | None:
-        """Fetch exchange inflow/outflow from Coin Metrics Community API (no API key needed)."""
+        """Coin Metrics Community API에서 거래소 유출입 31일 조회 (키 불필요).
+
+        고래 급증 감지: 최신일 총유동량(in+out)이 직전 30일 중앙값의
+        _WHALE_SPIKE_RATIO배 이상이면 dormant_whale_activated=True
+        (의미: "대규모 온체인 이동 급증" — 심볼별 자기 이력 대비라 스케일 무관).
+        """
         asset = _ASSET_MAP.get(coin.lower(), coin.lower())
 
         async def _fetch():
@@ -104,25 +114,34 @@ class DataCollector:
                         "assets": asset,
                         "metrics": "FlowInExNtv,FlowOutExNtv,AdrActCnt,CapMVRVCur",
                         "frequency": "1d",
-                        "limit_per_asset": 1,
+                        "limit_per_asset": 31,  # 최신 1일 + 판정 이력 30일
                     },
                 )
                 resp.raise_for_status()
                 data = resp.json().get("data", [])
                 if not data:
                     return None
-                latest = data[0]
+                rows = sorted(data, key=lambda r: r.get("time") or "")  # 응답 순서 비보장
+                latest = rows[-1]
                 inflow = float(latest.get("FlowInExNtv") or 0)
                 outflow = float(latest.get("FlowOutExNtv") or 0)
                 mvrv_raw = latest.get("CapMVRVCur")
                 mvrv = float(mvrv_raw) if mvrv_raw is not None else None
-                # Whale proxy: active addresses 비율로 추정 (고래 활동 대리지표)
                 whale_proxy = inflow + outflow  # 총 유동량이 클수록 고래 활동 가능성
+
+                # 고래 급증 판정 — 이력 부족·중앙값 0이면 억제(오탐 방지)
+                history = [
+                    float(r.get("FlowInExNtv") or 0) + float(r.get("FlowOutExNtv") or 0)
+                    for r in rows[:-1]
+                ]
+                med = median(history) if len(history) >= _WHALE_MIN_HISTORY else 0.0
+                spike = med > 0 and whale_proxy >= _WHALE_SPIKE_RATIO * med
+
                 return {
                     "exchange_inflow": inflow,
                     "exchange_outflow": outflow,
                     "whale_transaction_volume": whale_proxy / 1000,  # 정규화
-                    "dormant_whale_activated": False,
+                    "dormant_whale_activated": spike,
                     "mvrv": mvrv,
                 }
 

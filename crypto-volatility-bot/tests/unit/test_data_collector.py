@@ -96,3 +96,67 @@ class TestFetchOnchainData:
         with patch("app.data.data_collector.httpx.AsyncClient", return_value=mock_cm):
             result = await collector.fetch_onchain_data("BTC")
         assert result is None
+
+
+def _onchain_days(days: list[tuple[str, float, float]], mvrv_last: str | None = None) -> dict:
+    """(time, inflow, outflow) 리스트 → CoinMetrics 응답 형태. 마지막 날에만 MVRV 부여."""
+    data = []
+    for i, (t, inflow, outflow) in enumerate(days):
+        row: dict = {"time": t, "FlowInExNtv": str(inflow), "FlowOutExNtv": str(outflow)}
+        if mvrv_last is not None and i == len(days) - 1:
+            row["CapMVRVCur"] = mvrv_last
+        data.append(row)
+    return {"data": data}
+
+
+def _history_30d(flow_each: float = 1000.0) -> list[tuple[str, float, float]]:
+    """6월 1~30일, 일별 총유동량 flow_each (in 60% / out 40%)."""
+    return [
+        (f"2026-06-{d:02d}", flow_each * 0.6, flow_each * 0.4)
+        for d in range(1, 31)
+    ]
+
+
+class TestWhaleSpikeDetection:
+    """고래 급증 감지 — 최신일 총유동량 ≥ 직전 30일 중앙값 × 3배."""
+
+    @pytest.mark.asyncio
+    async def test_spike_day_activates(self, collector):
+        # 중앙값 1000, 최신일 3500 (≥ 3000) → True. 기존 필드는 최신일 기준 유지.
+        days = _history_30d() + [("2026-07-01", 2000.0, 1500.0)]
+        mock_cm = _make_httpx_mock(json_data=_onchain_days(days, mvrv_last="2.1"))
+        with patch("app.data.data_collector.httpx.AsyncClient", return_value=mock_cm):
+            result = await collector.fetch_onchain_data("BTC")
+        assert result["dormant_whale_activated"] is True
+        assert result["exchange_inflow"] == 2000.0
+        assert result["exchange_outflow"] == 1500.0
+        assert result["whale_transaction_volume"] == pytest.approx(3.5)  # (in+out)/1000
+        assert result["mvrv"] == pytest.approx(2.1)
+
+    @pytest.mark.asyncio
+    async def test_normal_day_stays_false(self, collector):
+        # 최신일 1200 (< 3000) → False
+        days = _history_30d() + [("2026-07-01", 700.0, 500.0)]
+        mock_cm = _make_httpx_mock(json_data=_onchain_days(days))
+        with patch("app.data.data_collector.httpx.AsyncClient", return_value=mock_cm):
+            result = await collector.fetch_onchain_data("BTC")
+        assert result["dormant_whale_activated"] is False
+
+    @pytest.mark.asyncio
+    async def test_short_history_suppressed(self, collector):
+        # 이력 5일뿐이면 급증이어도 False (오탐 억제)
+        days = _history_30d()[:5] + [("2026-07-01", 9000.0, 6000.0)]
+        mock_cm = _make_httpx_mock(json_data=_onchain_days(days))
+        with patch("app.data.data_collector.httpx.AsyncClient", return_value=mock_cm):
+            result = await collector.fetch_onchain_data("BTC")
+        assert result["dormant_whale_activated"] is False
+
+    @pytest.mark.asyncio
+    async def test_unsorted_response_uses_latest_by_time(self, collector):
+        # 응답 순서가 뒤섞여도 time 기준 최신일로 판정·필드 산출
+        days = [("2026-07-01", 2000.0, 1500.0)] + _history_30d()
+        mock_cm = _make_httpx_mock(json_data=_onchain_days(days))
+        with patch("app.data.data_collector.httpx.AsyncClient", return_value=mock_cm):
+            result = await collector.fetch_onchain_data("BTC")
+        assert result["exchange_inflow"] == 2000.0
+        assert result["dormant_whale_activated"] is True
