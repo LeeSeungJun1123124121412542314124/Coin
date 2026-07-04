@@ -167,6 +167,31 @@ CREATE TABLE IF NOT EXISTS stock_slots (
     UNIQUE(market, position)
 );
 
+-- 한국 주식 외국인·기관·개인 순매수 (억원)
+CREATE TABLE IF NOT EXISTS kr_investor_flow (
+    date            TEXT NOT NULL,
+    market          TEXT NOT NULL CHECK(market IN ('KOSPI','KOSDAQ')),
+    foreign_net     REAL,
+    institution_net REAL,
+    individual_net  REAL,
+    PRIMARY KEY (date, market)
+);
+
+-- 한국 시장 일별 거래대금 (조원)
+CREATE TABLE IF NOT EXISTS kr_market_volume (
+    date         TEXT NOT NULL PRIMARY KEY,
+    kospi_value  REAL,
+    kosdaq_value REAL
+);
+
+-- 미국 주식 Fear & Greed 지수
+CREATE TABLE IF NOT EXISTS stock_fear_greed (
+    date       TEXT NOT NULL PRIMARY KEY,
+    value      REAL NOT NULL,
+    rating     TEXT,
+    updated_at TEXT NOT NULL
+);
+
 -- ============================================================
 -- 시뮬레이터 테이블
 -- ============================================================
