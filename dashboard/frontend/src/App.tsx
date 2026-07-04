@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Routes, Route, NavLink, Navigate } from 'react-router-dom'
+import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import './index.css'
 import { Dashboard } from './components/screens/Dashboard'
 import { SPF } from './components/screens/SPF'
@@ -14,23 +14,16 @@ import { Leaderboard } from './components/screens/Leaderboard'
 import { BASE } from './lib/api'
 
 const TABS = [
-  { path: '/', label: '대시보드', icon: '▦' },
-  { path: '/volume', label: '볼륨트래커', icon: '⌁' },
-  { path: '/spf', label: 'SPF', icon: '◎' },
-  { path: '/research', label: '리서치', icon: '▤' },
-  { path: '/market', label: '시장분석', icon: '✣' },
-  { path: '/liquidity', label: '유동성', icon: '▣' },
-  { path: '/cvd', label: 'CVD 스크리너', icon: '⌘' },
-  { path: '/whale', label: '고래추적', icon: '♢' },
-  { path: '/alerts', label: '알림히스토리', icon: '◌' },
-  { path: '/leaderboard', label: '리더보드', icon: '⚙' },
-] as const
-
-const PRIMARY_TABS = [
-  { path: '/', label: '대시보드', icon: '▦' },
-  { path: '/volume', label: '볼륨', icon: '⌁' },
-  { path: '/spf', label: 'SPF', icon: '◎' },
-  { path: '/leaderboard', label: '리더보드', icon: '⚙' },
+  { path: '/', label: '대시보드', description: '시장 핵심 카드와 뉴스, 코인·주식 요약을 한 화면에서 봅니다.' },
+  { path: '/volume', label: '볼륨트래커', description: '국내 거래대금과 RSI, 공포탐욕 흐름으로 시장 열기를 추적합니다.' },
+  { path: '/spf', label: 'SPF', description: '선물 포지션 흐름과 중기 방향 전망을 검증합니다.' },
+  { path: '/research', label: '리서치', description: '수집된 데이터를 카테고리별 자동 분석으로 정리합니다.' },
+  { path: '/market', label: '시장분석', description: 'VIX, BTC, 핵심 지표와 시장 인사이트를 비교합니다.' },
+  { path: '/liquidity', label: '유동성', description: 'TGA, M2, SOMA와 국채 경매로 매크로 유동성을 봅니다.' },
+  { path: '/cvd', label: 'CVD 스크리너', description: 'CVD와 가격 다이버전스 기반 알트코인 스크리닝을 확인합니다.' },
+  { path: '/whale', label: '고래추적', description: 'Hyperliquid 상위 지갑 포지션과 BTC 방향 합의를 추적합니다.' },
+  { path: '/alerts', label: '알림히스토리', description: '전송된 경보와 방향 판정 기록을 심볼별로 확인합니다.' },
+  { path: '/leaderboard', label: '리더보드', description: '지표별 포워드 자동매매 성과와 에쿼티 곡선을 비교합니다.' },
 ] as const
 
 function PinScreen({ onSuccess }: { onSuccess: () => void }) {
@@ -101,9 +94,13 @@ function PinScreen({ onSuccess }: { onSuccess: () => void }) {
 }
 
 export default function App() {
+  const location = useLocation()
   const [authenticated, setAuthenticated] = useState(() => {
     return !!sessionStorage.getItem('auth_token')
   })
+  const activeTab = TABS.find(tab => (
+    tab.path === '/' ? location.pathname === '/' : location.pathname.startsWith(tab.path)
+  )) ?? TABS[0]
 
   if (!authenticated) {
     return <PinScreen onSuccess={() => setAuthenticated(true)} />
@@ -113,10 +110,14 @@ export default function App() {
     <div className="app-shell">
       <header className="mock-top-ticker">
         <div className="mock-brand">
-          <span className="mock-brand-mark">◉</span>
           <span className="mock-brand-name">투자분석기</span>
+          <span className="mock-brand-separator">|</span>
+          <span className="mock-brand-section">{activeTab.label}</span>
         </div>
-        <div className="mock-header-title">실시간 시장 데이터 대시보드</div>
+        <div className="mock-header-title">
+          <span>{activeTab.description}</span>
+          <span className="mock-header-meta">마지막 업데이트 : 화면별 데이터 기준</span>
+        </div>
       </header>
       <aside className="mock-sidebar">
         <nav className="mock-sidebar-nav" aria-label="주요 화면">
@@ -127,7 +128,6 @@ export default function App() {
               end={tab.path === '/'}
               className={({ isActive }) => `mock-sidebar-link${isActive ? ' mock-sidebar-link-active' : ''}`}
             >
-              <span>{tab.icon}</span>
               <b>{tab.label}</b>
             </NavLink>
           ))}
@@ -149,15 +149,14 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      <nav className="mock-bottom-nav" aria-label="모바일 핵심 화면">
-        {PRIMARY_TABS.map(tab => (
+      <nav className="mock-bottom-nav" aria-label="모바일 전체 메뉴">
+        {TABS.map(tab => (
           <NavLink
             key={tab.path}
             to={tab.path}
             end={tab.path === '/'}
             className={({ isActive }) => `mock-bottom-link${isActive ? ' mock-bottom-link-active' : ''}`}
           >
-            <span>{tab.icon}</span>
             {tab.label}
           </NavLink>
         ))}

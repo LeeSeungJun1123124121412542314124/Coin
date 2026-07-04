@@ -50,3 +50,13 @@ def test_market_main_cards_are_compact_in_mock_shell():
     assert ".mock-data-card" in source
     assert "min-height: 132px" in source
     assert ".mock-market-overview .dashboard-market-card" in source
+
+
+def test_mobile_dashboard_card_columns_match_requested_density():
+    source = INDEX_CSS.read_text(encoding="utf-8")
+
+    assert ".mock-market-overview .mock-overview-grid" in source
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in source
+    assert ".mock-coin-price-section .mock-compact-grid" in source
+    assert ".mock-kr-stock-section .mock-compact-grid" in source
+    assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in source

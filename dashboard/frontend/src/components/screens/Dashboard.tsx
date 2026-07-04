@@ -290,10 +290,6 @@ export function Dashboard() {
 
   return (
     <div className="mock-spf-dashboard mock-real-dashboard">
-      <section className="mock-section-title">
-        <h1>대시보드</h1>
-      </section>
-
       <div className="mock-real-stack">
         <section className="mock-market-overview">
           <div className="mock-card-head">

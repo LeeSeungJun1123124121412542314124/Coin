@@ -83,11 +83,10 @@ export function Alerts() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <LastUpdated timestamp={lastUpdated} />
 
-      {/* 헤더 + 필터 */}
+      {/* 요약 + 필터 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 style={{ color: '#e2e8f0', fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>알림 히스토리</h2>
-          <p style={{ color: '#64748b', fontSize: '0.8rem', margin: '4px 0 0' }}>
+          <p style={{ color: '#64748b', fontSize: '0.8rem', margin: 0 }}>
             총 {data.total}건
           </p>
         </div>

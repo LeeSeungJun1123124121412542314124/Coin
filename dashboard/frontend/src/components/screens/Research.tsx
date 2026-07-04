@@ -356,10 +356,9 @@ export function Research() {
   return (
     <div style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto' }}>
       <LastUpdated timestamp={lastUpdated} />
-      {/* 헤더 */}
+      {/* 설명 */}
       <div style={{ marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>리서치</h2>
-        <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
+        <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
           수집된 데이터 기반 카테고리별 자동 분석
           {data?.generated_at && (
             <span style={{ marginLeft: 8 }}>

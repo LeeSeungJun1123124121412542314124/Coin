@@ -14,7 +14,7 @@ def test_app_shell_uses_mockup_ticker_and_sidebar():
     source = APP_TSX.read_text(encoding="utf-8")
 
     assert "mock-top-ticker" in source
-    assert "mock-brand-mark" in source
+    assert "mock-brand-mark" not in source
     assert "mock-sidebar" in source
     assert "mock-sidebar-link" in source
     assert "API 연동" not in source
@@ -39,6 +39,7 @@ def test_css_contains_mockup_desktop_and_mobile_layout():
     source = INDEX_CSS.read_text(encoding="utf-8")
 
     assert ".mock-top-ticker" in source
+    assert "grid-template-columns: minmax(270px, max-content) minmax(0, 1fr)" in source
     assert "grid-template-columns: 168px minmax(0, 1fr)" in source
     assert ".mock-content-grid" in source
     assert "grid-template-columns: 1fr 1.35fr" in source

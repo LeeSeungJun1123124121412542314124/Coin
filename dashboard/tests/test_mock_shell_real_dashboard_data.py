@@ -78,6 +78,7 @@ def test_dashboard_section_titles_match_requested_labels():
 
     assert 'title="코인가격"' in source
     assert 'title="한국주식"' in source
+    assert "<h1>대시보드</h1>" not in source
     assert "SPF · 코인 가격" not in source
     assert "SPF 추이 · 한국 주식" not in source
 
