@@ -41,10 +41,18 @@ def test_latest_signals_has_all_indicators():
     assert set(sig) == set(INDICATORS)  # 등록된 지표 전부
 
 
+def test_registry_composition():
+    """개편 확정 구성 — 표시 9개 + 매수보유(벤치마크). 달러·금리·TGA·모멘텀30d·RSI는 은퇴."""
+    assert set(INDICATORS) == {
+        "복합방향", "순유동성", "VIX", "MVRV", "볼린저밴드", "도미넌스",
+        "유동성", "긴축환경", "과열회귀", "매수보유",
+    }
+
+
 def test_macro_is_asset_common():
-    """매크로/온체인 지표는 자산 공통(동일 z)."""
+    """매크로/온체인 지표는 자산 공통(동일 z). 매크로 멤버만 결합한 지표도 동일."""
     sig = latest_signals(_sources())
-    for ind in ("순유동성", "달러", "금리", "VIX", "MVRV", "복합방향"):
+    for ind in ("순유동성", "VIX", "MVRV", "복합방향", "유동성", "긴축환경"):
         vals = list(sig[ind].values())
         assert len(set(vals)) == 1, f"{ind}는 자산 공통이어야 함: {sig[ind]}"
 
@@ -52,7 +60,7 @@ def test_macro_is_asset_common():
 def test_technical_is_per_asset():
     """기술 지표는 자산별로 산출(키 존재)."""
     sig = latest_signals(_sources())
-    for ind in ("RSI", "모멘텀30d", "볼린저밴드"):
+    for ind in ("볼린저밴드", "과열회귀"):
         assert {"BTC", "ETH", "SOL"} <= set(sig[ind])
 
 
@@ -84,6 +92,62 @@ def test_tga_missing_source_excluded():
     ctx = SignalContext(closes={"BTC": pd.Series(range(5), index=idx, dtype=float)},
                         macro_z={}, composite=pd.Series(dtype=float))
     assert _tga_sig(ctx, "BTC").isna().all()
+
+
+def test_combined_liquidity_is_member_mean():
+    """유동성 = (순유동성z + TGA신호)/2 — TGA는 이미 부호 반전된 신호를 평균(이중 반전 금지)."""
+    from app.macro.signals import SignalContext
+    idx = pd.date_range("2024-01-01", periods=5, freq="D")
+    ctx = SignalContext(
+        closes={"BTC": pd.Series(range(5), index=idx, dtype=float)},
+        macro_z={"net_liquidity_13w": pd.Series([1.0] * 5, index=idx),
+                 "tga_13w": pd.Series([2.0] * 5, index=idx)},
+        composite=pd.Series(dtype=float),
+    )
+    # TGA 신호 = -2 → (1 + (-2)) / 2 = -0.5
+    assert INDICATORS["유동성"](ctx, "BTC").iloc[-1] == -0.5
+
+
+def test_combined_tightening_is_member_mean():
+    """긴축환경 = (달러z + 금리z)/2."""
+    from app.macro.signals import SignalContext
+    idx = pd.date_range("2024-01-01", periods=5, freq="D")
+    ctx = SignalContext(
+        closes={"BTC": pd.Series(range(5), index=idx, dtype=float)},
+        macro_z={"dxy_13w": pd.Series([1.0] * 5, index=idx),
+                 "ust10y_13w": pd.Series([3.0] * 5, index=idx)},
+        composite=pd.Series(dtype=float),
+    )
+    assert INDICATORS["긴축환경"](ctx, "BTC").iloc[-1] == 2.0
+
+
+def test_combined_overheat_is_member_mean():
+    """과열회귀 = (RSI신호 + 볼밴신호)/2 — 자산별."""
+    from app.macro.signals import _bollinger_sig, _rsi_sig
+    ctx = build_context(_sources())
+    for asset in ("BTC", "ETH"):
+        expected = (_rsi_sig(ctx, asset).iloc[-1] + _bollinger_sig(ctx, asset).iloc[-1]) / 2
+        assert abs(INDICATORS["과열회귀"](ctx, asset).iloc[-1] - expected) < 1e-12
+
+
+def test_combined_partial_nan_uses_valid_members():
+    """멤버 일부 NaN → 유효 멤버만 부분평균, 전 멤버 NaN → NaN."""
+    from app.macro.signals import SignalContext
+    idx = pd.date_range("2024-01-01", periods=5, freq="D")
+    # tga 소스 결측(macro_z에 없음) → TGA 신호 전부 NaN → 순유동성만으로 부분평균
+    partial = SignalContext(
+        closes={"BTC": pd.Series(range(5), index=idx, dtype=float)},
+        macro_z={"net_liquidity_13w": pd.Series([1.0] * 5, index=idx)},
+        composite=pd.Series(dtype=float),
+    )
+    assert INDICATORS["유동성"](partial, "BTC").iloc[-1] == 1.0
+    # 전 멤버 NaN → NaN
+    all_nan = SignalContext(
+        closes={"BTC": pd.Series(range(5), index=idx, dtype=float)},
+        macro_z={"net_liquidity_13w": pd.Series(float("nan"), index=idx)},
+        composite=pd.Series(dtype=float),
+    )
+    assert INDICATORS["유동성"](all_nan, "BTC").isna().all()
 
 
 def test_dominance_btc_opposite_to_alts():

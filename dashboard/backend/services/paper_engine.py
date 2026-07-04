@@ -215,9 +215,16 @@ def _curve_stats(equities: list[float], daily_returns: list[float], seed: float)
 
 
 def leaderboard() -> list[dict]:
-    """지표별 총수익·승률·MDD·Sharpe·vs매수보유, 총수익 내림차순."""
+    """지표별 총수익·승률·MDD·Sharpe·vs매수보유, 총수익 내림차순.
+
+    현재 레지스트리 지표만 표시 — 은퇴 지표는 DB 행 보존·표시 제외, 벤치마크는
+    vs_buyhold_pct 계산에만 쓰고 행에서 숨김 (2026-07 개편, docs/SPEC_leaderboard-indicator-reform.md).
+    """
+    from app.macro.signals import INDICATORS  # 런타임 main.py가 봇 경로를 sys.path에 추가
+
     with get_db() as conn:
         pfs = conn.execute("SELECT * FROM paper_portfolios").fetchall()
+        pfs = [pf for pf in pfs if pf["indicator"] in INDICATORS]
         out = []
         for pf in pfs:
             eq = conn.execute(
@@ -242,6 +249,7 @@ def leaderboard() -> list[dict]:
     bh = next((r["total_return_pct"] for r in out if r["indicator"] == BENCHMARK), None)
     for r in out:
         r["vs_buyhold_pct"] = (r["total_return_pct"] - bh) if bh is not None else None
+    out = [r for r in out if r["indicator"] != BENCHMARK]  # 벤치마크는 비교 기준으로만 사용
     out.sort(key=lambda r: r["total_return_pct"], reverse=True)
     return out
 

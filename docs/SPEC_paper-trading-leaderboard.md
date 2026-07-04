@@ -42,6 +42,9 @@
 
 ```python
 # dashboard/backend/services/indicator_registry.py (신규)
+# ⚠️ 2026-07 개편으로 구성 변경 — 현행 목록은 SPEC_leaderboard-indicator-reform.md 참조
+#    (달러·금리·TGA·RSI·모멘텀30d 은퇴 → 유동성·긴축환경·과열회귀 결합 지표 신설,
+#     매수보유는 벤치마크로 계속 매매하되 표시에서 숨김)
 INDICATORS: dict[str, IndicatorFn] = {
     "복합방향":   composite_signal,    # 9팩터
     "순유동성":   netliq_signal,

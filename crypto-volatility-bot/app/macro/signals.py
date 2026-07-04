@@ -61,9 +61,11 @@ def _tga_sig(ctx: SignalContext, asset: str) -> pd.Series:
     return -z
 
 
-def _momentum_sig(ctx: SignalContext, asset: str) -> pd.Series:
-    c = ctx.closes[asset]
-    return _causal_z(c / c.shift(30) - 1)
+def _combined(*members: SignalFn) -> SignalFn:
+    """결합 지표 — 멤버 신호 균등 평균. 유효 멤버만 부분평균, 전 멤버 NaN이면 NaN."""
+    def fn(ctx: SignalContext, asset: str) -> pd.Series:
+        return pd.concat([m(ctx, asset) for m in members], axis=1).mean(axis=1)
+    return fn
 
 
 def _bollinger_sig(ctx: SignalContext, asset: str) -> pd.Series:
@@ -94,18 +96,18 @@ def _buyhold_sig(ctx: SignalContext, asset: str) -> pd.Series:
     return pd.Series(1.0, index=ctx.closes[asset].index)
 
 
+# 2026-07 개편: 달러·금리·TGA·RSI(·모멘텀30d)는 결합 지표로 은퇴(함수는 결합 재료로 유지).
+# 기존 포트폴리오 데이터는 DB 보존 — leaderboard()가 현재 레지스트리만 표시.
 INDICATORS: dict[str, SignalFn] = {
     "복합방향": lambda ctx, asset: ctx.composite,
     "순유동성": _macro("net_liquidity_13w"),
-    "달러": _macro("dxy_13w"),
-    "금리": _macro("ust10y_13w"),
     "VIX": _macro("vix_level"),
-    "TGA": _tga_sig,
     "MVRV": _macro("mvrv_level"),
-    "RSI": _rsi_sig,
-    "모멘텀30d": _momentum_sig,
     "볼린저밴드": _bollinger_sig,
     "도미넌스": _dominance_sig,
+    "유동성": _combined(_macro("net_liquidity_13w"), _tga_sig),      # 돈이 풀리나 잠기나
+    "긴축환경": _combined(_macro("dxy_13w"), _macro("ust10y_13w")),  # 달러·금리 리스크 역풍
+    "과열회귀": _combined(_rsi_sig, _bollinger_sig),                 # 평균회귀 계열
     BENCHMARK: _buyhold_sig,
     # 새 지표 추가 = SignalFn 1개 + 여기 1줄
 }

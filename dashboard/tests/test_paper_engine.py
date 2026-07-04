@@ -129,19 +129,25 @@ def _two_days(indicator, z1, z2, p1, p2):
 
 
 def test_leaderboard_ranking_and_keys(paper_db):
-    ensure_portfolios(["복합방향", "매수보유"])
+    """표시 필터: 벤치마크·은퇴 지표(레지스트리 밖) 행 제외, vs매수보유는 벤치마크 성적 기준 유지."""
+    ensure_portfolios(["복합방향", "볼린저밴드", "매수보유", "RSI"])  # RSI = 은퇴 지표(DB 보존)
     _two_days("복합방향", 1.0, -1.0, 100, 110)   # 롱→flip, 100→110 이익 실현
+    _two_days("볼린저밴드", 1.0, 1.0, 100, 105)  # 롱 보유, 소폭 이익
     _two_days("매수보유", 0.0, 0.0, 100, 90)      # 롱 보유, 하락 손실
+    _two_days("RSI", 1.0, 1.0, 100, 120)          # 은퇴 지표 — 표시 제외 대상
 
     lb = leaderboard()
-    assert {r["indicator"] for r in lb} == {"복합방향", "매수보유"}
+    assert {r["indicator"] for r in lb} == {"복합방향", "볼린저밴드"}  # 매수보유·RSI 없음
     # 총수익 내림차순 정렬
     assert lb[0]["total_return_pct"] >= lb[1]["total_return_pct"]
     # 필수 키
     for r in lb:
         assert {"win_rate", "mdd_pct", "sharpe", "vs_buyhold_pct", "n_trades"} <= set(r)
-    bh = next(r for r in lb if r["indicator"] == "매수보유")
-    assert bh["vs_buyhold_pct"] == pytest.approx(0.0)  # 벤치마크 자기 자신
+    # 벤치마크는 행에서 숨겨도 vs매수보유 계산에는 계속 사용
+    bh_eq = portfolio_detail("매수보유")["equity_curve"][-1]["equity"]
+    bh_return = (bh_eq / 10000 - 1) * 100
+    for r in lb:
+        assert r["vs_buyhold_pct"] == pytest.approx(r["total_return_pct"] - bh_return)
 
 
 def test_portfolio_detail(paper_db):

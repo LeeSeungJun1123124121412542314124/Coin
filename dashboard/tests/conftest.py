@@ -2,12 +2,20 @@
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
+
 import pytest
 
 # 테스트용 환경변수 — 모듈 임포트 전에 설정해야 module-level 상수에 반영됨
 os.environ.setdefault("PIN_CODE", "1234")
 os.environ.setdefault("APP_SECRET", "test-secret-key")
 os.environ.setdefault("ADMIN_KEY", "test-admin-key")
+
+# app.macro 임포트 경로 — 런타임 main.py가 crypto-volatility-bot을 sys.path에 넣는 것과 동일
+_BOT_DIR = str(Path(__file__).resolve().parents[2] / "crypto-volatility-bot")
+if _BOT_DIR not in sys.path:
+    sys.path.insert(0, _BOT_DIR)
 
 
 @pytest.fixture
