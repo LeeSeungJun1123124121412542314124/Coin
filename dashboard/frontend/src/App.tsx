@@ -11,6 +11,7 @@ import { Whale } from './components/screens/Whale'
 import { Research } from './components/screens/Research'
 import { Alerts } from './components/screens/Alerts'
 import { Simulator } from './components/screens/Simulator'
+import { Leaderboard } from './components/screens/Leaderboard'
 import { BASE } from './lib/api'
 
 // 탭 정의
@@ -25,6 +26,14 @@ const TABS = [
   { path: '/whale', label: '고래 추적' },
   { path: '/alerts', label: '알림 히스토리' },
   { path: '/simulator', label: '시뮬레이터' },
+  { path: '/leaderboard', label: '리더보드' },
+] as const
+
+const PRIMARY_TABS = [
+  { path: '/', label: '홈' },
+  { path: '/spf', label: 'SPF' },
+  { path: '/simulator', label: '검증' },
+  { path: '/leaderboard', label: '순위' },
 ] as const
 
 // PIN 인증 화면 — 서버 측 검증 후 토큰 발급
@@ -106,35 +115,31 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', color: '#e2e8f0' }}>
-      {/* 상단 내비게이션 */}
-      <nav style={{
-        position: 'sticky', top: 0, zIndex: 10,
-        background: 'rgba(15,17,23,0.9)', backdropFilter: 'blur(8px)',
-        borderBottom: '1px solid #1e293b', padding: '8px 16px',
-        display: 'flex', gap: '4px', overflowX: 'auto',
-      }}>
+    <div className="app-shell">
+      <header className="app-topbar">
+        <div className="app-brand-row">
+          <div>
+            <div className="app-brand-title">투자분석기</div>
+            <div className="app-brand-subtitle">시장 전망 · 예측 검증 · 포트폴리오 실험</div>
+          </div>
+          <div className="app-status-pill">실시간 대시보드</div>
+        </div>
+        <nav className="app-tab-scroll" aria-label="주요 화면">
         {TABS.map(tab => (
           <NavLink
             key={tab.path}
             to={tab.path}
             end={tab.path === '/'}
-            style={({ isActive }) => ({
-              padding: '8px 16px', borderRadius: 8, border: 'none',
-              fontSize: '0.875rem', fontWeight: 500, whiteSpace: 'nowrap', cursor: 'pointer',
-              background: isActive ? '#2563eb' : 'transparent',
-              color: isActive ? '#fff' : '#94a3b8',
-              transition: 'all 0.15s',
-              textDecoration: 'none', display: 'inline-block',
-            })}
+            className={({ isActive }) => `app-tab-link${isActive ? ' app-tab-link-active' : ''}`}
           >
             {tab.label}
           </NavLink>
         ))}
-      </nav>
+        </nav>
+      </header>
 
       {/* 탭 콘텐츠 */}
-      <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px 16px' }}>
+      <main className="app-main">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/volume" element={<Volume />} />
@@ -146,9 +151,22 @@ export default function App() {
           <Route path="/whale" element={<Whale />} />
           <Route path="/alerts" element={<Alerts />} />
           <Route path="/simulator" element={<Simulator />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <nav className="app-bottom-nav" aria-label="모바일 핵심 화면">
+        {PRIMARY_TABS.map(tab => (
+          <NavLink
+            key={tab.path}
+            to={tab.path}
+            end={tab.path === '/'}
+            className={({ isActive }) => `app-bottom-link${isActive ? ' app-bottom-link-active' : ''}`}
+          >
+            {tab.label}
+          </NavLink>
+        ))}
+      </nav>
     </div>
   )
 }

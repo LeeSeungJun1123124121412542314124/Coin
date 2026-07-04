@@ -16,6 +16,91 @@ body {
   min-height: 100vh;
 }
 
+.app-shell {
+  min-height: 100vh;
+  background: #0f1117;
+  color: #e2e8f0;
+}
+
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(15, 17, 23, 0.94);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #1e293b;
+  padding: 10px 16px 8px;
+}
+
+.app-brand-row {
+  max-width: 1280px;
+  margin: 0 auto 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.app-brand-title {
+  color: #f8fafc;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.app-brand-subtitle {
+  color: #64748b;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+.app-status-pill {
+  color: #67e8f9;
+  background: rgba(8, 145, 178, 0.12);
+  border: 1px solid rgba(103, 232, 249, 0.18);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.app-tab-scroll {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-tab-link {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #94a3b8;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.app-tab-link-active {
+  background: #155e75;
+  color: #f8fafc;
+}
+
+.app-main {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.app-bottom-nav {
+  display: none;
+}
+
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-6px); }
@@ -51,6 +136,75 @@ body {
 }
 
 @media (max-width: 640px) {
+  .app-topbar {
+    padding: 8px 12px 6px;
+  }
+
+  .app-brand-row {
+    margin-bottom: 7px;
+  }
+
+  .app-brand-title {
+    font-size: 0.95rem;
+  }
+
+  .app-brand-subtitle {
+    max-width: 220px;
+  }
+
+  .app-status-pill {
+    font-size: 0.66rem;
+    padding: 4px 7px;
+  }
+
+  .app-tab-scroll {
+    padding-bottom: 2px;
+  }
+
+  .app-tab-link {
+    padding: 7px 10px;
+    font-size: 0.78rem;
+  }
+
+  .app-main {
+    padding: 16px 12px;
+    padding-bottom: 86px;
+  }
+
+  .app-bottom-nav {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    padding: 5px;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    background: rgba(15, 17, 23, 0.96);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  }
+
+  .app-bottom-link {
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    color: #94a3b8;
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .app-bottom-link-active {
+    color: #f8fafc;
+    background: #155e75;
+  }
+
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
   .grid-3 { grid-template-columns: 1fr; }
   .grid-2 { grid-template-columns: 1fr; }

@@ -1,0 +1,29 @@
+# 구현 기록: 모바일 대시보드 셸 1차 개선
+
+작성일: 2026-07-05
+상태: 구현 완료
+
+## 목적
+
+모바일에서 데스크톱 탭 바를 그대로 축소해 쓰는 느낌을 줄이고, 목업 방향처럼 "한 화면 한 판단"에 가까운 앱 셸을 만든다.
+
+## 범위
+
+- 상단 브랜드 바: `투자분석기`와 서비스 역할을 고정 노출
+- 기존 전체 탭은 상단 가로 스크롤 내비게이션으로 유지
+- 모바일 하단 핵심 내비게이션 추가: 홈 / SPF / 검증 / 순위
+- `Leaderboard` 화면을 `/leaderboard` 라우트로 노출
+- 콘텐츠가 하단 내비게이션에 가리지 않도록 모바일 padding 보정
+
+## 제외
+
+- 각 화면 내부 카드 재배치
+- 차트/테이블 시각 스타일 전면 개편
+- API/DB 변경
+
+## 검증
+
+- [x] 모바일 앱 셸 정적 회귀 테스트 RED → GREEN
+- [x] `npm --prefix dashboard/frontend run build`
+- [x] `pytest dashboard/tests -q`
+- [x] `ruff check crypto-volatility-bot/app dashboard/backend --select E,F,W --ignore E501`
