@@ -52,7 +52,7 @@ _MARKET_VOLUME_CODE: dict[str, str] = {
     "KOSPI": "KOSPI",
     "KOSDAQ": "KOSDAQ",
 }
-_INVESTOR_DATE_RE = re.compile(r"^\d{2}\.\d{2}\.\d{2}$")
+_INVESTOR_DATE_RE = re.compile(r"^(?:\d{2}|\d{4})\.\d{2}\.\d{2}$")
 
 
 class _TableRowParser(HTMLParser):
@@ -84,7 +84,10 @@ class _TableRowParser(HTMLParser):
 
 
 def _parse_investor_date(raw: str) -> str:
-    return f"20{raw[:2]}-{raw[3:5]}-{raw[6:8]}"
+    year, month, day = raw.split(".")
+    if len(year) == 2:
+        year = f"20{year}"
+    return f"{year}-{month}-{day}"
 
 
 def _parse_investor_number(raw: str) -> float:

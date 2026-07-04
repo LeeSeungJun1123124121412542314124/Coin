@@ -13,6 +13,7 @@ function isAssetTab(value: string | null): value is AssetTab {
 export function readAssetTab(allowedTabs: readonly AssetTab[] = ['coin', 'kr', 'us']): AssetTab {
   const value = new URLSearchParams(window.location.search).get('asset')
   if (isAssetTab(value) && allowedTabs.includes(value)) return value
+  if (value !== null) replaceAssetTab('coin')
   return 'coin'
 }
 
