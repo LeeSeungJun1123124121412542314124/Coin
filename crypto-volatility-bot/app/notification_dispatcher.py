@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import json
 import logging
 import os
@@ -140,8 +141,12 @@ class NotificationDispatcher:
             return None
 
     async def _send_errors(self, errors: AnalysisErrors) -> None:
-        for _symbol, error_msg in errors:
-            await self._notifier.send_message(error_msg)
+        # 예외 문자열의 HTML 특수문자(<, >, &)를 이스케이프 — parse_mode=HTML 파싱 실패 방지
+        for symbol, error_msg in errors:
+            text = (
+                f"⚠️ <b>분석 오류</b> ({html.escape(symbol)})\n{html.escape(error_msg)}"
+            )
+            await self._notifier.send_message(text)
 
     async def _collect_dashboard_context(self) -> dict:
         """대시보드 시장 컨텍스트 수집 — 알림 포맷에 포함할 데이터."""
@@ -181,41 +186,42 @@ class NotificationDispatcher:
         """CONFIRMED_HIGH / HIGH / LIQUIDATION_RISK 순서로 체크."""
         level = result.alert_level
 
+        # 전송 성공 시에만 쿨다운·이력 기록 — 실패하면 다음 사이클에 재시도
         if level == "CONFIRMED_HIGH":
             key = f"{symbol}:confirmed_high"
             if not self._cooldown.is_active(key, "confirmed_high"):
                 ctx = await self._collect_dashboard_context()
                 msg = self._formatter.confirmed_high_alert(symbol, result, dashboard_ctx=ctx, market_tilt=market_tilt)
-                await self._notifier.send_message(msg)
-                self._cooldown.set(key, "confirmed_high")
-                _save_alert_history(symbol, level, result, market_tilt)
+                if await self._notifier.send_message(msg):
+                    self._cooldown.set(key, "confirmed_high")
+                    _save_alert_history(symbol, level, result, market_tilt)
 
         elif level == "HIGH":
             key = f"{symbol}:high"
             if not self._cooldown.is_active(key, "high"):
                 ctx = await self._collect_dashboard_context()
                 msg = self._formatter.high_alert(symbol, result, dashboard_ctx=ctx, market_tilt=market_tilt)
-                await self._notifier.send_message(msg)
-                self._cooldown.set(key, "high")
-                _save_alert_history(symbol, level, result, market_tilt)
+                if await self._notifier.send_message(msg):
+                    self._cooldown.set(key, "high")
+                    _save_alert_history(symbol, level, result, market_tilt)
 
         elif level == "LIQUIDATION_RISK":
             key = f"{symbol}:liquidation_risk"
             if not self._cooldown.is_active(key, "liquidation_risk"):
                 ctx = await self._collect_dashboard_context()
                 msg = self._formatter.liquidation_risk_alert(symbol, result, dashboard_ctx=ctx, market_tilt=market_tilt)
-                await self._notifier.send_message(msg)
-                self._cooldown.set(key, "liquidation_risk")
-                _save_alert_history(symbol, level, result, market_tilt)
+                if await self._notifier.send_message(msg):
+                    self._cooldown.set(key, "liquidation_risk")
+                    _save_alert_history(symbol, level, result, market_tilt)
 
     async def _check_whale(self, symbol: str, result: AggregatedResult, market_tilt=None) -> None:
         if result.whale_alert:
             key = f"{symbol}:whale"
             if not self._cooldown.is_active(key, "whale"):
                 msg = self._formatter.whale_alert(symbol, result, market_tilt=market_tilt)
-                await self._notifier.send_message(msg)
-                self._cooldown.set(key, "whale")
-                _save_alert_history(symbol, "WHALE", result, market_tilt)
+                if await self._notifier.send_message(msg):
+                    self._cooldown.set(key, "whale")
+                    _save_alert_history(symbol, "WHALE", result, market_tilt)
 
 
 def _save_alert_history(symbol: str, alert_level: str, result: "AggregatedResult", market_tilt=None) -> None:

@@ -65,9 +65,32 @@ def dispatcher():
 class TestDispatchEventAlerts:
     @pytest.mark.asyncio
     async def test_sends_error_messages(self, dispatcher):
-        errors = [("BTC/USDT", "⚠️ 데이터 수신 실패")]
+        errors = [("BTC/USDT", "데이터 수신 실패")]
         await dispatcher.dispatch_event_alerts(results=[], errors=errors)
-        dispatcher._notifier.send_message.assert_called_once_with("⚠️ 데이터 수신 실패")
+        dispatcher._notifier.send_message.assert_called_once()
+        msg = dispatcher._notifier.send_message.call_args[0][0]
+        assert "데이터 수신 실패" in msg
+        assert "BTC/USDT" in msg  # 심볼 포함
+
+    @pytest.mark.asyncio
+    async def test_error_message_html_escaped(self, dispatcher):
+        """예외 문자열의 HTML 특수문자를 이스케이프 — parse_mode=HTML 파싱 실패 방지."""
+        errors = [("BTC/USDT", "timeout <fail> & <b>x</b>")]
+        await dispatcher.dispatch_event_alerts(results=[], errors=errors)
+        msg = dispatcher._notifier.send_message.call_args[0][0]
+        assert "&lt;fail&gt;" in msg
+        assert "&amp;" in msg
+        assert "<fail>" not in msg  # 원본 미이스케이프 태그 없음
+
+    @pytest.mark.asyncio
+    async def test_failed_send_does_not_set_cooldown(self, dispatcher):
+        """전송 실패(False) 시 쿨다운 미설정 → 다음 사이클에 재시도."""
+        dispatcher._notifier.send_message = AsyncMock(return_value=False)
+        result = _make_result(score=90.0, alert_level="CONFIRMED_HIGH")
+        results = [("BTC/USDT", result)]
+        await dispatcher.dispatch_event_alerts(results=results, errors=[])
+        await dispatcher.dispatch_event_alerts(results=results, errors=[])
+        assert dispatcher._notifier.send_message.call_count == 2  # 쿨다운 안 걸려 재전송
 
     @pytest.mark.asyncio
     async def test_sends_confirmed_high_alert(self, dispatcher):
@@ -158,6 +181,8 @@ class TestDispatchPeriodicReport:
 
     @pytest.mark.asyncio
     async def test_report_sends_errors(self, dispatcher):
-        errors = [("BTC/USDT", "⚠️ 데이터 오류")]
+        errors = [("BTC/USDT", "데이터 오류")]
         await dispatcher.dispatch_periodic_report(results=[], errors=errors)
-        dispatcher._notifier.send_message.assert_called_once_with("⚠️ 데이터 오류")
+        dispatcher._notifier.send_message.assert_called_once()
+        msg = dispatcher._notifier.send_message.call_args[0][0]
+        assert "데이터 오류" in msg
