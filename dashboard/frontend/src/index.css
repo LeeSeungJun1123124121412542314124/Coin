@@ -4,6 +4,12 @@
   color-scheme: dark;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   background: #0f1117;
@@ -163,22 +169,28 @@ body {
   justify-content: center;
 }
 
+.dashboard-secondary-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
 @media (min-width: 900px) {
   .app-desktop-sidebar {
     position: fixed;
     inset: 0 auto 0 0;
     z-index: 30;
     display: flex;
-    width: 232px;
+    width: 229px;
     flex-direction: column;
-    gap: 18px;
+    gap: 24px;
     border-right: 1px solid #1e293b;
-    background: #111827;
-    padding: 22px 14px;
+    background: #0f1724;
+    padding: 18px 14px;
   }
 
   .app-desktop-brand {
-    padding: 0 8px 10px;
+    padding: 0 6px;
   }
 
   .app-sidebar-nav {
@@ -206,13 +218,18 @@ body {
   }
 
   .app-topbar {
-    left: 232px;
-    margin-left: 232px;
-    padding: 12px 28px;
+    position: fixed;
+    right: 0;
+    left: 229px;
+    min-height: 55px;
+    padding: 0 24px 0 28px;
+    display: flex;
+    align-items: center;
   }
 
   .app-brand-row {
-    max-width: 1440px;
+    width: 100%;
+    max-width: none;
     margin-bottom: 0;
   }
 
@@ -221,9 +238,15 @@ body {
   }
 
   .app-main {
-    max-width: 1440px;
-    margin-left: 232px;
-    padding: 28px;
+    max-width: none;
+    margin-left: 229px;
+    padding: 74px 24px 28px 28px;
+  }
+
+  .dashboard-secondary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
   }
 }
 

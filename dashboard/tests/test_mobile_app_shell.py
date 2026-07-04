@@ -53,8 +53,19 @@ def test_desktop_shell_css_uses_sidebar_layout():
 
     assert "@media (min-width: 900px)" in source
     assert ".app-desktop-sidebar" in source
-    assert "width: 232px" in source
-    assert "left: 232px" in source
-    assert "margin-left: 232px" in source
+    assert "width: 229px" in source
+    assert "box-sizing: border-box" in source
+    assert "left: 229px" in source
+    assert "margin-left: 229px" in source
     assert ".app-tab-scroll" in source
     assert "display: none" in source
+
+
+def test_desktop_shell_matches_mockup_geometry():
+    source = INDEX_CSS.read_text(encoding="utf-8")
+
+    assert "min-height: 55px" in source
+    assert "padding: 0 24px 0 28px" in source
+    assert "padding: 74px 24px 28px 28px" in source
+    assert "max-width: none" in source
+    assert "background: #0f1724" in source

@@ -262,7 +262,9 @@ export function Dashboard() {
             <GaugeChart value={data.fear_greed.value} label={data.fear_greed.label} size={130} />
           </Card>
         )}
+      </div>
 
+      <div className="dashboard-secondary-grid">
         {/* MVRV 게이지 */}
         {mvrv !== null && (
           <Card className="dashboard-market-card dashboard-gauge-card">
