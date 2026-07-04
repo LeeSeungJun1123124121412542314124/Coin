@@ -1,7 +1,7 @@
 # 검수 후속 진행 현황 — 2026-07-04
 
 원본: [full-review-2026-07-04.md](full-review-2026-07-04.md)
-갱신: 2026-07-04 (수정 세션 종료 시점)
+갱신: 2026-07-04 (후속 커밋·푸시 완료 시점)
 
 상태 범례: ✅ 완료(커밋됨) · ⏸ 보류(코드 미변경) · ⬜ 미착수 · ⚠️ 사용자 확인 대기
 
@@ -22,14 +22,14 @@
 | D-2 | 폴링 실패 시 화면 유지 (`error && !data`) | 6c66a7c |
 | D-3 | PIN 로그인 fetch BASE 통일 | 6c66a7c |
 
-## 1.5. 이번 후속 진행 (미커밋)
+## 1.5. 이번 후속 진행 (커밋·푸시됨)
 
-| 항목 | 상태 | 내용 | 검증 |
-|---|---|---|---|
-| B-3c | ✅ 구현 | direction/semiconductor/TGA 알림 상태를 발송 성공 후 일괄 커밋하도록 변경. 배치 중 하나라도 발송 실패 시 상태·alert_history 미커밋 | RED 확인 후 `dashboard/tests/test_direction_watch.py` 등 관련 21개 통과 |
-| C-5 | ✅ 구현 | crypto 예측 채점을 `expiry_time` 이하의 가장 가까운 1h 봉 기준으로 변경. SL/TP/청산 판정도 만료 시점 기준. 신규 입력은 timezone-aware ISO로 강제 | `dashboard/tests/test_settle_predictions.py` 통과 |
-| C-3 | ⏸ 부분 구현 | ATR 정규화를 가격 대비 %로 전환하고 운영 config 회귀 테스트 추가 | 테스트 통과. 단, 새 임계값 min/max의 백테스트 재도출 근거는 아직 없음 |
-| E | ✅ 구현 | Docker/CI가 `requirements-lock.txt` constraints 사용, Docker gcc/g++ 제거, frontend `npm ci`, CI Python 3.12 정렬, package-lock 동기화 | Python 3.12 Linux wheel-only 해석 통과, `npm ci --dry-run` 통과 |
+| 항목 | 상태 | 내용 | 검증 | 커밋 |
+|---|---|---|---|---|
+| B-3c | ✅ 구현 | direction/semiconductor/TGA 알림 상태를 발송 성공 후 일괄 커밋하도록 변경. 배치 중 하나라도 발송 실패 시 상태·alert_history 미커밋 | RED 확인 후 `dashboard/tests/test_direction_watch.py` 등 관련 테스트 통과 | 6c9718d |
+| C-5 | ✅ 구현 | crypto 예측 채점을 `expiry_time` 이하의 가장 가까운 1h 봉 기준으로 변경. SL/TP/청산 판정도 만료 시점 기준. 신규 입력은 timezone-aware ISO로 강제 | `dashboard/tests/test_settle_predictions.py` 통과 | 5fc66e0 |
+| C-3 | ⏸ 부분 구현 | ATR 정규화를 가격 대비 %로 전환하고 운영 config 회귀 테스트 추가 | 테스트 통과. 단, 새 임계값 min/max의 백테스트 재도출 근거는 아직 없음 | 04d61a5 |
+| E | ✅ 구현 | Docker/CI가 `requirements-lock.txt` constraints 사용, Docker gcc/g++ 제거, frontend `npm ci`, CI Python 3.12 정렬, package-lock 동기화 | Python 3.12 Linux wheel-only 해석 통과, `npm ci --dry-run` 통과 | c51d06d |
 
 ## 2. 보안 — 사용자 확인 대기 (⚠️, 이번 범위서 제외)
 
