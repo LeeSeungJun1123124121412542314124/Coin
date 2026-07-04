@@ -247,15 +247,19 @@ function CoinCard({
 export function Dashboard() {
   const { data, refetch } = useApi<DashboardData>('/api/dashboard', 60_000)
   const { data: stockIndices } = useApi<StockIndexItem[]>('/api/stock-indices', 300_000)
+  const { data: usStocks, refetch: refetchUs } = useApi<StockItem[]>('/api/stock-prices/us', 300_000)
+  const { data: usSlots, refetch: refetchUsSlots } = useApi<StockSlot[]>('/api/stock-slots/us', 0)
   const { data: krStocks, refetch: refetchKr } = useApi<StockItem[]>('/api/stock-prices/kr', 300_000)
   const { data: krSlots, refetch: refetchKrSlots } = useApi<StockSlot[]>('/api/stock-slots/kr', 0)
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
   const [activeIndex, setActiveIndex] = useState<{ ticker: string; name: string } | null>(null)
+  const [activeTvStock, setActiveTvStock] = useState<{ tv_symbol: string; name: string } | null>(null)
   const [activeKrStock, setActiveKrStock] = useState<{ ticker: string; name: string } | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [editingPosition, setEditingPosition] = useState<number | null>(null)
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  const [editingUs, setEditingUs] = useState(false)
   const [editingKr, setEditingKr] = useState(false)
 
   const handleSlotSave = async (position: number, query: string) => {
@@ -374,6 +378,43 @@ export function Dashboard() {
         </Section>
 
         <Section
+          className="mock-us-stock-section"
+          title="미국주식"
+          actions={(
+            <button type="button" onClick={() => setEditingUs(prev => !prev)}>
+              {editingUs ? '완료' : '편집'}
+            </button>
+          )}
+        >
+          {editingUs && usSlots && (
+            <StockSlotEditor
+              market="us"
+              slots={usSlots}
+              onUpdate={() => {
+                refetchUs()
+                refetchUsSlots()
+              }}
+            />
+          )}
+          <div className="mock-overview-grid mock-compact-grid">
+            {usStocks?.map(stock => (
+              <StockCard
+                key={stock.ticker}
+                ticker={stock.ticker}
+                name={stock.name}
+                tv_symbol={stock.tv_symbol}
+                price={stock.price}
+                change_pct={stock.change_pct}
+                sparkline={stock.sparkline ?? []}
+                high={stock.high}
+                low={stock.low}
+                onOpenModal={(tvSymbol, name) => setActiveTvStock({ tv_symbol: tvSymbol, name })}
+              />
+            ))}
+          </div>
+        </Section>
+
+        <Section
           className="mock-kr-stock-section"
           title="한국주식"
           actions={(
@@ -483,6 +524,9 @@ export function Dashboard() {
             )}
           />
         )}
+      </Modal>
+      <Modal open={!!activeTvStock} onClose={() => setActiveTvStock(null)}>
+        {activeTvStock && <TradingViewChart symbol={activeTvStock.tv_symbol} />}
       </Modal>
       <Modal open={!!activeKrStock} onClose={() => setActiveKrStock(null)}>
         {activeKrStock && <KrStockChart ticker={activeKrStock.ticker} name={activeKrStock.name} />}

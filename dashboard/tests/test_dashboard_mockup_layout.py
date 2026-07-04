@@ -17,6 +17,7 @@ def test_dashboard_uses_mockup_card_layout_classes():
     assert "mock-market-overview" in source
     assert "mock-news-section" in source
     assert "mock-coin-price-section" in source
+    assert "mock-us-stock-section" in source
     assert "mock-kr-stock-section" in source
     assert "mock-market-detail-section" in source
 
@@ -52,11 +53,17 @@ def test_market_main_cards_are_compact_in_mock_shell():
     assert ".mock-market-overview .dashboard-market-card" in source
 
 
-def test_mobile_dashboard_card_columns_match_requested_density():
+def test_mobile_coin_and_stock_cards_scroll_horizontally_at_desktop_card_width():
     source = INDEX_CSS.read_text(encoding="utf-8")
 
     assert ".mock-market-overview .mock-overview-grid" in source
     assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in source
     assert ".mock-coin-price-section .mock-compact-grid" in source
+    assert ".mock-us-stock-section .mock-compact-grid" in source
     assert ".mock-kr-stock-section .mock-compact-grid" in source
-    assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in source
+    card_grid_start = source.index(".mock-coin-price-section .mock-compact-grid")
+    mobile_card_grid = source[card_grid_start:source.index(".mock-record-card", card_grid_start)]
+    assert "grid-auto-flow: column" in mobile_card_grid
+    assert "grid-auto-columns: 170px" in mobile_card_grid
+    assert "overflow-x: auto" in mobile_card_grid
+    assert "grid-template-columns: repeat(3, minmax(0, 1fr))" not in mobile_card_grid

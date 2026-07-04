@@ -49,6 +49,7 @@ def test_dashboard_uses_original_data_sections_in_mock_shell():
 
     assert "useApi<DashboardData>('/api/dashboard'" in source
     assert "useApi<StockIndexItem[]>('/api/stock-indices'" in source
+    assert "useApi<StockItem[]>('/api/stock-prices/us'" in source
     assert "useApi<StockItem[]>('/api/stock-prices/kr'" in source
     assert "GlobalMarketCard" in source
     assert "StockIndexCard" in source
@@ -77,6 +78,7 @@ def test_dashboard_section_titles_match_requested_labels():
     source = DASHBOARD_TSX.read_text(encoding="utf-8")
 
     assert 'title="코인가격"' in source
+    assert 'title="미국주식"' in source
     assert 'title="한국주식"' in source
     assert "<h1>대시보드</h1>" not in source
     assert "SPF · 코인 가격" not in source
@@ -90,6 +92,7 @@ def test_dashboard_order_matches_requested_sections():
         "mock-market-overview",
         "mock-news-section",
         "mock-coin-price-section",
+        "mock-us-stock-section",
         "mock-kr-stock-section",
         "mock-altcoin-season-section",
         "mock-market-detail-section",

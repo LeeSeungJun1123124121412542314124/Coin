@@ -1265,20 +1265,22 @@ body {
   }
 
   .mock-coin-price-section .mock-compact-grid,
+  .mock-us-stock-section .mock-compact-grid,
   .mock-kr-stock-section .mock-compact-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
+    grid-auto-flow: column;
+    grid-auto-columns: 170px;
+    grid-template-columns: none;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+    padding-bottom: 6px;
   }
 
   .mock-coin-price-section .mock-data-card,
+  .mock-us-stock-section .mock-data-card,
   .mock-kr-stock-section .mock-data-card {
-    min-height: 104px;
-    padding: 8px !important;
-  }
-
-  .mock-coin-price-section .mock-data-value,
-  .mock-kr-stock-section .mock-data-value {
-    font-size: 1rem;
+    min-width: 170px;
+    scroll-snap-align: start;
   }
 
   .mock-record-card,
