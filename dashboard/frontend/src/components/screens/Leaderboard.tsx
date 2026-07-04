@@ -15,6 +15,7 @@ interface LeaderRow {
   capital: number
   seed: number
   equity: number
+  directions: Record<string, 'long' | 'short'>  // 현재 열린 포지션 방향(자산별), 현금 자산은 생략
 }
 
 interface Position {
@@ -55,6 +56,33 @@ function pct(v: number | null): string {
 function clr(v: number | null): string {
   if (v == null) return '#94a3b8'
   return v > 0 ? '#4ade80' : v < 0 ? '#f87171' : '#94a3b8'
+}
+
+// 자산별 방향 배지 (BTC·ETH·SOL) — 롱=초록·숏=빨강·현금=회색 대시
+const ASSETS = ['BTC', 'ETH', 'SOL'] as const
+function DirectionBadges({ directions = {} }: { directions?: Record<string, 'long' | 'short'> }) {
+  return (
+    <span style={{ display: 'inline-flex', gap: 4 }}>
+      {ASSETS.map((a) => {
+        const d = directions[a]
+        const color = d === 'long' ? '#4ade80' : d === 'short' ? '#f87171' : '#475569'
+        const label = d === 'long' ? '롱' : d === 'short' ? '숏' : '–'
+        return (
+          <span
+            key={a}
+            title={`${a} ${d === 'long' ? '롱' : d === 'short' ? '숏' : '현금'}`}
+            style={{
+              display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
+              minWidth: 24, fontSize: '0.6rem', lineHeight: 1.3,
+            }}
+          >
+            <span style={{ color: '#64748b' }}>{a[0]}</span>
+            <span style={{ color, fontWeight: 600 }}>{label}</span>
+          </span>
+        )
+      })}
+    </span>
+  )
 }
 
 export function Leaderboard() {
@@ -135,13 +163,14 @@ export function Leaderboard() {
         </div>
       ) : (
         <div style={PANEL}>
-          {/* 8컬럼 테이블 — 모바일 가로 스크롤(잘림 방지) */}
+          {/* 9컬럼 테이블 — 모바일 가로 스크롤(잘림 방지) */}
           <div className="table-scroll">
-          <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+          <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
             <thead>
               <tr style={{ color: '#64748b', textAlign: 'right', borderBottom: '1px solid #1e293b' }}>
                 <th style={{ textAlign: 'left', padding: '8px 6px' }}>#</th>
                 <th style={{ textAlign: 'left', padding: '8px 6px' }}>지표</th>
+                <th style={{ textAlign: 'center', padding: '8px 6px' }}>방향</th>
                 <th style={{ padding: '8px 6px' }}>총수익</th>
                 <th style={{ padding: '8px 6px' }}>vs매수보유</th>
                 <th style={{ padding: '8px 6px' }}>승률</th>
@@ -163,6 +192,7 @@ export function Leaderboard() {
                 >
                   <td style={{ textAlign: 'left', padding: '8px 6px', color: '#64748b' }}>{i + 1}</td>
                   <td style={{ textAlign: 'left', padding: '8px 6px', color: '#e2e8f0', fontWeight: 600 }}>{r.indicator}</td>
+                  <td style={{ textAlign: 'center', padding: '8px 6px' }}><DirectionBadges directions={r.directions} /></td>
                   <td style={{ padding: '8px 6px', color: clr(r.total_return_pct), fontWeight: 600 }}>{pct(r.total_return_pct)}</td>
                   <td style={{ padding: '8px 6px', color: clr(r.vs_buyhold_pct) }}>{pct(r.vs_buyhold_pct)}</td>
                   <td style={{ padding: '8px 6px', color: '#cbd5e1' }}>{r.win_rate == null ? '–' : `${r.win_rate.toFixed(0)}%`}</td>

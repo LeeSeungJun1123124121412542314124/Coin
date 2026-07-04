@@ -236,6 +236,11 @@ def leaderboard() -> list[dict]:
             ).fetchall()
             wins = sum(1 for c in closed if c["pnl"] and c["pnl"] > 0)
             n = len(closed)
+            # 현재 열린 포지션 방향(자산별) — 현금 자산은 생략
+            open_pos = conn.execute(
+                "SELECT asset, direction FROM paper_positions WHERE portfolio_id=? AND status='open'", (pf["id"],)
+            ).fetchall()
+            directions = {p["asset"]: p["direction"] for p in open_pos}
             st = _curve_stats(
                 [r["equity"] for r in eq],
                 [r["return_pct"] / 100 for r in eq if r["return_pct"] is not None],
@@ -243,7 +248,7 @@ def leaderboard() -> list[dict]:
             )
             st.update(
                 indicator=pf["indicator"], seed=pf["seed"], capital=pf["capital"],
-                win_rate=(wins / n * 100 if n else None), n_trades=n,
+                win_rate=(wins / n * 100 if n else None), n_trades=n, directions=directions,
             )
             out.append(st)
     bh = next((r["total_return_pct"] for r in out if r["indicator"] == BENCHMARK), None)

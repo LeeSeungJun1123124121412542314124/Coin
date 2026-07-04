@@ -150,6 +150,20 @@ def test_leaderboard_ranking_and_keys(paper_db):
         assert r["vs_buyhold_pct"] == pytest.approx(r["total_return_pct"] - bh_return)
 
 
+def test_leaderboard_includes_open_directions(paper_db):
+    """리더보드 행에 현재 열린 포지션 방향(자산별)이 담긴다. 현금 자산은 생략."""
+    ensure_portfolios(["복합방향"])
+    # BTC 롱(z>0), ETH 숏(z<0), SOL 현금(|z|<deadband)
+    rebalance(
+        "복합방향",
+        {"BTC": 1.0, "ETH": -1.0, "SOL": 0.0},
+        {"BTC": _px(100), "ETH": _px(100), "SOL": _px(100)},
+        "2026-01-01T00:00:00",
+    )
+    row = next(r for r in leaderboard() if r["indicator"] == "복합방향")
+    assert row["directions"] == {"BTC": "long", "ETH": "short"}  # SOL은 현금이라 없음
+
+
 def test_portfolio_detail(paper_db):
     ensure_portfolios(["복합방향"])
     _two_days("복합방향", 1.0, -1.0, 100, 110)
