@@ -10,7 +10,6 @@ import { Alt } from './components/screens/Alt'
 import { Whale } from './components/screens/Whale'
 import { Research } from './components/screens/Research'
 import { Alerts } from './components/screens/Alerts'
-import { Simulator } from './components/screens/Simulator'
 import { Leaderboard } from './components/screens/Leaderboard'
 import { BASE } from './lib/api'
 
@@ -31,7 +30,6 @@ const TABS = [
   { path: '/spf', label: '예측 모델', icon: '◎' },
   { path: '/volume', label: '알트코인 분석', icon: '✣' },
   { path: '/liquidity', label: '온체인 분석', icon: '⌘' },
-  { path: '/simulator', label: '시뮬레이터', icon: '⌕' },
   { path: '/leaderboard', label: '포트폴리오', icon: '▣' },
   { path: '/alerts', label: '알림', icon: '♢' },
   { path: '/research', label: '리포트', icon: '▤' },
@@ -41,7 +39,7 @@ const TABS = [
 const PRIMARY_TABS = [
   { path: '/', label: '대시보드', icon: '▦' },
   { path: '/market', label: '시장', icon: '⌁' },
-  { path: '/simulator', label: '실험', icon: '⌕' },
+  { path: '/leaderboard', label: '포트폴리오', icon: '▣' },
   { path: '/alerts', label: '알림', icon: '♢' },
 ] as const
 
@@ -179,7 +177,6 @@ export default function App() {
           <Route path="/cvd" element={<Alt />} />
           <Route path="/whale" element={<Whale />} />
           <Route path="/alerts" element={<Alerts />} />
-          <Route path="/simulator" element={<Simulator />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
