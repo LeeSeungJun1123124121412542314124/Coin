@@ -242,16 +242,16 @@ function NewPredictionForm({ market, onSubmit, onClose }: NewPredictionFormProps
       return
     }
 
-    // datetime-local 값을 ISO 형식으로 변환 (초 단위 없으면 ':00' 추가)
-    const toISOWithSeconds = (dt: string) => dt.length === 16 ? dt + ':00' : dt
+    // datetime-local 값을 브라우저 로컬시각 기준 UTC ISO로 변환
+    const toUtcISO = (dt: string) => new Date(dt).toISOString()
 
     const body: Record<string, unknown> = {
       market,
       asset_symbol: assetSymbol.trim(),
       mode,
       entry_price: parseFloat(entryPrice),
-      entry_time: toISOWithSeconds(entryTime),
-      expiry_time: toISOWithSeconds(expiryTime),
+      entry_time: toUtcISO(entryTime),
+      expiry_time: toUtcISO(expiryTime),
       indicator_tags: indicators,
       note: note || null,
     }

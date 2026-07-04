@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from dashboard.backend.db.connection import get_db
+from dashboard.backend.utils.time_utils import iso_to_epoch_ms
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +24,25 @@ logger = logging.getLogger(__name__)
 # 가격 조회 헬퍼
 # ============================================================
 
-async def _get_crypto_price(symbol: str) -> Optional[float]:
-    """coin_ohlcv_1h 테이블에서 가장 최근 close 반환."""
+async def _get_crypto_price(symbol: str, at: str | None = None) -> Optional[float]:
+    """coin_ohlcv_1h 테이블에서 기준 시각 이하의 가장 가까운 close 반환."""
     with get_db() as conn:
-        row = conn.execute(
-            "SELECT close FROM coin_ohlcv_1h WHERE symbol = ? ORDER BY timestamp DESC LIMIT 1",
-            (symbol,),
-        ).fetchone()
+        if at is None:
+            row = conn.execute(
+                "SELECT close FROM coin_ohlcv_1h WHERE symbol = ? ORDER BY timestamp DESC LIMIT 1",
+                (symbol,),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                """
+                SELECT close
+                FROM coin_ohlcv_1h
+                WHERE symbol = ? AND timestamp <= ?
+                ORDER BY timestamp DESC
+                LIMIT 1
+                """,
+                (symbol, iso_to_epoch_ms(at)),
+            ).fetchone()
     if row is None:
         return None
     return float(row["close"])
@@ -55,10 +68,10 @@ async def _get_us_stock_price(symbol: str) -> Optional[float]:
     return float(bars[-1]["close"])
 
 
-async def _get_actual_price(market: str, symbol: str) -> Optional[float]:
+async def _get_actual_price(market: str, symbol: str, at: str | None = None) -> Optional[float]:
     """마켓 유형에 따라 적절한 가격 조회 함수 호출."""
     if market == "crypto":
-        return await _get_crypto_price(symbol)
+        return await _get_crypto_price(symbol, at)
     elif market == "kr_stock":
         return await _get_kr_stock_price(symbol)
     elif market == "us_stock":
@@ -173,7 +186,7 @@ async def settle_expired_predictions() -> None:
 
         try:
             # 2-a. 실제 가격 조회
-            actual_price = await _get_actual_price(market, symbol)
+            actual_price = await _get_actual_price(market, symbol, row["expiry_time"])
             if actual_price is None:
                 logger.warning(
                     "pred_id=%d: %s (%s) 가격 조회 실패 — 건너뜀",
@@ -212,7 +225,7 @@ async def settle_expired_predictions() -> None:
             if market == "crypto" and position_id is not None:
                 from dashboard.backend.services.sim_engine import check_sl_tp_liquidation
 
-                trigger = await check_sl_tp_liquidation(position_id)
+                trigger = await check_sl_tp_liquidation(position_id, at=row["expiry_time"])
                 if trigger == "liquidated":
                     liquidated = 1
                     # 청산가를 실제 가격으로 사용

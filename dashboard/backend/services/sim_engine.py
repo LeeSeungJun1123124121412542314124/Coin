@@ -6,6 +6,7 @@ import logging
 from typing import Optional
 
 from dashboard.backend.db.connection import get_db
+from dashboard.backend.utils.time_utils import iso_to_epoch_ms
 
 logger = logging.getLogger(__name__)
 
@@ -205,8 +206,8 @@ async def apply_funding_fees(funding_time: str) -> None:
 # 4. SL / TP / 청산 트리거 판정
 # ============================================================
 
-async def check_sl_tp_liquidation(position_id: int) -> Optional[str]:
-    """포지션의 SL/TP/청산 조건을 최신 1시간봉 기준으로 판정한다.
+async def check_sl_tp_liquidation(position_id: int, at: str | None = None) -> Optional[str]:
+    """포지션의 SL/TP/청산 조건을 기준 시각의 1시간봉 기준으로 판정한다.
 
     판정 우선순위:
     1. 청산가 (liquidated)
@@ -246,17 +247,28 @@ async def check_sl_tp_liquidation(position_id: int) -> Optional[str]:
         stop_loss = pos["stop_loss"]
         take_profit = pos["take_profit"]
 
-        # 최신 1시간봉 조회 (timestamp DESC)
-        bar = conn.execute(
-            """
-            SELECT high, low
-            FROM coin_ohlcv_1h
-            WHERE symbol = ?
-            ORDER BY timestamp DESC
-            LIMIT 1
-            """,
-            (asset_symbol,),
-        ).fetchone()
+        if at is None:
+            bar = conn.execute(
+                """
+                SELECT high, low
+                FROM coin_ohlcv_1h
+                WHERE symbol = ?
+                ORDER BY timestamp DESC
+                LIMIT 1
+                """,
+                (asset_symbol,),
+            ).fetchone()
+        else:
+            bar = conn.execute(
+                """
+                SELECT high, low
+                FROM coin_ohlcv_1h
+                WHERE symbol = ? AND timestamp <= ?
+                ORDER BY timestamp DESC
+                LIMIT 1
+                """,
+                (asset_symbol, iso_to_epoch_ms(at)),
+            ).fetchone()
 
     if bar is None:
         logger.warning(

@@ -69,9 +69,11 @@ class PredictionCreate(BaseModel):
     @classmethod
     def validate_iso_datetime(cls, v):
         try:
-            datetime.fromisoformat(v)
+            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
         except ValueError:
             raise ValueError('ISO 8601 형식이어야 합니다 (예: 2026-04-19T12:00:00+00:00)')
+        if dt.tzinfo is None or dt.utcoffset() is None:
+            raise ValueError('timezone 정보가 포함된 ISO 8601 형식이어야 합니다 (예: 2026-04-19T12:00:00+00:00)')
         return v
 
 
