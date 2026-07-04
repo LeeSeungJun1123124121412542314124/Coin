@@ -47,6 +47,9 @@ interface HorizonStat {
   n: number                 // 판정된 방향 커밋 예측 수
 }
 
+type HorizonResult = 'hit' | 'miss' | 'neutral'
+type HorizonResultKey = keyof typeof HORIZON_RESULT_META
+
 interface SpfData {
   current: SpfCurrent | null
   history: SpfCurrent[]
@@ -60,10 +63,10 @@ interface PredHistory {
     direction: string
     confidence: number
     result: string | null
-    result_7d: string | null
-    result_14d: string | null
-    result_30d: string | null
-    result_60d: string | null
+    result_7d: HorizonResult | null
+    result_14d: HorizonResult | null
+    result_30d: HorizonResult | null
+    result_60d: HorizonResult | null
     up_prob: number
     down_prob: number
   }>
@@ -84,6 +87,27 @@ const FLOW_COLORS: Record<string, string> = {
   long_exit: '#f87171',
   short_exit: '#4ade80',
   neutral: '#94a3b8',
+}
+
+const HISTORY_HORIZONS = [
+  { label: '7일', field: 'result_7d' },
+  { label: '14일', field: 'result_14d' },
+  { label: '30일', field: 'result_30d' },
+  { label: '60일', field: 'result_60d' },
+] as const
+
+const HORIZON_RESULT_META = {
+  'hit': { symbol: '✓', color: '#4ade80' },
+  'miss': { symbol: '✗', color: '#f87171' },
+  'neutral': { symbol: '–', color: '#64748b' },
+  pending: { symbol: '·', color: '#475569' },
+} as const
+
+function getHorizonResultMeta(result: string | null) {
+  if (result && result in HORIZON_RESULT_META) {
+    return HORIZON_RESULT_META[result as HorizonResultKey]
+  }
+  return HORIZON_RESULT_META.pending
 }
 
 
@@ -289,19 +313,36 @@ export function SPF() {
       {/* 최근 예측 기록 */}
       {predData && predData.predictions.length > 0 && (
         <Card>
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 10 }}>최근 예측 기록</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', marginBottom: 10 }}>
+            <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>최근 예측 기록</span>
+            <span style={{ color: '#475569', fontSize: '0.68rem' }}>판정: 7/14/30/60일</span>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {predData.predictions.slice(0, 10).map((p, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 8px', background: '#0f1117', borderRadius: 6 }}>
+              <div key={i} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 8px', padding: '5px 8px', background: '#0f1117', borderRadius: 6 }}>
                 <span style={{ color: '#64748b', fontSize: '0.78rem', width: 80 }}>{p.date}</span>
                 <span style={{ color: p.direction === '상승' ? '#4ade80' : p.direction === '하락' ? '#f87171' : '#94a3b8', fontSize: '0.8rem', width: 50 }}>{p.direction}</span>
                 <span style={{ color: '#64748b', fontSize: '0.78rem', width: 60 }}>신뢰 {p.confidence}%</span>
-                <span style={{
-                  fontSize: '0.75rem', fontWeight: 600, padding: '2px 8px', borderRadius: 10,
-                  background: p.result === 'hit' ? 'rgba(74,222,128,0.15)' : p.result === 'miss' ? 'rgba(248,113,113,0.15)' : 'rgba(100,116,139,0.15)',
-                  color: p.result === 'hit' ? '#4ade80' : p.result === 'miss' ? '#f87171' : '#64748b',
-                }}>
-                  {p.result === 'hit' ? '✓ 적중' : p.result === 'miss' ? '✗ 미스' : '판정중'}
+                <span style={{ display: 'inline-flex', gap: 4, flexShrink: 0 }}>
+                  {HISTORY_HORIZONS.map(({ label, field }) => {
+                    const meta = getHorizonResultMeta(p[field])
+                    return (
+                      <span key={field} style={{
+                        minWidth: 26,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        borderRadius: 6,
+                        padding: '2px 3px',
+                        background: `${meta.color}22`,
+                        color: meta.color,
+                        lineHeight: 1.1,
+                      }}>
+                        <span style={{ fontSize: 9 }}>{label.replace('일', '')}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700 }}>{meta.symbol}</span>
+                      </span>
+                    )
+                  })}
                 </span>
               </div>
             ))}
