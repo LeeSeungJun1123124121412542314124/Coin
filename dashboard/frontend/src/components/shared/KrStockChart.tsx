@@ -64,14 +64,14 @@ export function KrStockChart({ ticker, name }: KrStockChartProps) {
       height: containerRef.current.clientHeight || 340,
     })
 
-    // 캔들스틱 시리즈
+    // 캔들스틱 시리즈 — 한국 관례: 양봉(상승)=빨강, 음봉(하락)=파랑
     const candle = chart.addSeries(CandlestickDef, {
-      upColor: '#60a5fa',
-      downColor: '#f87171',
-      borderUpColor: '#60a5fa',
-      borderDownColor: '#f87171',
-      wickUpColor: '#60a5fa80',
-      wickDownColor: '#f8717180',
+      upColor: '#f87171',
+      downColor: '#60a5fa',
+      borderUpColor: '#f87171',
+      borderDownColor: '#60a5fa',
+      wickUpColor: '#f8717180',
+      wickDownColor: '#60a5fa80',
     })
 
     // 거래량 (같은 패널, 하단 20%)
@@ -128,7 +128,8 @@ export function KrStockChart({ ticker, name }: KrStockChartProps) {
           json.map(d => ({
             time: d.date as Time,
             value: d.volume,
-            color: d.close >= d.open ? '#1e3a5f' : '#3b1f0d',
+            // 한국 관례: 상승 거래량=적색계열, 하락 거래량=청색계열
+            color: d.close >= d.open ? '#3b1f0d' : '#1e3a5f',
           }))
         )
 
