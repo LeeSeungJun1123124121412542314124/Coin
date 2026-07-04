@@ -14,7 +14,9 @@ from app.utils.logger import setup_logger
 
 def _build_app() -> FastAPI:
     config = Config.from_env()
-    logger = setup_logger("crypto-bot", level=config.log_level)
+    # "app" 네임스페이스에 핸들러 부착 — 모든 모듈 로거(app.*)가 propagate로 상속됨.
+    # ("crypto-bot" 같은 별도 이름을 쓰면 app.* 모듈의 INFO/WARNING이 전부 유실됨)
+    logger = setup_logger("app", level=config.log_level)
     logger.info("Bot started", extra={"symbols": config.symbols})
 
     dispatcher = NotificationDispatcher(config)
