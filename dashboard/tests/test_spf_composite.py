@@ -84,3 +84,13 @@ def test_judge_down_hit(spf_db):
 def test_judge_neutral_recorded_not_hitmiss(spf_db):
     _seed(spf_db, "중립", 100.0)
     assert _judge(spf_db, 130.0) == "neutral"  # 중립은 hit/miss 아님
+
+
+def test_judge_missing_price_logs_warning(spf_db, caplog):
+    """예측일 가격 없어 영구 미판정되는 경우 경고 로깅(조용한 스킵 방지)."""
+    import logging
+    _seed(spf_db, "상승", None)  # price NULL → 판정 불가
+    with caplog.at_level(logging.WARNING):
+        result = _judge(spf_db, 105.0)
+    assert result is None  # 판정 안 됨(기존 동작 유지)
+    assert any("미판정" in r.message for r in caplog.records)

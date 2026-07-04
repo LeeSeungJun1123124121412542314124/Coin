@@ -98,6 +98,13 @@ def rebalance(indicator: str, signals: dict[str, float], prices: dict[str, dict]
         if pf is None:
             raise ValueError(f"포트폴리오 없음: {indicator}")
         pid, capital, lev_cap = pf["id"], pf["capital"], pf["leverage_cap"]
+
+        # 멱등성 — 해당 날짜 스냅샷이 이미 있으면 재실행 스킵(펀딩·수수료 이중 차감 방지)
+        done = conn.execute(
+            "SELECT equity FROM paper_equity WHERE portfolio_id=? AND date=?", (pid, date)
+        ).fetchone()
+        if done is not None:
+            return {"equity": done["equity"], "capital": capital, "trades": []}
         base_capital = capital  # 사이징 기준(자산 순회 중 불변)
         trades: list[str] = []
 

@@ -59,7 +59,10 @@ def _judge_horizon(conn, target_date: date, price_now: float, col: str) -> None:
             WHERE p.date = ? AND p.{col} IS NULL""",
         (target_date.isoformat(),),
     ).fetchone()
-    if not row or not row["price_then"]:
+    if not row:
+        return  # 판정 대상 없음(정상)
+    if not row["price_then"]:
+        logger.warning("SPF %s 판정 스킵: %s 예측일 가격 없음 → 영구 미판정", col, target_date)
         return
     change_pct = (price_now - row["price_then"]) / row["price_then"] * 100
     direction = row["direction"]
@@ -102,6 +105,7 @@ def _judge_prediction(conn, target_date: date, btc_today: float) -> None:
 
     price_then = row["price_then"]
     if not price_then:
+        logger.warning("SPF result 판정 스킵: %s 예측일 가격 없음 → 영구 미판정", target_date)
         return
 
     change_pct = (btc_today - price_then) / price_then * 100

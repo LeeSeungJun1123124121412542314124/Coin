@@ -91,6 +91,22 @@ def test_rebalance_opens_and_marks_to_market(paper_db):
     assert r2["equity"] > r1["equity"]
 
 
+def test_rebalance_idempotent_same_day(paper_db):
+    """같은 날 재실행 시 이중 반영 없음 — 펀딩·수수료 중복 차감·중복 진입 방지."""
+    ensure_portfolios(["복합방향"])
+    r1 = rebalance("복합방향", {"BTC": 1.0}, {"BTC": _px(100)}, "2026-01-01T00:00:00")
+    # 같은 날짜 재실행(시각만 다름) → 스냅샷 이미 존재 → 신규 거래 없이 기존 값 반환
+    r2 = rebalance("복합방향", {"BTC": 1.0}, {"BTC": _px(100)}, "2026-01-01T05:00:00")
+    assert r2["trades"] == []
+    assert r2["equity"] == pytest.approx(r1["equity"])
+    assert r2["capital"] == pytest.approx(r1["capital"])
+    with paper_db.get_db() as conn:
+        n_open = conn.execute(
+            "SELECT COUNT(*) c FROM paper_positions WHERE status='open'"
+        ).fetchone()["c"]
+    assert n_open == 1  # 중복 진입 없음
+
+
 def test_rebalance_short_profits_on_drop(paper_db):
     ensure_portfolios(["복합방향"])
     rebalance("복합방향", {"BTC": -1.0}, {"BTC": _px(100)}, "2026-01-01T00:00:00")
