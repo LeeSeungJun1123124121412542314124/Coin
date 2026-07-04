@@ -5,14 +5,31 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
+from dashboard.backend.collectors.yahoo_finance import fetch_index_history
 from dashboard.backend.services.market_insight import generate_insights
 from dashboard.backend.utils.shared_data import get_fear_greed, get_onchain
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+_MACRO_HISTORY_TICKERS = {"DX-Y.NYB", "^TNX", "KRW=X"}
+
+
+@router.get("/market/macro-history")
+async def get_macro_history(ticker: str):
+    if ticker not in _MACRO_HISTORY_TICKERS:
+        raise HTTPException(status_code=400, detail="unsupported ticker")
+
+    history = await fetch_index_history(ticker, range="3mo")
+    rows = history or []
+    return JSONResponse({
+        "ticker": ticker,
+        "history": rows,
+        "current": _build_macro_current(rows),
+    })
 
 
 @router.get("/market-analysis")
@@ -171,6 +188,20 @@ def _build_key_indicators(data: dict) -> list[dict]:
         indicators.append({"label": "BTC 도미넌스", "value": round(dom, 1), "unit": "%"})
 
     return indicators
+
+
+def _build_macro_current(history: list[dict]) -> dict | None:
+    if not history:
+        return None
+    current = history[-1].get("close")
+    if current is None:
+        return None
+    prev = history[-2].get("close") if len(history) >= 2 else current
+    change_pct = (current - prev) / prev * 100 if prev else 0
+    return {
+        "price": current,
+        "change_pct": round(change_pct, 2),
+    }
 
 
 async def _get_vix_btc_history() -> list[dict]:

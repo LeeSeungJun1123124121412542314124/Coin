@@ -18,6 +18,7 @@ _TICKERS = {
     "^VIX":     {"name": "VIX",        "category": "volatility"},
     "^MOVE":    {"name": "MOVE",       "category": "volatility"},
     "DX-Y.NYB": {"name": "DXY",        "category": "dollar"},
+    "KRW=X":    {"name": "USD/KRW",    "category": "currency"},
     "^TNX":     {"name": "US 10Y",     "category": "bond"},
     "GC=F":     {"name": "Gold",       "category": "commodity"},
     "SI=F":     {"name": "Silver",     "category": "commodity"},
@@ -286,12 +287,13 @@ async def fetch_stock_ohlcv(ticker: str, interval: str = "1d") -> list[dict] | N
 
 
 @cached(ttl=3600, key_prefix="yahoo_history")
-async def fetch_index_history(ticker: str, days: int = 30) -> list[dict] | None:
+async def fetch_index_history(ticker: str, days: int = 30, range: str | None = None) -> list[dict] | None:
     """지수 30일 종가 히스토리 — 모달 차트용."""
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+    yahoo_range = range or ("3mo" if days == 90 else f"{days}d")
     try:
         async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
-            resp = await client.get(url, params={"interval": "1d", "range": f"{days}d"})
+            resp = await client.get(url, params={"interval": "1d", "range": yahoo_range})
             resp.raise_for_status()
             chart_result = resp.json().get("chart", {}).get("result")
             if not chart_result:
