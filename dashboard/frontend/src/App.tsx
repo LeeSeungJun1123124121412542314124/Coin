@@ -15,20 +15,22 @@ import { BASE } from './lib/api'
 
 const TABS = [
   { path: '/', label: '대시보드', icon: '▦' },
-  { path: '/market', label: '시장 분석', icon: '⌁' },
+  { path: '/volume', label: '볼륨트래커', icon: '⌁' },
   { path: '/spf', label: 'SPF', icon: '◎' },
-  { path: '/research', label: '뉴스', icon: '▤' },
-  { path: '/volume', label: '코인 가격', icon: '✣' },
-  { path: '/leaderboard', label: '한국 주식', icon: '▣' },
-  { path: '/liquidity', label: '알트코인 시즌', icon: '⌘' },
-  { path: '/cvd', label: '시장 지표', icon: '⚙' },
+  { path: '/research', label: '리서치', icon: '▤' },
+  { path: '/market', label: '시장분석', icon: '✣' },
+  { path: '/liquidity', label: '유동성', icon: '▣' },
+  { path: '/cvd', label: 'CVD 스크리너', icon: '⌘' },
+  { path: '/whale', label: '고래추적', icon: '♢' },
+  { path: '/alerts', label: '알림히스토리', icon: '◌' },
+  { path: '/leaderboard', label: '리더보드', icon: '⚙' },
 ] as const
 
 const PRIMARY_TABS = [
   { path: '/', label: '대시보드', icon: '▦' },
-  { path: '/market', label: '시장', icon: '⌁' },
-  { path: '/leaderboard', label: '주식', icon: '▣' },
-  { path: '/alerts', label: '알림', icon: '♢' },
+  { path: '/volume', label: '볼륨', icon: '⌁' },
+  { path: '/spf', label: 'SPF', icon: '◎' },
+  { path: '/leaderboard', label: '리더보드', icon: '⚙' },
 ] as const
 
 function PinScreen({ onSuccess }: { onSuccess: () => void }) {
@@ -130,11 +132,6 @@ export default function App() {
             </NavLink>
           ))}
         </nav>
-        <div className="mock-api-status">
-          <div><span>API 연동</span><b><i />연결됨</b></div>
-          <div><span>데이터 갱신</span><button type="button">⟳</button></div>
-          <small>1분 전</small>
-        </div>
       </aside>
 
       <main className="app-main">

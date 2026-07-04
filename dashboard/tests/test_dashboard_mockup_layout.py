@@ -42,3 +42,11 @@ def test_dashboard_css_has_mobile_mockup_stack():
     assert "grid-template-columns: 1fr" in source
     assert ".mock-bottom-nav" in source
     assert ".mock-spf-hero" in source
+
+
+def test_market_main_cards_are_compact_in_mock_shell():
+    source = INDEX_CSS.read_text(encoding="utf-8")
+
+    assert ".mock-data-card" in source
+    assert "min-height: 132px" in source
+    assert ".mock-market-overview .dashboard-market-card" in source

@@ -24,15 +24,24 @@ def test_sidebar_uses_requested_dashboard_labels():
 
     for label in [
         "대시보드",
-        "시장 분석",
+        "볼륨트래커",
         "SPF",
-        "뉴스",
-        "코인 가격",
-        "한국 주식",
-        "알트코인 시즌",
-        "시장 지표",
+        "리서치",
+        "시장분석",
+        "유동성",
+        "CVD 스크리너",
+        "고래추적",
+        "알림히스토리",
+        "리더보드",
     ]:
         assert label in source
+
+
+def test_sidebar_api_status_box_is_removed():
+    source = APP_TSX.read_text(encoding="utf-8")
+
+    assert "mock-api-status" not in source
+    assert "API 연동" not in source
 
 
 def test_dashboard_uses_original_data_sections_in_mock_shell():
@@ -46,6 +55,31 @@ def test_dashboard_uses_original_data_sections_in_mock_shell():
     assert "EconomicNewsSection" in source
     assert "AltcoinSeasonCard" in source
     assert "MacroHealthCard" in source
+
+
+def test_dashboard_restores_card_interactions_and_editors():
+    source = DASHBOARD_TSX.read_text(encoding="utf-8")
+
+    assert "setSelectedSymbol('BTC')" in source
+    assert "TradingViewChart" in source
+    assert "toTvSymbol" in source
+    assert "kimchi_history" in source
+    assert "mock-kimchi-chart" in source
+    assert "CoinSlotEditor" in source
+    assert "handleSlotSave" in source
+    assert "setSelectedSymbol(coin.symbol)" in source
+    assert "StockSlotEditor" in source
+    assert "KrStockChart" in source
+    assert "setActiveKrStock" in source
+
+
+def test_dashboard_section_titles_match_requested_labels():
+    source = DASHBOARD_TSX.read_text(encoding="utf-8")
+
+    assert 'title="코인가격"' in source
+    assert 'title="한국주식"' in source
+    assert "SPF · 코인 가격" not in source
+    assert "SPF 추이 · 한국 주식" not in source
 
 
 def test_dashboard_order_matches_requested_sections():

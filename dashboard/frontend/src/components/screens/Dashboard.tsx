@@ -1,15 +1,24 @@
+import { useState, type ReactNode } from 'react'
+import { Area, AreaChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Card } from '../shared/Card'
-import type { ReactNode } from 'react'
 import { GaugeChart } from '../shared/GaugeChart'
 import { GlobalMarketCard } from '../shared/GlobalMarketCard'
 import { StockIndexCard } from '../shared/StockIndexCard'
+import { StockIndexModal } from '../shared/StockIndexModal'
 import { StockCard } from '../shared/StockCard'
+import { CoinSlotEditor } from '../shared/CoinSlotEditor'
+import { StockSlotEditor } from '../shared/StockSlotEditor'
+import { Modal } from '../shared/Modal'
+import { TradingViewChart } from '../shared/TradingViewChart'
+import { KrStockChart } from '../shared/KrStockChart'
 import { EconomicNewsSection } from '../shared/EconomicNewsSection'
 import { AltcoinSeasonCard } from '../shared/AltcoinSeasonCard'
 import { MacroHealthCard } from '../shared/MacroHealthCard'
 import { StatRow } from '../shared/StatRow'
 import { useApi } from '../../hooks/useApi'
+import { apiFetch } from '../../lib/api'
 import { fmt } from '../../lib/format'
+import { toTvSymbol } from '../../lib/tvSymbolMap'
 
 interface DashboardData {
   coins: Array<{
@@ -43,6 +52,7 @@ interface DashboardData {
   }
   coinbase_btc: number | null
   kimchi: { kimchi_premium_pct: number; usd_krw: number } | null
+  kimchi_history: Array<{ timestamp: string; premium_pct: number }> | null
   fear_greed: { value: number; label: string } | null
   onchain: {
     exchange_inflow: number
@@ -76,6 +86,13 @@ interface StockIndexItem {
   low: number | null
 }
 
+interface StockSlot {
+  position: number
+  ticker: string
+  name: string
+  tv_symbol: string | null
+}
+
 interface StockItem {
   ticker: string
   name: string
@@ -99,23 +116,35 @@ function mvrvLabel(signal: string | null | undefined, mvrv: number): string {
   return `정상 (${mvrv.toFixed(2)})`
 }
 
-function Section({ className, title, children }: { className: string; title: string; children: ReactNode }) {
+function Section({ className, title, actions, children }: { className: string; title: string; actions?: ReactNode; children: ReactNode }) {
   return (
     <section className={`mock-card mock-data-section ${className}`}>
       <div className="mock-card-head">
         <h2>{title}</h2>
+        {actions}
       </div>
       {children}
     </section>
   )
 }
 
-function BtcMarketCard({ btc, kimchi }: { btc?: DashboardData['coins'][number]; kimchi: DashboardData['kimchi'] }) {
+function BtcMarketCard({
+  btc,
+  kimchi,
+  kimchiHistory,
+  onOpen,
+}: {
+  btc?: DashboardData['coins'][number]
+  kimchi: DashboardData['kimchi']
+  kimchiHistory: Array<{ t: string; v: number }>
+  onOpen: () => void
+}) {
   const change = btc?.change_24h ?? null
   const up = change == null || change >= 0
+  const chartColor = (kimchi?.kimchi_premium_pct ?? 0) >= 0 ? '#4ade80' : '#f87171'
 
   return (
-    <Card className="mock-data-card">
+    <Card className="mock-data-card" onClick={onOpen} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}>
       <div className="mock-data-title">BTC / USDT</div>
       <div className="mock-data-value">{btc?.price ? `$${btc.price.toLocaleString()}` : '-'}</div>
       <div className={up ? 'mock-up' : 'mock-down'}>
@@ -129,16 +158,75 @@ function BtcMarketCard({ btc, kimchi }: { btc?: DashboardData['coins'][number]; 
           <span>환율 {kimchi.usd_krw.toLocaleString()}</span>
         </div>
       )}
+      {kimchiHistory.length > 1 && (
+        <div className="mock-kimchi-chart">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={kimchiHistory} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+              <defs>
+                <linearGradient id="mockKimchiGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={chartColor} stopOpacity={0.5} />
+                  <stop offset="95%" stopColor={chartColor} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="t" hide />
+              <YAxis hide domain={['auto', 'auto']} />
+              <ReferenceLine y={0} stroke="#64748b" strokeDasharray="3 3" strokeWidth={1} />
+              <Tooltip
+                contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 6, fontSize: '0.7rem' }}
+                labelStyle={{ color: '#94a3b8' }}
+                formatter={(v) => [`${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`, '김프']}
+              />
+              <Area type="monotone" dataKey="v" stroke={chartColor} strokeWidth={2} fill="url(#mockKimchiGrad)" dot={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </Card>
   )
 }
 
-function CoinCard({ coin }: { coin: DashboardData['coins'][number] }) {
+function CoinCard({
+  coin,
+  editMode,
+  isEditing,
+  loading,
+  error,
+  onEdit,
+  onOpen,
+  onSave,
+  onCancel,
+}: {
+  coin: DashboardData['coins'][number]
+  editMode: boolean
+  isEditing: boolean
+  loading: boolean
+  error: string | null
+  onEdit: () => void
+  onOpen: () => void
+  onSave: (query: string) => void
+  onCancel: () => void
+}) {
   const change = coin.change_24h ?? null
   const up = change == null || change >= 0
 
   return (
-    <Card className="mock-data-card">
+    <Card
+      className={`mock-data-card${editMode ? '' : ' coin-card'}`}
+      onClick={editMode ? onEdit : onOpen}
+      style={{ cursor: 'pointer', position: 'relative' }}
+    >
+      {isEditing ? (
+        <CoinSlotEditor
+          position={coin.position}
+          currentSymbol={coin.symbol}
+          onSave={onSave}
+          onCancel={onCancel}
+          loading={loading}
+          error={error}
+        />
+      ) : (
+        <>
+      {editMode && <span className="mock-card-edit-mark">✎</span>}
       <div className="mock-data-title">{coin.symbol}</div>
       <div className="mock-data-value">{coin.price ? `$${coin.price.toLocaleString()}` : '-'}</div>
       <div className={up ? 'mock-up' : 'mock-down'}>
@@ -150,14 +238,44 @@ function CoinCard({ coin }: { coin: DashboardData['coins'][number] }) {
           {coin.low_24h != null && <span>L ${coin.low_24h.toLocaleString()}</span>}
         </div>
       )}
+        </>
+      )}
     </Card>
   )
 }
 
 export function Dashboard() {
-  const { data } = useApi<DashboardData>('/api/dashboard', 60_000)
+  const { data, refetch } = useApi<DashboardData>('/api/dashboard', 60_000)
   const { data: stockIndices } = useApi<StockIndexItem[]>('/api/stock-indices', 300_000)
-  const { data: krStocks } = useApi<StockItem[]>('/api/stock-prices/kr', 300_000)
+  const { data: krStocks, refetch: refetchKr } = useApi<StockItem[]>('/api/stock-prices/kr', 300_000)
+  const { data: krSlots, refetch: refetchKrSlots } = useApi<StockSlot[]>('/api/stock-slots/kr', 0)
+  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
+  const [activeIndex, setActiveIndex] = useState<{ ticker: string; name: string } | null>(null)
+  const [activeKrStock, setActiveKrStock] = useState<{ ticker: string; name: string } | null>(null)
+  const [editMode, setEditMode] = useState(false)
+  const [editingPosition, setEditingPosition] = useState<number | null>(null)
+  const [editLoading, setEditLoading] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [editingKr, setEditingKr] = useState(false)
+
+  const handleSlotSave = async (position: number, query: string) => {
+    setEditLoading(true)
+    setEditError(null)
+    try {
+      await apiFetch(`/api/coin-slots/${position}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      })
+      await refetch()
+      setEditingPosition(null)
+      setEditMode(false)
+    } catch (err: unknown) {
+      setEditError(err instanceof Error ? err.message : '교체에 실패했습니다')
+    } finally {
+      setEditLoading(false)
+    }
+  }
 
   if (!data) return null
 
@@ -165,6 +283,10 @@ export function Dashboard() {
   const mvrv = data.onchain?.mvrv ?? null
   const usMarkets = data.us_market?.filter(m => m.category !== 'korea') ?? []
   const koreaMarkets = data.us_market?.filter(m => m.category === 'korea') ?? []
+  const kimchiHistory = (data.kimchi_history ?? []).map(d => ({
+    t: d.timestamp.slice(5, 16),
+    v: d.premium_pct,
+  }))
 
   return (
     <div className="mock-spf-dashboard mock-real-dashboard">
@@ -178,7 +300,7 @@ export function Dashboard() {
             <h2>시장 메인 카드</h2>
           </div>
           <div className="mock-overview-grid">
-            <BtcMarketCard btc={btc} kimchi={data.kimchi} />
+            <BtcMarketCard btc={btc} kimchi={data.kimchi} kimchiHistory={kimchiHistory} onOpen={() => setSelectedSymbol('BTC')} />
             {data.global && <GlobalMarketCard data={data.global} />}
             {stockIndices?.slice(0, 3).map(idx => (
               <StockIndexCard
@@ -190,19 +312,22 @@ export function Dashboard() {
                 sparkline={idx.sparkline ?? []}
                 high={idx.high ?? null}
                 low={idx.low ?? null}
-                onOpenModal={() => undefined}
+                onOpenModal={(ticker) => {
+                  const found = stockIndices.find(item => item.ticker === ticker)
+                  setActiveIndex(found ? { ticker: found.ticker, name: found.name } : null)
+                }}
               />
             ))}
             {data.fear_greed && (
               <Card className="mock-data-card mock-gauge-data-card">
                 <div className="mock-data-title">공포탐욕지수</div>
-                <GaugeChart value={data.fear_greed.value} label={data.fear_greed.label} size={130} />
+                <GaugeChart value={data.fear_greed.value} label={data.fear_greed.label} size={110} />
               </Card>
             )}
             {mvrv !== null && (
               <Card className="mock-data-card mock-gauge-data-card">
                 <div className="mock-data-title">MVRV Ratio</div>
-                <GaugeChart value={mvrvToGauge(mvrv)} label={mvrvLabel(data.onchain?.mvrv_signal, mvrv)} size={130} />
+                <GaugeChart value={mvrvToGauge(mvrv)} label={mvrvLabel(data.onchain?.mvrv_signal, mvrv)} size={110} />
               </Card>
             )}
           </div>
@@ -212,13 +337,65 @@ export function Dashboard() {
           <EconomicNewsSection />
         </section>
 
-        <Section className="mock-coin-price-section" title="SPF · 코인 가격">
+        <Section
+          className="mock-coin-price-section"
+          title="코인가격"
+          actions={(
+            <button
+              type="button"
+              onClick={() => {
+                setEditMode(prev => !prev)
+                setEditingPosition(null)
+                setEditError(null)
+              }}
+            >
+              {editMode ? '완료' : '편집'}
+            </button>
+          )}
+        >
           <div className="mock-overview-grid mock-compact-grid">
-            {data.coins?.map(coin => <CoinCard key={coin.position ?? coin.symbol} coin={coin} />)}
+            {data.coins?.map(coin => (
+              <CoinCard
+                key={coin.position ?? coin.symbol}
+                coin={coin}
+                editMode={editMode}
+                isEditing={editMode && editingPosition === coin.position}
+                loading={editLoading}
+                error={editError}
+                onEdit={() => {
+                  setEditingPosition(coin.position)
+                  setEditError(null)
+                }}
+                onOpen={() => setSelectedSymbol(coin.symbol)}
+                onSave={(query) => handleSlotSave(coin.position, query)}
+                onCancel={() => {
+                  setEditingPosition(null)
+                  setEditError(null)
+                }}
+              />
+            ))}
           </div>
         </Section>
 
-        <Section className="mock-kr-stock-section" title="SPF 추이 · 한국 주식">
+        <Section
+          className="mock-kr-stock-section"
+          title="한국주식"
+          actions={(
+            <button type="button" onClick={() => setEditingKr(prev => !prev)}>
+              {editingKr ? '완료' : '편집'}
+            </button>
+          )}
+        >
+          {editingKr && krSlots && (
+            <StockSlotEditor
+              market="kr"
+              slots={krSlots}
+              onUpdate={() => {
+                refetchKr()
+                refetchKrSlots()
+              }}
+            />
+          )}
           <div className="mock-overview-grid mock-compact-grid">
             {krStocks?.map(stock => (
               <StockCard
@@ -231,7 +408,7 @@ export function Dashboard() {
                 sparkline={stock.sparkline ?? []}
                 high={stock.high}
                 low={stock.low}
-                onOpenModal={() => undefined}
+                onOpenModal={(_, name) => setActiveKrStock({ ticker: stock.ticker, name })}
               />
             ))}
           </div>
@@ -301,6 +478,24 @@ export function Dashboard() {
           <MacroHealthCard />
         </section>
       </div>
+      <Modal open={!!selectedSymbol} onClose={() => setSelectedSymbol(null)}>
+        {selectedSymbol && (
+          <TradingViewChart
+            symbol={toTvSymbol(
+              selectedSymbol,
+              data.coins?.find(c => c.symbol === selectedSymbol)?.tv_symbol
+            )}
+          />
+        )}
+      </Modal>
+      <Modal open={!!activeKrStock} onClose={() => setActiveKrStock(null)}>
+        {activeKrStock && <KrStockChart ticker={activeKrStock.ticker} name={activeKrStock.name} />}
+      </Modal>
+      <StockIndexModal
+        ticker={activeIndex?.ticker ?? null}
+        name={activeIndex?.name ?? ''}
+        onClose={() => setActiveIndex(null)}
+      />
     </div>
   )
 }

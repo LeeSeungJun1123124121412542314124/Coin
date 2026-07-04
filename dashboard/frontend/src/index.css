@@ -517,43 +517,6 @@ body {
   color: #2d9bff;
 }
 
-.mock-api-status {
-  border: 1px solid rgba(56, 70, 85, 0.52);
-  border-radius: 5px;
-  padding: 10px;
-  color: #8f9bad;
-  font-size: 0.72rem;
-  background: rgba(12, 22, 32, 0.72);
-}
-
-.mock-api-status div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.mock-api-status b {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: #d6dde8;
-}
-
-.mock-api-status i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #36c273;
-}
-
-.mock-api-status button {
-  border: 0;
-  color: #8f9bad;
-  background: transparent;
-  cursor: pointer;
-}
-
 .app-main {
   grid-column: 2;
   grid-row: 2;
@@ -1071,7 +1034,7 @@ body {
 }
 
 .mock-data-card {
-  min-height: 160px;
+  min-height: 132px;
 }
 
 .mock-data-title {
@@ -1102,6 +1065,34 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+}
+
+.mock-kimchi-chart {
+  height: 46px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.mock-card-edit-mark {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  color: #f59e0b;
+  font-size: 0.75rem;
+  pointer-events: none;
+}
+
+.coin-card:hover,
+.stock-card:hover {
+  border-color: #60a5fa !important;
+}
+
+.mock-market-overview .dashboard-market-card {
+  min-height: 132px;
+}
+
+.mock-market-overview .dashboard-sparkline {
+  height: 46px;
 }
 
 .mock-news-section > div,

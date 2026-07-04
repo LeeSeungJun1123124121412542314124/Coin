@@ -17,7 +17,7 @@ def test_app_shell_uses_mockup_ticker_and_sidebar():
     assert "mock-brand-mark" in source
     assert "mock-sidebar" in source
     assert "mock-sidebar-link" in source
-    assert "API 연동" in source
+    assert "API 연동" not in source
     assert "기본 계정" not in source
     assert "mock-ticker-strip" not in source
 
