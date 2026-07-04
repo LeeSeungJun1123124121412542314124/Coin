@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from dashboard.backend.jobs.direction_watch import check_tga_event
+from dashboard.backend.jobs.direction_watch import check_tga_event, prepare_tga_event
 
 T = 120_000  # 임계 (백만$) — _TGA_THRESHOLD와 동일, 0.7T=84,000
 
@@ -59,3 +59,13 @@ def test_direction_flip_refires_without_reset(state_db):
     msgs = check_tga_event(-150_000)            # 0.7T 복귀 없이 감소 → 방향전환 재발화
     assert len(msgs) == 1 and "급감" in msgs[0]
     assert len(_alerts(state_db)) == 2
+
+
+def test_prepare_tga_event_does_not_record_before_commit(state_db):
+    actions = prepare_tga_event(150_000)
+    assert len(actions) == 1
+    assert actions[0].message and "급증" in actions[0].message
+    assert len(_alerts(state_db)) == 0
+
+    actions[0].commit()
+    assert len(_alerts(state_db)) == 1

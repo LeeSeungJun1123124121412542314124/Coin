@@ -282,7 +282,12 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     from dashboard.backend.jobs.update_predictions import update_predictions
     from dashboard.backend.jobs.settle_predictions import settle_expired_predictions
     from dashboard.backend.jobs.paper_rebalance import run_paper_rebalance
-    from dashboard.backend.jobs.direction_watch import check_direction_and_health, check_semiconductor_stale, check_tga_event
+    from dashboard.backend.jobs.direction_watch import (
+        prepare_direction_and_health,
+        prepare_semiconductor_stale,
+        prepare_tga_event,
+        send_watch_actions,
+    )
     from dashboard.backend.collectors.bybit_ohlcv import collect_coin_ohlcv_1h
 
     # SPF 데이터 수집 — 매일 00:10 UTC
@@ -312,13 +317,12 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     # 방향 전환·데이터 헬스 알림 — 매일 00:20 UTC (매크로 수집 갱신 후)
     @async_retry(max_retries=2, backoff_base=2.0, on_failure=notify_job_failure)
     async def _direction_health_watch():
-        msgs = await asyncio.to_thread(check_direction_and_health)
-        msgs += await asyncio.to_thread(check_semiconductor_stale)
-        msgs += await asyncio.to_thread(check_tga_event)
-        for m in msgs:
-            await dispatcher._notifier.send_message(m)
-        if msgs:
-            logger.info("방향/헬스/반도체/TGA 알림 %d건 발송", len(msgs))
+        actions = await asyncio.to_thread(prepare_direction_and_health)
+        actions += await asyncio.to_thread(prepare_semiconductor_stale)
+        actions += await asyncio.to_thread(prepare_tga_event)
+        sent = await send_watch_actions(actions, dispatcher._notifier.send_message)
+        if sent:
+            logger.info("방향/헬스/반도체/TGA 알림 %d건 발송", sent)
 
     scheduler.add_job(_direction_health_watch, CronTrigger(hour=0, minute=20), id="direction_health_watch")
 

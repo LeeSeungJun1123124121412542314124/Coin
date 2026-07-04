@@ -6,7 +6,7 @@ from datetime import date
 
 import pytest
 
-from dashboard.backend.jobs.direction_watch import check_semiconductor_stale
+from dashboard.backend.jobs.direction_watch import check_semiconductor_stale, prepare_semiconductor_stale
 from dashboard.backend.services.research_analyzer import (
     SEMICONDUCTOR_SIGNALS_AS_OF,
     semiconductor_stale_status,
@@ -92,3 +92,13 @@ def test_recovery_resets_and_refires(state_db):
     msgs = check_semiconductor_stale(_status(is_stale=True))  # 재 stale → 재발송
     assert len(msgs) == 1
     assert len(_alert_rows(state_db)) == 2
+
+
+def test_prepare_stale_does_not_record_before_commit(state_db):
+    actions = prepare_semiconductor_stale(_status(is_stale=True))
+    assert len(actions) == 1
+    assert actions[0].message and "갱신 필요" in actions[0].message
+    assert len(_alert_rows(state_db)) == 0
+
+    actions[0].commit()
+    assert len(_alert_rows(state_db)) == 1
