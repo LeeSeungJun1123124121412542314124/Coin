@@ -354,7 +354,7 @@ export function Research() {
     : categories.filter(c => c.name === activeCategory)
 
   return (
-    <div style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <LastUpdated timestamp={lastUpdated} />
       {/* 설명 */}
       <div style={{ marginBottom: 20 }}>

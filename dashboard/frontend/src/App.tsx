@@ -22,8 +22,8 @@ const TABS = [
   { path: '/liquidity', label: '유동성', description: 'TGA, M2, SOMA와 국채 경매로 매크로 유동성을 봅니다.' },
   { path: '/cvd', label: 'CVD 스크리너', description: 'CVD와 가격 다이버전스 기반 알트코인 스크리닝을 확인합니다.' },
   { path: '/whale', label: '고래추적', description: 'Hyperliquid 상위 지갑 포지션과 BTC 방향 합의를 추적합니다.' },
-  { path: '/alerts', label: '알림히스토리', description: '전송된 경보와 방향 판정 기록을 심볼별로 확인합니다.' },
   { path: '/leaderboard', label: '리더보드', description: '지표별 포워드 자동매매 성과와 에쿼티 곡선을 비교합니다.' },
+  { path: '/alerts', label: '알림히스토리', description: '전송된 경보와 방향 판정 기록을 심볼별로 확인합니다.' },
 ] as const
 
 function PinScreen({ onSuccess }: { onSuccess: () => void }) {

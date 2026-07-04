@@ -44,6 +44,18 @@ def test_sidebar_api_status_box_is_removed():
     assert "API 연동" not in source
 
 
+def test_sidebar_orders_leaderboard_before_alert_history():
+    source = APP_TSX.read_text(encoding="utf-8")
+
+    ordered = [
+        "path: '/whale'",
+        "path: '/leaderboard'",
+        "path: '/alerts'",
+    ]
+    positions = [source.index(token) for token in ordered]
+    assert positions == sorted(positions)
+
+
 def test_dashboard_uses_original_data_sections_in_mock_shell():
     source = DASHBOARD_TSX.read_text(encoding="utf-8")
 
