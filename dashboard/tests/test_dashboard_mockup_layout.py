@@ -12,13 +12,13 @@ INDEX_CSS = Path("dashboard/frontend/src/index.css")
 def test_dashboard_uses_mockup_card_layout_classes():
     source = DASHBOARD_TSX.read_text(encoding="utf-8")
 
-    assert 'className="mock-spf-dashboard"' in source
-    assert 'className="mock-content-grid"' in source
-    assert "mock-spf-hero" in source
-    assert "mock-horizon-grid" in source
-    assert "mock-metric-grid" in source
-    assert "mock-record-card" in source
-    assert "mock-leaderboard-card" in source
+    assert "mock-spf-dashboard" in source
+    assert "mock-real-stack" in source
+    assert "mock-market-overview" in source
+    assert "mock-news-section" in source
+    assert "mock-coin-price-section" in source
+    assert "mock-kr-stock-section" in source
+    assert "mock-market-detail-section" in source
 
 
 def test_dashboard_css_matches_desktop_mockup_grid():

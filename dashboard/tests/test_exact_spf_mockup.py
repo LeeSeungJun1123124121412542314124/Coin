@@ -18,21 +18,21 @@ def test_app_shell_uses_mockup_ticker_and_sidebar():
     assert "mock-sidebar" in source
     assert "mock-sidebar-link" in source
     assert "API 연동" in source
-    assert "기본 계정" in source
+    assert "기본 계정" not in source
+    assert "mock-ticker-strip" not in source
 
 
 def test_dashboard_uses_exact_spf_mockup_sections():
     source = DASHBOARD_TSX.read_text(encoding="utf-8")
 
     assert "mock-spf-dashboard" in source
-    assert "시장 방향 전망" in source
-    assert "mock-spf-hero" in source
-    assert "mock-horizon-grid" in source
-    assert "mock-metric-grid" in source
-    assert "SPF 추이" in source
-    assert "최근 예측 기록" in source
-    assert "시뮬레이터" in source
-    assert "리더보드" in source
+    assert "시장 메인 카드" in source
+    assert "mock-market-overview" in source
+    assert "mock-news-section" in source
+    assert "mock-coin-price-section" in source
+    assert "mock-kr-stock-section" in source
+    assert "mock-altcoin-season-section" in source
+    assert "mock-market-detail-section" in source
 
 
 def test_css_contains_mockup_desktop_and_mobile_layout():

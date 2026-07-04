@@ -1,273 +1,304 @@
-import { Area, AreaChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
+import { Card } from '../shared/Card'
+import type { ReactNode } from 'react'
+import { GaugeChart } from '../shared/GaugeChart'
+import { GlobalMarketCard } from '../shared/GlobalMarketCard'
+import { StockIndexCard } from '../shared/StockIndexCard'
+import { StockCard } from '../shared/StockCard'
+import { EconomicNewsSection } from '../shared/EconomicNewsSection'
+import { AltcoinSeasonCard } from '../shared/AltcoinSeasonCard'
+import { MacroHealthCard } from '../shared/MacroHealthCard'
+import { StatRow } from '../shared/StatRow'
 import { useApi } from '../../hooks/useApi'
+import { fmt } from '../../lib/format'
 
 interface DashboardData {
-  coins?: Array<{
+  coins: Array<{
+    position: number
     symbol: string
     price: number | null
     change_24h: number | null
+    market_cap: number | null
+    tv_symbol: string | null
+    high_24h: number | null
+    low_24h: number | null
   }>
+  global: {
+    total_market_cap_usd: number | null
+    btc_dominance: number | null
+    eth_dominance: number | null
+    market_cap_change_24h: number | null
+    market_cap_chart: Array<{ t: number; v: number }> | null
+  } | null
+  us_market: Array<{
+    name: string
+    category: string
+    price: number
+    change_pct: number
+  }> | null
+  derivatives: {
+    open_interest: { open_interest: number } | null
+    funding_rate: { funding_rate_pct: number } | null
+    long_short: { long_short_ratio: number; long_account: number; short_account: number } | null
+    oi_change: { change_1h_pct: number | null; change_24h_pct: number | null } | null
+  }
+  coinbase_btc: number | null
+  kimchi: { kimchi_premium_pct: number; usd_krw: number } | null
+  fear_greed: { value: number; label: string } | null
+  onchain: {
+    exchange_inflow: number
+    exchange_outflow: number
+    mvrv: number | null
+    mvrv_signal: string | null
+  } | null
+  stablecoins: Array<{ symbol: string; market_cap: number | null; change_24h: number | null }> | null
+  hashrate: { hashrate_eh: number } | null
+  altcoin_season: {
+    index_value: number
+    season_label: 'altcoin_season' | 'neutral' | 'bitcoin_season'
+    history: Array<{ date: string; value: number; market_cap: number }>
+    cached_at: string
+    is_stale: boolean
+    yesterday_value: number | null
+    last_week_value: number | null
+    last_month_value: number | null
+    yearly_high: { value: number; date: string; season_label: string } | null
+    yearly_low: { value: number; date: string; season_label: string } | null
+  } | null
 }
 
-const horizons = [
-  { label: '7일', direction: '상승', confidence: 68, tone: 'up' },
-  { label: '14일', direction: '상승', confidence: 63, tone: 'up' },
-  { label: '30일', direction: '중립', confidence: 55, tone: 'flat' },
-  { label: '60일', direction: '하락', confidence: 48, tone: 'down' },
-] as const
-
-const metricCards = [
-  { title: '방향 적중률', value: '67.3%', sub: '(최근 30일)', tone: 'up' },
-  { title: '평균 수익률', value: '+8.45%', sub: '(최근 30일)', tone: 'up' },
-  { title: '최대 연속 적중', value: '8회', sub: '(최근 30일)', tone: 'neutral' },
-  { title: '총 예측 횟수', value: '256회', sub: '(최근 90일)', tone: 'neutral' },
-] as const
-
-const trendData = [
-  { day: '03/01', spf: 62, btc: 68 },
-  { day: '03/08', spf: 58, btc: 74 },
-  { day: '03/16', spf: 52, btc: 79 },
-  { day: '03/24', spf: 48, btc: 72 },
-  { day: '03/31', spf: 45, btc: 66 },
-  { day: '04/08', spf: 54, btc: 70 },
-  { day: '04/15', spf: 61, btc: 74 },
-  { day: '04/23', spf: 70, btc: 80 },
-  { day: '04/30', spf: 64, btc: 82 },
-  { day: '05/08', spf: 59, btc: 92 },
-  { day: '05/15', spf: 66, btc: 104 },
-  { day: '05/23', spf: 72, btc: 110 },
-  { day: '05/30', spf: 82, btc: 102 },
-  { day: '06/07', spf: 76, btc: 98 },
-  { day: '06/14', spf: 72, btc: 96 },
-]
-
-const miniTrend = [
-  { x: 1, y: 20 },
-  { x: 2, y: 24 },
-  { x: 3, y: 42 },
-  { x: 4, y: 39 },
-  { x: 5, y: 48 },
-  { x: 6, y: 45 },
-  { x: 7, y: 52 },
-  { x: 8, y: 50 },
-  { x: 9, y: 57 },
-]
-
-const records = [
-  ['2025-06-14 09:00', '7일', '상승', '-', '판정 대기', '-'],
-  ['2025-06-14 09:00', '14일', '상승', '-', '판정 대기', '-'],
-  ['2025-06-14 09:00', '30일', '중립', '-', '판정 대기', '-'],
-  ['2025-06-14 09:00', '60일', '하락', '-', '판정 대기', '-'],
-  ['2025-06-07 09:00', '7일', '상승', '상승', '적중', '+3.21%'],
-  ['2025-06-07 09:00', '14일', '상승', '상승', '적중', '+5.48%'],
-  ['2025-06-07 09:00', '30일', '중립', '중립', '적중', '+1.02%'],
-  ['2025-06-07 09:00', '60일', '하락', '중립', '불일치', '-1.14%'],
-]
-
-const leaderboard = [
-  ['👑', '고래의꿈', '+27.41%', '71.3%', '58'],
-  ['♛', '알트마스터', '+22.18%', '68.2%', '64'],
-  ['👑', '차트헌터', '+18.92%', '65.4%', '51'],
-  ['-', '나의 순위', '+18.62%', '62.5%', '48'],
-]
-
-function MiniSpark({ tone = 'up' }: { tone?: 'up' | 'down' | 'neutral' }) {
-  const color = tone === 'down' ? '#ef4444' : tone === 'neutral' ? '#2d8cff' : '#36c273'
-
-  return (
-    <div className="mock-mini-spark">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={miniTrend} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-          <defs>
-            <linearGradient id={`mini-${tone}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={color} stopOpacity={0.35} />
-              <stop offset="95%" stopColor={color} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <XAxis dataKey="x" hide />
-          <YAxis hide domain={['dataMin - 4', 'dataMax + 4']} />
-          <Area dataKey="y" stroke={color} strokeWidth={2} fill={`url(#mini-${tone})`} dot={false} />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
-  )
+interface StockIndexItem {
+  ticker: string
+  name: string
+  price: number | null
+  change_pct: number | null
+  sparkline: number[]
+  high: number | null
+  low: number | null
 }
 
-function DirectionBadge({ value }: { value: string }) {
-  const tone = value === '상승' ? 'up' : value === '하락' ? 'down' : 'flat'
-  const icon = value === '상승' ? '↑' : value === '하락' ? '↓' : '−'
-
-  return (
-    <span className={`mock-direction mock-direction-${tone}`}>
-      <i>{icon}</i>
-      {value}
-    </span>
-  )
+interface StockItem {
+  ticker: string
+  name: string
+  tv_symbol: string | null
+  price: number | null
+  change_pct: number | null
+  sparkline: number[]
+  high: number | null
+  low: number | null
 }
 
-function Gauge() {
+function mvrvToGauge(mvrv: number): number {
+  return Math.min(100, Math.round((mvrv / 5) * 100))
+}
+
+function mvrvLabel(signal: string | null | undefined, mvrv: number): string {
+  if (signal === 'EXTREME_OVERVALUED') return '극단 과평가'
+  if (signal === 'OVERVALUED') return '과평가'
+  if (signal === 'EXTREME_UNDERVALUED') return '극단 저평가'
+  if (signal === 'UNDERVALUED') return '저평가'
+  return `정상 (${mvrv.toFixed(2)})`
+}
+
+function Section({ className, title, children }: { className: string; title: string; children: ReactNode }) {
   return (
-    <div className="mock-gauge" aria-label="SPF 점수 72점">
-      <div className="mock-gauge-arc" />
-      <div className="mock-gauge-needle" />
-      <div className="mock-gauge-min">0</div>
-      <div className="mock-gauge-max">100</div>
-      <div className="mock-gauge-score">
-        <b>72</b>
-        <span>/100</span>
+    <section className={`mock-card mock-data-section ${className}`}>
+      <div className="mock-card-head">
+        <h2>{title}</h2>
       </div>
-    </div>
+      {children}
+    </section>
+  )
+}
+
+function BtcMarketCard({ btc, kimchi }: { btc?: DashboardData['coins'][number]; kimchi: DashboardData['kimchi'] }) {
+  const change = btc?.change_24h ?? null
+  const up = change == null || change >= 0
+
+  return (
+    <Card className="mock-data-card">
+      <div className="mock-data-title">BTC / USDT</div>
+      <div className="mock-data-value">{btc?.price ? `$${btc.price.toLocaleString()}` : '-'}</div>
+      <div className={up ? 'mock-up' : 'mock-down'}>
+        {change != null ? `${up ? '+' : ''}${change.toFixed(2)}%` : '-'}
+      </div>
+      {kimchi && (
+        <div className="mock-data-meta">
+          김치프리미엄 <b className={kimchi.kimchi_premium_pct >= 0 ? 'mock-up' : 'mock-down'}>
+            {kimchi.kimchi_premium_pct >= 0 ? '+' : ''}{kimchi.kimchi_premium_pct.toFixed(2)}%
+          </b>
+          <span>환율 {kimchi.usd_krw.toLocaleString()}</span>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+function CoinCard({ coin }: { coin: DashboardData['coins'][number] }) {
+  const change = coin.change_24h ?? null
+  const up = change == null || change >= 0
+
+  return (
+    <Card className="mock-data-card">
+      <div className="mock-data-title">{coin.symbol}</div>
+      <div className="mock-data-value">{coin.price ? `$${coin.price.toLocaleString()}` : '-'}</div>
+      <div className={up ? 'mock-up' : 'mock-down'}>
+        {change != null ? `${up ? '+' : ''}${change.toFixed(2)}%` : '-'}
+      </div>
+      {(coin.high_24h != null || coin.low_24h != null) && (
+        <div className="mock-data-meta">
+          {coin.high_24h != null && <span>H ${coin.high_24h.toLocaleString()}</span>}
+          {coin.low_24h != null && <span>L ${coin.low_24h.toLocaleString()}</span>}
+        </div>
+      )}
+    </Card>
   )
 }
 
 export function Dashboard() {
   const { data } = useApi<DashboardData>('/api/dashboard', 60_000)
-  const btc = data?.coins?.find(coin => coin.symbol === 'BTC')
-  const btcPrice = btc?.price ? btc.price.toLocaleString() : '103,512.6'
+  const { data: stockIndices } = useApi<StockIndexItem[]>('/api/stock-indices', 300_000)
+  const { data: krStocks } = useApi<StockItem[]>('/api/stock-prices/kr', 300_000)
+
+  if (!data) return null
+
+  const btc = data.coins?.find(c => c.symbol === 'BTC')
+  const mvrv = data.onchain?.mvrv ?? null
+  const usMarkets = data.us_market?.filter(m => m.category !== 'korea') ?? []
+  const koreaMarkets = data.us_market?.filter(m => m.category === 'korea') ?? []
 
   return (
-    <div className="mock-spf-dashboard">
+    <div className="mock-spf-dashboard mock-real-dashboard">
       <section className="mock-section-title">
-        <h1>시장 방향 전망 <span>?</span></h1>
+        <h1>대시보드</h1>
       </section>
 
-      <div className="mock-content-grid">
-        <section className="mock-card mock-spf-hero">
-          <div className="mock-spf-copy">
-            <h2>SPF</h2>
-            <p>종합 방향</p>
-            <DirectionBadge value="상승" />
-            <dl>
-              <div><dt>신뢰도</dt><dd>72%</dd></div>
-              <div><dt>시장 상태</dt><dd>강세</dd></div>
-              <div><dt>BTC 기준가</dt><dd>{btcPrice}</dd></div>
-            </dl>
-          </div>
-          <Gauge />
-        </section>
-
-        <section className="mock-horizon-grid">
-          {horizons.map(item => (
-            <article className="mock-card mock-horizon-card" key={item.label}>
-              <h3>{item.label}</h3>
-              <DirectionBadge value={item.direction} />
-              <div className="mock-divider" />
-              <p>신뢰도 <b>{item.confidence}%</b></p>
-              <p>판정 대기</p>
-            </article>
-          ))}
-        </section>
-
-        <section className="mock-card mock-trend-card">
+      <div className="mock-real-stack">
+        <section className="mock-market-overview">
           <div className="mock-card-head">
-            <h2>SPF 추이</h2>
-            <button type="button">90일⌄</button>
+            <h2>시장 메인 카드</h2>
           </div>
-          <div className="mock-chart-legend">
-            <span><i className="mock-dot-blue" />SPF 점수</span>
-            <span><i className="mock-dot-gray" />BTC 가격</span>
-          </div>
-          <div className="mock-main-chart">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData} margin={{ top: 14, right: 18, bottom: 8, left: 0 }}>
-                <XAxis dataKey="day" stroke="#8a96a8" tickLine={false} axisLine={false} />
-                <YAxis yAxisId="left" stroke="#8a96a8" tickLine={false} axisLine={false} domain={[0, 100]} />
-                <YAxis yAxisId="right" orientation="right" stroke="#8a96a8" tickLine={false} axisLine={false} domain={[40, 120]} />
-                <Line yAxisId="left" dataKey="spf" stroke="#2d8cff" strokeWidth={2} dot={false} />
-                <Line yAxisId="right" dataKey="btc" stroke="#8f98a8" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          <p className="mock-chart-note">SPF(Sentiment & Price Flow) 점수는 시장 심리와 자금 흐름을 종합하여 산출합니다.</p>
-        </section>
-
-        <section className="mock-metric-grid">
-          {metricCards.map(card => (
-            <article className="mock-card mock-metric-card" key={card.title}>
-              <h3>{card.title} <span>?</span></h3>
-              <strong className={`mock-value-${card.tone}`}>{card.value}</strong>
-              <small>{card.sub}</small>
-              <MiniSpark tone={card.tone === 'up' ? 'up' : card.tone === 'neutral' ? 'neutral' : 'down'} />
-            </article>
-          ))}
-        </section>
-
-        <section className="mock-card mock-record-card">
-          <div className="mock-card-head">
-            <h2>최근 예측 기록</h2>
-            <button type="button">전체 보기</button>
-          </div>
-          <div className="mock-table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>예측 일시</th>
-                  <th>기간</th>
-                  <th>예측 방향</th>
-                  <th>실제 방향</th>
-                  <th>적중 여부</th>
-                  <th>수익률</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.map(row => (
-                  <tr key={`${row[0]}-${row[1]}-${row[4]}`}>
-                    {row.map((cell, index) => (
-                      <td key={index} className={cell.includes('+') ? 'mock-up' : cell.includes('-1') || cell === '불일치' ? 'mock-down' : ''}>
-                        {index === 2 || index === 3 ? <DirectionBadge value={cell} /> : cell}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mock-overview-grid">
+            <BtcMarketCard btc={btc} kimchi={data.kimchi} />
+            {data.global && <GlobalMarketCard data={data.global} />}
+            {stockIndices?.slice(0, 3).map(idx => (
+              <StockIndexCard
+                key={idx.ticker}
+                name={idx.name}
+                ticker={idx.ticker}
+                price={idx.price}
+                change_pct={idx.change_pct}
+                sparkline={idx.sparkline ?? []}
+                high={idx.high ?? null}
+                low={idx.low ?? null}
+                onOpenModal={() => undefined}
+              />
+            ))}
+            {data.fear_greed && (
+              <Card className="mock-data-card mock-gauge-data-card">
+                <div className="mock-data-title">공포탐욕지수</div>
+                <GaugeChart value={data.fear_greed.value} label={data.fear_greed.label} size={130} />
+              </Card>
+            )}
+            {mvrv !== null && (
+              <Card className="mock-data-card mock-gauge-data-card">
+                <div className="mock-data-title">MVRV Ratio</div>
+                <GaugeChart value={mvrvToGauge(mvrv)} label={mvrvLabel(data.onchain?.mvrv_signal, mvrv)} size={130} />
+              </Card>
+            )}
           </div>
         </section>
 
-        <section className="mock-card mock-simulator-card">
-          <div className="mock-card-head">
-            <h2>시뮬레이터 <span>?</span></h2>
-            <button type="button" className="mock-primary-button">▶ 시뮬레이터 실행</button>
-          </div>
-          <div className="mock-sim-grid">
-            <div><span>누적 수익률</span><b>+18.62%</b><MiniSpark /></div>
-            <div><span>벤치마크 (BTC)</span><b>+9.37%</b><MiniSpark tone="neutral" /></div>
-            <div><span>초과 수익률</span><b>+9.25%</b><MiniSpark /></div>
-            <div><span>승률</span><strong>62.5%</strong><small>(30일)</small></div>
-            <div><span>거래 횟수</span><strong>48회</strong><small>(30일)</small><em>최대 낙폭 -6.42%</em></div>
-          </div>
+        <section className="mock-news-section">
+          <EconomicNewsSection />
         </section>
 
-        <section className="mock-card mock-leaderboard-card">
-          <div className="mock-card-head">
-            <h2>리더보드</h2>
-            <button type="button">전체 보기</button>
+        <Section className="mock-coin-price-section" title="SPF · 코인 가격">
+          <div className="mock-overview-grid mock-compact-grid">
+            {data.coins?.map(coin => <CoinCard key={coin.position ?? coin.symbol} coin={coin} />)}
           </div>
-          <div className="mock-tabs">
-            <button type="button" className="mock-tab-active">종합 수익률</button>
-            <button type="button">적중률</button>
-            <button type="button">연승</button>
+        </Section>
+
+        <Section className="mock-kr-stock-section" title="SPF 추이 · 한국 주식">
+          <div className="mock-overview-grid mock-compact-grid">
+            {krStocks?.map(stock => (
+              <StockCard
+                key={stock.ticker}
+                ticker={stock.ticker}
+                name={stock.name}
+                tv_symbol={stock.tv_symbol}
+                price={stock.price}
+                change_pct={stock.change_pct}
+                sparkline={stock.sparkline ?? []}
+                high={stock.high}
+                low={stock.low}
+                onOpenModal={() => undefined}
+              />
+            ))}
           </div>
-          <table>
-            <thead>
-              <tr>
-                <th>순위</th>
-                <th>사용자</th>
-                <th>수익률</th>
-                <th>적중률</th>
-                <th>거래 횟수</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leaderboard.map(row => (
-                <tr key={row[1]} className={row[1] === '나의 순위' ? 'mock-my-rank' : ''}>
-                  {row.map((cell, index) => (
-                    <td key={index} className={index === 2 ? 'mock-up' : ''}>{cell}</td>
-                  ))}
-                </tr>
+        </Section>
+
+        {data.altcoin_season && (
+          <section className="mock-altcoin-season-section">
+            <AltcoinSeasonCard {...data.altcoin_season} />
+          </section>
+        )}
+
+        <section className="mock-market-detail-section">
+          <div className="mock-detail-grid">
+            <Card>
+              <h3 className="mock-detail-title">미국시장</h3>
+              {usMarkets.map(market => (
+                <StatRow key={market.name} label={market.name} value={market.price.toLocaleString()} change={market.change_pct} />
               ))}
-            </tbody>
-          </table>
+            </Card>
+            <Card>
+              <h3 className="mock-detail-title">한국시장</h3>
+              {koreaMarkets.map(market => (
+                <StatRow key={market.name} label={market.name} value={market.price.toLocaleString()} change={market.change_pct} />
+              ))}
+            </Card>
+            <Card>
+              <h3 className="mock-detail-title">파생상품</h3>
+              <StatRow label="미결제약정(OI)" value={fmt(data.derivatives.open_interest?.open_interest)} />
+              <StatRow label="OI 변화(1h)" value={data.derivatives.oi_change?.change_1h_pct != null ? `${data.derivatives.oi_change.change_1h_pct.toFixed(2)}%` : '-'} />
+              <StatRow label="펀딩레이트" value={`${data.derivatives.funding_rate?.funding_rate_pct?.toFixed(4) ?? '-'}%`} />
+              {data.derivatives.long_short && (
+                <StatRow label="롱/숏 비율" value={`${(data.derivatives.long_short.long_account * 100).toFixed(1)}% / ${(data.derivatives.long_short.short_account * 100).toFixed(1)}%`} />
+              )}
+            </Card>
+            <Card>
+              <h3 className="mock-detail-title">온체인</h3>
+              {data.onchain ? (
+                <>
+                  <StatRow label="거래소 유입" value={`${data.onchain.exchange_inflow.toFixed(0)} BTC`} highlight="down" />
+                  <StatRow label="거래소 유출" value={`${data.onchain.exchange_outflow.toFixed(0)} BTC`} highlight="up" />
+                </>
+              ) : (
+                <div className="mock-empty">데이터 없음</div>
+              )}
+              {data.coinbase_btc && btc?.price && (
+                <StatRow
+                  label="코인베이스 프리미엄"
+                  value={`${((data.coinbase_btc / btc.price - 1) * 100).toFixed(3)}%`}
+                  highlight={(data.coinbase_btc / btc.price - 1) > 0 ? 'up' : 'down'}
+                />
+              )}
+            </Card>
+            <Card>
+              <h3 className="mock-detail-title">시장유동성</h3>
+              {data.stablecoins?.map(sc => (
+                <StatRow key={sc.symbol} label={`${sc.symbol} 시총`} value={sc.market_cap ? `$${(sc.market_cap / 1e9).toFixed(1)}B` : '-'} change={sc.change_24h} />
+              ))}
+            </Card>
+            <Card>
+              <h3 className="mock-detail-title">BTC 네트워크</h3>
+              <StatRow label="해시레이트" value={data.hashrate ? `${data.hashrate.hashrate_eh.toFixed(0)} EH/s` : '-'} />
+            </Card>
+          </div>
+        </section>
+
+        <section>
+          <MacroHealthCard />
         </section>
       </div>
     </div>

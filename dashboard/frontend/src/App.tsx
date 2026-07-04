@@ -13,37 +13,24 @@ import { Alerts } from './components/screens/Alerts'
 import { Leaderboard } from './components/screens/Leaderboard'
 import { BASE } from './lib/api'
 
-const TICKERS = [
-  { label: 'BTC/USDT', value: '103,512.6', change: '0.68%', up: true },
-  { label: 'ETH/USDT', value: '2,489.21', change: '0.35%', up: false },
-  { label: 'SOL/USDT', value: '171.32', change: '1.20%', up: true },
-  { label: 'XRP/USDT', value: '2.35', change: '0.42%', up: false },
-  { label: 'TOTAL', value: '2.48T', change: '0.36%', up: true },
-  { label: 'BTC.D', value: '52.61%', change: '0.15%', up: false },
-  { label: 'USDT.KRW', value: '1,368.5', change: '0.09%', up: true },
-] as const
-
-// 탭 정의
 const TABS = [
   { path: '/', label: '대시보드', icon: '▦' },
   { path: '/market', label: '시장 분석', icon: '⌁' },
-  { path: '/spf', label: '예측 모델', icon: '◎' },
-  { path: '/volume', label: '알트코인 분석', icon: '✣' },
-  { path: '/liquidity', label: '온체인 분석', icon: '⌘' },
-  { path: '/leaderboard', label: '포트폴리오', icon: '▣' },
-  { path: '/alerts', label: '알림', icon: '♢' },
-  { path: '/research', label: '리포트', icon: '▤' },
-  { path: '/cvd', label: '설정', icon: '⚙' },
+  { path: '/spf', label: 'SPF', icon: '◎' },
+  { path: '/research', label: '뉴스', icon: '▤' },
+  { path: '/volume', label: '코인 가격', icon: '✣' },
+  { path: '/leaderboard', label: '한국 주식', icon: '▣' },
+  { path: '/liquidity', label: '알트코인 시즌', icon: '⌘' },
+  { path: '/cvd', label: '시장 지표', icon: '⚙' },
 ] as const
 
 const PRIMARY_TABS = [
   { path: '/', label: '대시보드', icon: '▦' },
   { path: '/market', label: '시장', icon: '⌁' },
-  { path: '/leaderboard', label: '포트폴리오', icon: '▣' },
+  { path: '/leaderboard', label: '주식', icon: '▣' },
   { path: '/alerts', label: '알림', icon: '♢' },
 ] as const
 
-// PIN 인증 화면 — 서버 측 검증 후 토큰 발급
 function PinScreen({ onSuccess }: { onSuccess: () => void }) {
   const [pin, setPin] = useState('')
   const [shake, setShake] = useState(false)
@@ -54,7 +41,6 @@ function PinScreen({ onSuccess }: { onSuccess: () => void }) {
     setPin(next)
     if (next.length === 4) {
       try {
-        // apiFetch와 동일한 BASE 사용 — 프론트·API 오리진이 다른 배포에서도 로그인 동작
         const res = await fetch(`${BASE}/api/auth/verify-pin`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -77,7 +63,7 @@ function PinScreen({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0f1117' }}>
-      <h1 style={{ color: '#fff', fontSize: '1.5rem', marginBottom: '2rem' }}>크립토 인사이트</h1>
+      <h1 style={{ color: '#fff', fontSize: '1.5rem', marginBottom: '2rem' }}>투자분석기</h1>
       <div style={{ display: 'flex', gap: '12px', marginBottom: '2rem', animation: shake ? 'shake 0.5s' : 'none' }}>
         {[0, 1, 2, 3].map(i => (
           <div key={i} style={{
@@ -128,22 +114,7 @@ export default function App() {
           <span className="mock-brand-mark">◉</span>
           <span className="mock-brand-name">투자분석기</span>
         </div>
-        <div className="mock-ticker-strip">
-          {TICKERS.map(item => (
-            <div className="mock-ticker-item" key={item.label}>
-              <span>{item.label}</span>
-              <b>{item.value}</b>
-              <em className={item.up ? 'mock-up' : 'mock-down'}>{item.up ? '▲' : '▼'} {item.change}</em>
-            </div>
-          ))}
-        </div>
-        <div className="mock-top-actions">
-          <span>☼</span>
-          <span>☾</span>
-          <span className="mock-bell">♧<b>3</b></span>
-          <span>◎</span>
-          <span>기본 계정⌄</span>
-        </div>
+        <div className="mock-header-title">실시간 시장 데이터 대시보드</div>
       </header>
       <aside className="mock-sidebar">
         <nav className="mock-sidebar-nav" aria-label="주요 화면">

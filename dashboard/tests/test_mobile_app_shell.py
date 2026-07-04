@@ -55,7 +55,7 @@ def test_desktop_shell_css_uses_sidebar_layout():
     assert "grid-template-columns: 168px minmax(0, 1fr)" in source
     assert "box-sizing: border-box" in source
     assert "height: calc(100vh - 52px)" in source
-    assert ".mock-ticker-strip" in source
+    assert ".mock-header-title" in source
     assert "display: none" in source
 
 
@@ -64,7 +64,7 @@ def test_desktop_shell_matches_mockup_geometry():
 
     assert "min-height: 52px" in source
     assert "padding: 38px 12px 10px" in source
-    assert "grid-template-columns: 168px minmax(0, 1fr) auto" in source
+    assert "grid-template-columns: 168px minmax(0, 1fr)" in source
     assert "background: rgba(8, 15, 22, 0.96)" in source
 
 

@@ -409,12 +409,20 @@ body {
   top: 0;
   z-index: 50;
   display: grid;
-  grid-template-columns: 168px minmax(0, 1fr) auto;
+  grid-template-columns: 168px minmax(0, 1fr);
   align-items: center;
   min-height: 52px;
   border-bottom: 1px solid rgba(56, 70, 85, 0.45);
   background: rgba(8, 15, 22, 0.96);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.mock-header-title {
+  min-width: 0;
+  padding: 0 18px;
+  color: #aab7c8;
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
 .mock-brand {
@@ -444,75 +452,12 @@ body {
   font-weight: 800;
 }
 
-.mock-ticker-strip {
-  min-width: 0;
-  height: 52px;
-  display: flex;
-  align-items: center;
-  gap: 28px;
-  overflow-x: auto;
-  padding: 0 18px;
-  scrollbar-width: none;
-}
-
-.mock-ticker-strip::-webkit-scrollbar {
-  display: none;
-}
-
-.mock-ticker-item {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  white-space: nowrap;
-  color: #a9b3c2;
-  font-size: 0.78rem;
-}
-
-.mock-ticker-item b {
-  color: #d7e0ed;
-  font-weight: 700;
-}
-
-.mock-ticker-item em {
-  font-style: normal;
-  font-weight: 800;
-}
-
 .mock-up {
   color: #36c273 !important;
 }
 
 .mock-down {
   color: #ff5d51 !important;
-}
-
-.mock-top-actions {
-  height: 52px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 0 18px;
-  color: #9aa6b8;
-  border-left: 1px solid rgba(56, 70, 85, 0.35);
-  font-size: 0.84rem;
-}
-
-.mock-bell {
-  position: relative;
-}
-
-.mock-bell b {
-  position: absolute;
-  top: -10px;
-  right: -8px;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  color: #fff;
-  background: #ff4d48;
-  font-size: 0.58rem;
-  line-height: 15px;
-  text-align: center;
 }
 
 .mock-sidebar {
@@ -1094,6 +1039,95 @@ body {
   display: none;
 }
 
+.mock-real-dashboard {
+  background: rgba(7, 15, 22, 0.46);
+}
+
+.mock-real-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mock-market-overview,
+.mock-data-section {
+  border: 1px solid rgba(65, 80, 96, 0.74);
+  border-radius: 4px;
+  padding: 10px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(41, 124, 160, 0.08), transparent 34%),
+    rgba(10, 19, 28, 0.72);
+}
+
+.mock-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.mock-compact-grid {
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+}
+
+.mock-data-card {
+  min-height: 160px;
+}
+
+.mock-data-title {
+  color: #9fb7d3;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mock-data-value {
+  margin-top: 12px;
+  color: #f8fafc;
+  font-size: 1.7rem;
+  font-weight: 900;
+}
+
+.mock-data-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  color: #8f9bad;
+  font-size: 0.72rem;
+}
+
+.mock-gauge-data-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.mock-news-section > div,
+.mock-altcoin-season-section > div {
+  border-radius: 4px !important;
+  border-color: rgba(65, 80, 96, 0.74) !important;
+  background: rgba(10, 19, 28, 0.72) !important;
+}
+
+.mock-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mock-detail-title {
+  margin: 0 0 10px;
+  color: #ecf2f8;
+  font-size: 0.92rem;
+}
+
+.mock-empty {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
 @media (max-width: 1100px) {
   .mock-content-grid {
     grid-template-columns: 1fr;
@@ -1105,6 +1139,11 @@ body {
   }
 
   .mock-sim-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mock-overview-grid,
+  .mock-detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1129,14 +1168,13 @@ body {
     font-size: 0.98rem;
   }
 
-  .mock-top-actions,
   .mock-sidebar {
     display: none;
   }
 
-  .mock-ticker-strip {
-    gap: 18px;
-    padding-right: 12px;
+  .mock-header-title {
+    padding: 0 12px;
+    font-size: 0.74rem;
   }
 
   .app-main {
@@ -1166,6 +1204,11 @@ body {
 
   .mock-content-grid {
     gap: 10px;
+  }
+
+  .mock-overview-grid,
+  .mock-detail-grid {
+    grid-template-columns: 1fr;
   }
 
   .mock-record-card,
