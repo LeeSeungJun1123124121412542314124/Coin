@@ -22,6 +22,10 @@ body {
   color: #e2e8f0;
 }
 
+.app-desktop-sidebar {
+  display: none;
+}
+
 .app-topbar {
   position: sticky;
   top: 0;
@@ -99,6 +103,70 @@ body {
 
 .app-bottom-nav {
   display: none;
+}
+
+@media (min-width: 900px) {
+  .app-desktop-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 30;
+    display: flex;
+    width: 232px;
+    flex-direction: column;
+    gap: 18px;
+    border-right: 1px solid #1e293b;
+    background: #111827;
+    padding: 22px 14px;
+  }
+
+  .app-desktop-brand {
+    padding: 0 8px 10px;
+  }
+
+  .app-sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .app-sidebar-link {
+    display: flex;
+    align-items: center;
+    min-height: 38px;
+    border-radius: 8px;
+    padding: 0 12px;
+    color: #94a3b8;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .app-sidebar-link-active {
+    background: #155e75;
+    color: #f8fafc;
+  }
+
+  .app-topbar {
+    left: 232px;
+    margin-left: 232px;
+    padding: 12px 28px;
+  }
+
+  .app-brand-row {
+    max-width: 1440px;
+    margin-bottom: 0;
+  }
+
+  .app-tab-scroll {
+    display: none;
+  }
+
+  .app-main {
+    max-width: 1440px;
+    margin-left: 232px;
+    padding: 28px;
+  }
 }
 
 @keyframes shake {

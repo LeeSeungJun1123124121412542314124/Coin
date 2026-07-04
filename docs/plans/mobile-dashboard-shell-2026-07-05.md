@@ -27,3 +27,10 @@
 - [x] `npm --prefix dashboard/frontend run build`
 - [x] `pytest dashboard/tests -q`
 - [x] `ruff check crypto-volatility-bot/app dashboard/backend --select E,F,W --ignore E501`
+
+## PC 화면 2차 적용
+
+- 900px 이상 화면에서 왼쪽 고정 사이드바 내비게이션을 표시
+- PC에서는 상단 가로 탭을 숨기고 본문을 사이드바 오른쪽으로 정렬
+- 모바일 하단 내비게이션과 기존 640px 이하 보정은 유지
+- 개별 화면 내부 카드/차트 재배치는 이번 범위에서 제외

@@ -116,6 +116,24 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <aside className="app-desktop-sidebar">
+        <div className="app-desktop-brand">
+          <div className="app-brand-title">투자분석기</div>
+          <div className="app-brand-subtitle">시장 전망 · 예측 검증</div>
+        </div>
+        <nav className="app-sidebar-nav" aria-label="PC 주요 화면">
+          {TABS.map(tab => (
+            <NavLink
+              key={tab.path}
+              to={tab.path}
+              end={tab.path === '/'}
+              className={({ isActive }) => `app-sidebar-link${isActive ? ' app-sidebar-link-active' : ''}`}
+            >
+              {tab.label}
+            </NavLink>
+          ))}
+        </nav>
+      </aside>
       <header className="app-topbar">
         <div className="app-brand-row">
           <div>

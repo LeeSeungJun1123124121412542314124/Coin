@@ -37,3 +37,24 @@ def test_mobile_shell_css_has_fixed_bottom_nav_and_safe_padding():
     assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in source
     assert "@media (max-width: 640px)" in source
     assert "padding-bottom: 86px" in source
+
+
+def test_desktop_shell_exposes_sidebar_navigation():
+    source = APP_TSX.read_text(encoding="utf-8")
+
+    assert "app-desktop-sidebar" in source
+    assert "app-desktop-brand" in source
+    assert "app-sidebar-link" in source
+    assert 'aria-label="PC 주요 화면"' in source
+
+
+def test_desktop_shell_css_uses_sidebar_layout():
+    source = INDEX_CSS.read_text(encoding="utf-8")
+
+    assert "@media (min-width: 900px)" in source
+    assert ".app-desktop-sidebar" in source
+    assert "width: 232px" in source
+    assert "left: 232px" in source
+    assert "margin-left: 232px" in source
+    assert ".app-tab-scroll" in source
+    assert "display: none" in source
