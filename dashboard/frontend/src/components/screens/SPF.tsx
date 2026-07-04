@@ -63,10 +63,11 @@ interface PredHistory {
     result_7d: string | null
     result_14d: string | null
     result_30d: string | null
+    result_60d: string | null
     up_prob: number
     down_prob: number
   }>
-  stats: Record<string, HorizonStat>  // "7" | "14" | "30"
+  stats: Record<string, HorizonStat>  // "7" | "14" | "30" | "60"
 }
 
 const FLOW_LABELS: Record<string, string> = {
@@ -186,7 +187,7 @@ export function SPF() {
         <Card>
           <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>방향 적중률 (기간별)</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {['7', '14', '30'].map(h => {
+            {['7', '14', '30', '60'].map(h => {
               const s = predData?.stats?.[h]
               const rc = s?.realized != null
                 ? (s.realized >= 55 ? '#4ade80' : s.realized >= 45 ? '#fbbf24' : '#f87171')

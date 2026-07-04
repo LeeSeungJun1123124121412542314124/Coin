@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 
 # ── 방향 예측: 9팩터 복합 모델 (검증된 중기 신호) ──────────────────
 # 방향 커밋 적중률 (백테스트 2018-01~2026-06, 3085일, ±1% 고정 임계 기준)
-EXPECTED_ACCURACY = {7: 49.8, 14: 54.3, 30: 59.2}
-PRED_HORIZONS = (7, 14, 30)
+EXPECTED_ACCURACY = {7: 49.8, 14: 54.3, 30: 59.2, 60: 64.9}
+PRED_HORIZONS = (7, 14, 30, 60)
 _TILT_DIR_KR = {"long": "상승", "short": "하락", "neutral": "중립"}
 
 

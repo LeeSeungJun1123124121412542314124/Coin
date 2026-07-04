@@ -83,7 +83,7 @@ def _migrate_alert_history_direction(conn: sqlite3.Connection) -> None:
 def _migrate_predictions_horizons(conn: sqlite3.Connection) -> None:
     """predictions에 horizon별 판정 컬럼 추가 (없으면 ALTER TABLE)."""
     existing = {row[1] for row in conn.execute("PRAGMA table_info(predictions)").fetchall()}
-    for col_name in ("result_7d", "result_14d", "result_30d"):
+    for col_name in ("result_7d", "result_14d", "result_30d", "result_60d"):
         if col_name not in existing:
             conn.execute(f"ALTER TABLE predictions ADD COLUMN {col_name} TEXT")
     conn.commit()

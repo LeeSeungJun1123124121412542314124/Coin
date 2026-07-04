@@ -40,8 +40,8 @@ async def update_predictions() -> None:
         # 3일 전 예측 hit/miss 판정 (구 컬럼 — 하위호환)
         _judge_prediction(conn, today - timedelta(days=3), btc_today)
 
-        # 복합 다horizon 판정 (7/14/30일)
-        for days, col in ((7, "result_7d"), (14, "result_14d"), (30, "result_30d")):
+        # 복합 다horizon 판정 (7/14/30/60일)
+        for days, col in ((7, "result_7d"), (14, "result_14d"), (30, "result_30d"), (60, "result_60d")):
             _judge_horizon(conn, today - timedelta(days=days), btc_today, col)
 
     logger.info("예측 결과 업데이트 완료")
@@ -51,7 +51,7 @@ def _judge_horizon(conn, target_date: date, price_now: float, col: str) -> None:
     """복합 방향 예측을 해당 horizon 가격으로 판정 (±1% 고정 임계, 중립은 'neutral').
 
     상승 & 변화>+1% → hit / 하락 & 변화<−1% → hit / 중립 → 'neutral' / 그 외 → miss.
-    col은 result_7d/14d/30d 중 하나(고정 집합).
+    col은 result_7d/14d/30d/60d 중 하나(고정 집합).
     """
     row = conn.execute(
         f"""SELECT p.direction, s.price AS price_then

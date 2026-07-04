@@ -36,8 +36,8 @@ def test_composite_prediction_none_fallback():
 
 
 def test_expected_accuracy_constants():
-    assert set(PRED_HORIZONS) == {7, 14, 30}
-    assert EXPECTED_ACCURACY == {7: 49.8, 14: 54.3, 30: 59.2}
+    assert set(PRED_HORIZONS) == {7, 14, 30, 60}
+    assert EXPECTED_ACCURACY == {7: 49.8, 14: 54.3, 30: 59.2, 60: 64.9}
 
 
 # ── 다horizon 판정 (DB) ──────────────────────────────────────
@@ -64,6 +64,13 @@ def _judge(conn, price_now):
     from dashboard.backend.jobs.update_predictions import _judge_horizon
     _judge_horizon(conn, date(2026, 1, 1), price_now, "result_7d")
     return conn.execute("SELECT result_7d FROM predictions WHERE date='2026-01-01'").fetchone()["result_7d"]
+
+
+def _judge_col(conn, price_now, col):
+    from datetime import date
+    from dashboard.backend.jobs.update_predictions import _judge_horizon
+    _judge_horizon(conn, date(2026, 1, 1), price_now, col)
+    return conn.execute(f"SELECT {col} FROM predictions WHERE date='2026-01-01'").fetchone()[col]
 
 
 def test_judge_up_hit(spf_db):
@@ -94,3 +101,13 @@ def test_judge_missing_price_logs_warning(spf_db, caplog):
         result = _judge(spf_db, 105.0)
     assert result is None  # 판정 안 됨(기존 동작 유지)
     assert any("미판정" in r.message for r in caplog.records)
+
+
+def test_migration_adds_result_60d(spf_db):
+    columns = {row["name"] for row in spf_db.execute("PRAGMA table_info(predictions)").fetchall()}
+    assert "result_60d" in columns
+
+
+def test_judge_60d_hit(spf_db):
+    _seed(spf_db, "상승", 100.0)
+    assert _judge_col(spf_db, 105.0, "result_60d") == "hit"

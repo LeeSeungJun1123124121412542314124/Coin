@@ -72,7 +72,7 @@ async def get_spf():
 
 @router.get("/prediction-history")
 async def get_pred_history():
-    """예측 기록 + horizon별(7/14/30) 기대·실측 적중률.
+    """예측 기록 + horizon별(7/14/30/60) 기대·실측 적중률.
 
     기대=백테스트 상수(EXPECTED_ACCURACY), 실측=result_Nd 누적 hit/(hit+miss).
     중립('neutral')·미판정(NULL)은 분모 제외.
