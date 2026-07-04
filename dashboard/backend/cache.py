@@ -53,7 +53,9 @@ def cached(ttl: int, key_prefix: str = ""):
             if cached_value is not None:
                 return cached_value
             result = await fn(*args, **kwargs)
-            if result is not None:
+            # 빈/실패 결과([], {}, None)는 캐싱하지 않음 — 일시적 fetch 실패가
+            # TTL 동안 박혀 데이터가 하루 종일 비는 것 방지 (재시도 허용)
+            if result:
                 set(cache_key, result, ttl)
             return result
         return wrapper
