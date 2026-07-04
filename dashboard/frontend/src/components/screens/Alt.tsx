@@ -113,7 +113,7 @@ export function Alt() {
     300_000,
   )
 
-  if (error && !data) return <ErrorState error={error} onRetry={refetch} />
+  if (error && !screener) return <ErrorState error={error} onRetry={refetch} />
   if (loading || !screener) return <Skeleton />
 
   // CVD 차트 (선택 종목) + delta 계산

@@ -66,7 +66,7 @@ export function Liquidity() {
   const { data: m2History } = useApi<{ history: M2Point[] }>('/api/m2-history', 3_600_000)
   const { data: treasury } = useApi<TreasuryData>('/api/treasury-auctions', 3_600_000)
 
-  if (error && !data) return <ErrorState error={error} onRetry={refetch} />
+  if (error && !summary) return <ErrorState error={error} onRetry={refetch} />
   if (loading || !summary) return <Skeleton />
 
   const dirColor = DIRECTION_COLOR[summary.overall_direction] ?? '#94a3b8'
