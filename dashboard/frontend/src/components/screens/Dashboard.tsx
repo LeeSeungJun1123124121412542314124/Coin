@@ -178,22 +178,24 @@ export function Dashboard() {
   }))
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <LastUpdated timestamp={lastUpdated} />
+    <div className="dashboard-screen">
+      <div className="dashboard-last-updated">
+        <LastUpdated timestamp={lastUpdated} />
+      </div>
 
       {/* ── Hero — BTC + 공포탐욕 + MVRV ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+      <div className="dashboard-hero-grid">
         {/* BTC 카드 + 김프 */}
-        <Card onClick={() => setSelectedSymbol('BTC')} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ color: '#94a3b8', fontSize: '0.8rem', marginBottom: 4 }}>BTC / USDT</div>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#e2e8f0' }}>
+        <Card className="dashboard-market-card" onClick={() => setSelectedSymbol('BTC')} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}>
+          <div className="dashboard-card-title" style={{ marginBottom: 4 }}>BTC / USDT</div>
+          <div className="dashboard-main-value">
             {btc?.price ? `$${btc.price.toLocaleString()}` : '—'}
           </div>
           <div style={{ color: btc?.change_24h && btc.change_24h >= 0 ? '#4ade80' : '#f87171', fontSize: '0.9rem', marginTop: 4 }}>
             {btc?.change_24h != null ? `${btc.change_24h >= 0 ? '+' : ''}${btc.change_24h.toFixed(2)}%` : '—'}
           </div>
           {data.kimchi && (
-            <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: 8 }}>
+            <div className="dashboard-meta-row" style={{ marginTop: 8 }}>
               김치프리미엄{' '}
               <span style={{ color: data.kimchi.kimchi_premium_pct >= 0 ? '#4ade80' : '#f87171', fontWeight: 600 }}>
                 {data.kimchi.kimchi_premium_pct >= 0 ? '+' : ''}{data.kimchi.kimchi_premium_pct.toFixed(2)}%
@@ -206,7 +208,7 @@ export function Dashboard() {
             const isPositive = (data.kimchi?.kimchi_premium_pct ?? 0) >= 0
             const chartColor = isPositive ? '#4ade80' : '#f87171'
             return (
-              <div style={{ marginTop: 'auto', paddingTop: 10, height: 64 }}>
+              <div className="dashboard-sparkline" style={{ marginTop: 'auto', paddingTop: 10 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={kimchiHistory} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
                     <defs>
@@ -253,8 +255,8 @@ export function Dashboard() {
 
         {/* 공포탐욕 게이지 */}
         {data.fear_greed && (
-          <Card>
-            <div style={{ color: '#94a3b8', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+          <Card className="dashboard-market-card dashboard-gauge-card">
+            <div className="dashboard-card-title" style={{ marginBottom: 8 }}>
               가상자산 공포 및 탐욕 지수
             </div>
             <GaugeChart value={data.fear_greed.value} label={data.fear_greed.label} size={130} />
@@ -263,8 +265,8 @@ export function Dashboard() {
 
         {/* MVRV 게이지 */}
         {mvrv !== null && (
-          <Card>
-            <div style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>MVRV Ratio</div>
+          <Card className="dashboard-market-card dashboard-gauge-card">
+            <div className="dashboard-card-title" style={{ marginBottom: 6 }}>MVRV Ratio</div>
             <GaugeChart value={mvrvToGauge(mvrv)} label={mvrvLabel(mvrvSignal, mvrv)} size={130} />
             <div style={{ textAlign: 'center', marginTop: 4, color: '#94a3b8', fontSize: '0.75rem' }}>
               원값: <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{mvrv.toFixed(2)}</span>

@@ -23,15 +23,15 @@ export function StockIndexCard({ name, ticker, price, change_pct, sparkline, hig
   const chartData = sparkline.map((v, i) => ({ i, v }))
 
   return (
-    <Card onClick={() => onOpenModal(ticker)} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}>
+    <Card className="dashboard-market-card" onClick={() => onOpenModal(ticker)} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}>
       {/* 배지 */}
-      <div style={{ color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
+      <div className="dashboard-card-title" style={{ marginBottom: 6 }}>
         {name}
       </div>
 
       {/* 현재가 + 변동률 */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-        <span style={{ fontSize: '1.4rem', fontWeight: 700, color: '#e2e8f0' }}>
+        <span className="dashboard-main-value">
           {price != null ? price.toLocaleString() : '—'}
         </span>
         {change_pct != null && (
@@ -61,7 +61,7 @@ export function StockIndexCard({ name, ticker, price, change_pct, sparkline, hig
 
       {/* 스파크라인 + 기준선 — 항상 카드 하단 고정 */}
       {chartData.length >= 2 && price != null && (
-        <div style={{ marginTop: 'auto', paddingTop: 8, height: 64 }}>
+        <div className="dashboard-sparkline" style={{ marginTop: 'auto', paddingTop: 8 }}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
               <defs>

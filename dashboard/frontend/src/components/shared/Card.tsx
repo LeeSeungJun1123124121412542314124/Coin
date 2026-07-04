@@ -13,7 +13,7 @@ export function Card({ children, className = '', onClick, style }: CardProps) {
       style={{
         background: '#1e293b',
         border: '1px solid #334155',
-        borderRadius: 12,
+        borderRadius: 8,
         padding: 16,
         ...style,
       }}
