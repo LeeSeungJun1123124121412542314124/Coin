@@ -135,7 +135,9 @@ export function Leaderboard() {
         </div>
       ) : (
         <div style={PANEL}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+          {/* 8컬럼 테이블 — 모바일 가로 스크롤(잘림 방지) */}
+          <div className="table-scroll">
+          <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
             <thead>
               <tr style={{ color: '#64748b', textAlign: 'right', borderBottom: '1px solid #1e293b' }}>
                 <th style={{ textAlign: 'left', padding: '8px 6px' }}>#</th>
@@ -171,6 +173,7 @@ export function Leaderboard() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -198,7 +201,9 @@ export function Leaderboard() {
               </ResponsiveContainer>
 
               <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#e2e8f0', marginTop: 16 }}>포지션 이력</h3>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+              {/* 7컬럼 테이블 — 모바일 가로 스크롤(잘림 방지) */}
+              <div className="table-scroll">
+              <table style={{ width: '100%', minWidth: 520, borderCollapse: 'collapse', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                 <thead>
                   <tr style={{ color: '#64748b', textAlign: 'right', borderBottom: '1px solid #1e293b' }}>
                     <th style={{ textAlign: 'left', padding: '6px' }}>자산</th>
@@ -226,6 +231,7 @@ export function Leaderboard() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </>
           )}
         </div>
