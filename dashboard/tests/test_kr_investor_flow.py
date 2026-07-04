@@ -217,7 +217,7 @@ def test_kr_investor_flow_api_limits_days_to_30() -> None:
 
 
 @pytest.mark.asyncio
-async def test_collect_kr_investor_flow_upserts_both_markets(monkeypatch) -> None:
+async def test_collect_kr_investor_flow_upserts_both_markets_and_market_volume(monkeypatch) -> None:
     from dashboard.backend.jobs import collect_kr_stock
 
     conn = _memory_conn()
@@ -236,8 +236,16 @@ async def test_collect_kr_investor_flow_upserts_both_markets(monkeypatch) -> Non
             "individual_net": 3.0 if market == "KOSPI" else 30.0,
         }]
 
+    async def fake_fetch_market_volume(market: str, days: int = 30):
+        assert days == 30
+        return [{
+            "date": "2026-07-03",
+            "value": 12.3 if market == "KOSPI" else 5.2,
+        }]
+
     monkeypatch.setattr(collect_kr_stock, "get_db", fake_get_db)
     monkeypatch.setattr(collect_kr_stock, "fetch_investor_deal_trend", fake_fetch_investor_deal_trend)
+    monkeypatch.setattr(collect_kr_stock, "fetch_market_volume", fake_fetch_market_volume, raising=False)
 
     await collect_kr_stock.collect_kr_investor_flow()
 
@@ -262,6 +270,15 @@ async def test_collect_kr_investor_flow_upserts_both_markets(monkeypatch) -> Non
             "individual_net": 3.0,
         },
     ]
+    volume_rows = conn.execute(
+        """SELECT date, kospi_value, kosdaq_value
+           FROM kr_market_volume"""
+    ).fetchall()
+    assert [dict(row) for row in volume_rows] == [{
+        "date": "2026-07-03",
+        "kospi_value": 12.3,
+        "kosdaq_value": 5.2,
+    }]
 
 
 @pytest.mark.asyncio
@@ -279,6 +296,12 @@ async def test_collect_kr_investor_flow_raises_when_market_returns_no_records(mo
         }]
 
     monkeypatch.setattr(collect_kr_stock, "fetch_investor_deal_trend", fake_fetch_investor_deal_trend)
+    monkeypatch.setattr(
+        collect_kr_stock,
+        "fetch_market_volume",
+        lambda market, days=30: [],
+        raising=False,
+    )
 
     with pytest.raises(RuntimeError, match="KOSPI"):
         await collect_kr_stock.collect_kr_investor_flow()

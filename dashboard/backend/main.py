@@ -280,6 +280,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     from dashboard.backend.jobs.collect_whales import collect_whales
     from dashboard.backend.jobs.collect_kimchi import collect_kimchi
     from dashboard.backend.jobs.collect_kr_stock import collect_kr_investor_flow
+    from dashboard.backend.jobs.collect_stock_fear_greed import collect_stock_fear_greed
     from dashboard.backend.jobs.update_predictions import update_predictions
     from dashboard.backend.jobs.settle_predictions import settle_expired_predictions
     from dashboard.backend.jobs.paper_rebalance import run_paper_rebalance
@@ -311,6 +312,13 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
         collect_kr_investor_flow,
         CronTrigger(day_of_week="mon-fri", hour=8, minute=30, timezone="UTC"),
         id="collect_kr_investor_flow",
+    )
+
+    # 미국 주식 Fear & Greed 지수 수집: 1시간마다
+    scheduler.add_job(
+        collect_stock_fear_greed,
+        IntervalTrigger(hours=1),
+        id="collect_stock_fear_greed",
     )
 
     # 코인 1시간봉 수집 — 매 시간 1분 (1시간 봉 마감 후)

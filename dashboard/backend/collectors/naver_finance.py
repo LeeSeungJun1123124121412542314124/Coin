@@ -43,9 +43,14 @@ _MARKET_SUFFIX: dict[str, str] = {
 # 네이버 자동완성 API — 응답은 UTF-8 JSON
 _NAVER_AC_URL = "https://ac.stock.naver.com/ac"
 _NAVER_INVESTOR_URL = "https://finance.naver.com/sise/investorDealTrendDay.nhn"
+_NAVER_MARKET_VOLUME_URL = "https://finance.naver.com/sise/sise_index_day.naver"
 _INVESTOR_MARKET_SOSOK: dict[str, str] = {
     "KOSPI": "",
     "KOSDAQ": "02",
+}
+_MARKET_VOLUME_CODE: dict[str, str] = {
+    "KOSPI": "KOSPI",
+    "KOSDAQ": "KOSDAQ",
 }
 _INVESTOR_DATE_RE = re.compile(r"^\d{2}\.\d{2}\.\d{2}$")
 
@@ -107,6 +112,25 @@ def parse_investor_flow_html(html: str) -> list[dict]:
     return records
 
 
+def parse_market_volume_html(html: str) -> list[dict]:
+    """네이버 시장 일별시세 HTML에서 거래대금(조원)을 추출한다."""
+    parser = _TableRowParser()
+    parser.feed(html)
+
+    records: list[dict] = []
+    for row in parser.rows:
+        if len(row) < 6 or not _INVESTOR_DATE_RE.match(row[0]):
+            continue
+        try:
+            records.append({
+                "date": _parse_investor_date(row[0]),
+                "value": round(_parse_investor_number(row[5]) / 1_000_000, 4),
+            })
+        except ValueError:
+            continue
+    return records
+
+
 async def fetch_investor_deal_trend(market: str, days: int = 30) -> list[dict]:
     """네이버 일자별 순매수 페이지에서 최근 투자자 수급을 조회한다."""
     if market not in _INVESTOR_MARKET_SOSOK:
@@ -131,6 +155,35 @@ async def fetch_investor_deal_trend(market: str, days: int = 30) -> list[dict]:
             resp.raise_for_status()
             html = resp.content.decode("euc-kr", errors="replace")
             for record in parse_investor_flow_html(html):
+                if record["date"] in seen_dates:
+                    continue
+                seen_dates.add(record["date"])
+                records.append(record)
+                if len(records) >= target_days:
+                    return records
+
+    return records[:target_days]
+
+
+async def fetch_market_volume(market: str, days: int = 30) -> list[dict]:
+    """네이버 시장 일별시세에서 KOSPI/KOSDAQ 거래대금(조원)을 조회한다."""
+    if market not in _MARKET_VOLUME_CODE:
+        raise ValueError("market은 KOSPI 또는 KOSDAQ만 허용됩니다")
+
+    target_days = min(max(1, days), 30)
+    pages = max(3, ceil(target_days / 10))
+    records: list[dict] = []
+    seen_dates: set[str] = set()
+
+    async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+        for page in range(1, pages + 1):
+            resp = await client.get(
+                _NAVER_MARKET_VOLUME_URL,
+                params={"code": _MARKET_VOLUME_CODE[market], "page": page},
+            )
+            resp.raise_for_status()
+            html = resp.content.decode("euc-kr", errors="replace")
+            for record in parse_market_volume_html(html):
                 if record["date"] in seen_dates:
                     continue
                 seen_dates.add(record["date"])

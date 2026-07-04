@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import date, datetime, timezone
+from zoneinfo import ZoneInfo
 
 import pandas as pd
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
 from dashboard.backend.collectors.upbit import fetch_krw_volume as upbit_volume
@@ -15,6 +17,43 @@ from dashboard.backend.db.connection import get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _kst_today() -> date:
+    return datetime.now(ZoneInfo("Asia/Seoul")).date()
+
+
+def _parse_utc_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _is_stock_fear_greed_stale(updated_at: str | None) -> bool:
+    parsed = _parse_utc_datetime(updated_at)
+    if parsed is None:
+        return True
+    return (_utc_now() - parsed).total_seconds() > 7200
+
+
+def _is_kr_market_volume_stale(latest_date: str | None) -> bool:
+    if latest_date is None:
+        return True
+    try:
+        parsed = date.fromisoformat(latest_date)
+    except ValueError:
+        return True
+    return (_kst_today() - parsed).days > 4
 
 
 def _get_volume_history(days: int = 60) -> list[dict]:
@@ -28,6 +67,62 @@ def _get_volume_history(days: int = 60) -> list[dict]:
             (days,),
         ).fetchall()
     return [dict(r) for r in reversed(rows)]
+
+
+@router.get("/volume/stock-fear-greed")
+async def get_stock_fear_greed():
+    """미국 주식 Fear & Greed 최신 DB 데이터를 제공한다."""
+    with get_db() as conn:
+        row = conn.execute(
+            """SELECT value, rating, updated_at
+               FROM stock_fear_greed
+               ORDER BY date DESC
+               LIMIT 1"""
+        ).fetchone()
+
+    if row is None:
+        return JSONResponse({
+            "value": None,
+            "rating": None,
+            "updated_at": None,
+            "stale": True,
+        })
+
+    return JSONResponse({
+        "value": row["value"],
+        "rating": row["rating"],
+        "updated_at": row["updated_at"],
+        "stale": _is_stock_fear_greed_stale(row["updated_at"]),
+    })
+
+
+@router.get("/volume/kr-market-volume")
+async def get_kr_market_volume(days: int = Query(30, ge=1, le=30)):
+    """KOSPI/KOSDAQ 일별 거래대금 최신 DB 데이터를 제공한다."""
+    with get_db() as conn:
+        rows = conn.execute(
+            """SELECT date, kospi_value, kosdaq_value
+               FROM kr_market_volume
+               WHERE kospi_value IS NOT NULL
+                 AND kosdaq_value IS NOT NULL
+               ORDER BY date DESC
+               LIMIT ?""",
+            (days,),
+        ).fetchall()
+
+    records = [
+        {
+            "date": row["date"],
+            "kospi_value": row["kospi_value"],
+            "kosdaq_value": row["kosdaq_value"],
+        }
+        for row in reversed(rows)
+    ]
+    latest_date = records[-1]["date"] if records else None
+    return JSONResponse({
+        "stale": _is_kr_market_volume_stale(latest_date),
+        "records": records,
+    })
 
 
 def _calc_btc_rsi(ohlcv_days: int = 70, rsi_period: int = 14) -> list[dict]:

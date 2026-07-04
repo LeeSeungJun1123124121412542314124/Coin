@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useApi } from '../../hooks/useApi'
 import { Card } from '../shared/Card'
 import {
@@ -7,6 +8,9 @@ import {
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
+import { AssetTabs } from '../shared/AssetTabs'
+import { readAssetTab, replaceAssetTab, type AssetTab } from '../shared/assetTabUtils'
+import { GaugeChart } from '../shared/GaugeChart'
 
 interface VolumeData {
   current: {
@@ -43,6 +47,22 @@ interface FearGreedHistory {
   history: Array<{ date: string; value: number; label: string }>
 }
 
+interface StockFearGreedData {
+  value: number | null
+  rating: string | null
+  updated_at: string | null
+  stale: boolean
+}
+
+interface KrMarketVolumeData {
+  stale: boolean
+  records: Array<{
+    date: string
+    kospi_value: number | null
+    kosdaq_value: number | null
+  }>
+}
+
 function VolumeRatio({ upbit, bithumb }: { upbit: number | null; bithumb: number | null }) {
   const total = (upbit ?? 0) + (bithumb ?? 0)
   if (total === 0) return null
@@ -76,15 +96,158 @@ function RsiGauge({ value }: { value: number }) {
   )
 }
 
-export function Volume() {
-  const { data, loading, error, refetch, lastUpdated } = useApi<VolumeData>('/api/volume-data', 300_000)
-  const { data: weekly } = useApi<WeeklyData>('/api/volume-weekly', 3_600_000)
-  const { data: dailyRsi } = useApi<RsiData>('/api/btc-daily-rsi', 3_600_000)
-  const { data: weeklyRsi } = useApi<RsiData>('/api/btc-weekly-rsi', 3_600_000)
-  const { data: fgHistory } = useApi<FearGreedHistory>('/api/fear-greed-history', 3_600_000)
+function StockFearGreedView({ data }: { data: StockFearGreedData }) {
+  return (
+    <Card>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 16 }}>
+        <div>
+          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 4 }}>CNN Fear & Greed</div>
+          <div style={{ color: '#64748b', fontSize: '0.72rem' }}>
+            {data.updated_at ? new Date(data.updated_at).toLocaleString('ko-KR') : '데이터 없음'}
+            {data.stale && <span style={{ color: '#f59e0b', marginLeft: 8 }}>갱신 확인 필요</span>}
+          </div>
+        </div>
+        <div style={{ color: '#e2e8f0', fontSize: '0.92rem', fontWeight: 700 }}>
+          {data.rating ?? '-'}
+        </div>
+      </div>
+      {data.value != null ? (
+        <GaugeChart value={Math.round(data.value)} label="Stock F&G" size={180} />
+      ) : (
+        <div style={{ color: '#64748b', textAlign: 'center', padding: '56px 0', fontSize: '0.85rem' }}>
+          데이터가 없습니다
+        </div>
+      )}
+    </Card>
+  )
+}
 
-  if (error && !data) return <ErrorState error={error} onRetry={refetch} />
-  if (loading || !data) return <Skeleton />
+function KrMarketVolumeView({ data }: { data: KrMarketVolumeData }) {
+  const chartData = data.records
+    .filter(record => record.kospi_value != null && record.kosdaq_value != null)
+    .map(record => ({
+      date: record.date.slice(5),
+      kospi: record.kospi_value as number,
+      kosdaq: record.kosdaq_value as number,
+    }))
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
+          KOSPI/KOSDAQ 거래대금 30일
+        </div>
+        {data.stale && <div style={{ color: '#f59e0b', fontSize: '0.75rem', fontWeight: 700 }}>갱신 확인 필요</div>}
+      </div>
+      {chartData.length > 0 ? (
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+            <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 9 }} interval="preserveStartEnd" />
+            <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} width={40} tickFormatter={v => `${v}`} />
+            <Tooltip
+              contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
+              labelStyle={{ color: '#94a3b8' }}
+              formatter={(v, name) => [`${(v as number).toFixed(2)}조`, name as string]}
+            />
+            <Legend wrapperStyle={{ fontSize: '0.75rem', color: '#94a3b8' }} />
+            <Bar dataKey="kospi" fill="#38bdf8" name="KOSPI" barSize={8} />
+            <Bar dataKey="kosdaq" fill="#f59e0b" name="KOSDAQ" barSize={8} />
+          </BarChart>
+        </ResponsiveContainer>
+      ) : (
+        <div style={{ color: '#64748b', textAlign: 'center', padding: '56px 0', fontSize: '0.85rem' }}>
+          데이터가 없습니다
+        </div>
+      )}
+    </Card>
+  )
+}
+
+export function Volume() {
+  const [asset, setAsset] = useState<AssetTab>(() => readAssetTab(['coin', 'kr', 'us']))
+  const { data, loading, error, refetch, lastUpdated } = useApi<VolumeData>(asset === 'coin' ? '/api/volume-data' : null, 300_000)
+  const { data: weekly } = useApi<WeeklyData>(asset === 'coin' ? '/api/volume-weekly' : null, 3_600_000)
+  const { data: dailyRsi } = useApi<RsiData>(asset === 'coin' ? '/api/btc-daily-rsi' : null, 3_600_000)
+  const { data: weeklyRsi } = useApi<RsiData>(asset === 'coin' ? '/api/btc-weekly-rsi' : null, 3_600_000)
+  const { data: fgHistory } = useApi<FearGreedHistory>(asset === 'coin' ? '/api/fear-greed-history' : null, 3_600_000)
+  const stockFearGreedApi = useApi<StockFearGreedData>(asset === 'us' ? '/api/volume/stock-fear-greed' : null, 300_000)
+  const krMarketVolumeApi = useApi<KrMarketVolumeData>(asset === 'kr' ? '/api/volume/kr-market-volume?days=30' : null, 300_000)
+
+  function handleAssetChange(next: AssetTab) {
+    setAsset(next)
+    replaceAssetTab(next)
+  }
+
+  const tabs = <AssetTabs asset={asset} allowedTabs={['coin', 'kr', 'us']} onChange={handleAssetChange} />
+
+  if (asset === 'us') {
+    if (stockFearGreedApi.error && !stockFearGreedApi.data) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {tabs}
+          <ErrorState error={stockFearGreedApi.error} onRetry={stockFearGreedApi.refetch} />
+        </div>
+      )
+    }
+    if (stockFearGreedApi.loading || !stockFearGreedApi.data) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {tabs}
+          <Skeleton />
+        </div>
+      )
+    }
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {tabs}
+        <LastUpdated timestamp={stockFearGreedApi.lastUpdated} />
+        <StockFearGreedView data={stockFearGreedApi.data} />
+      </div>
+    )
+  }
+
+  if (asset === 'kr') {
+    if (krMarketVolumeApi.error && !krMarketVolumeApi.data) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {tabs}
+          <ErrorState error={krMarketVolumeApi.error} onRetry={krMarketVolumeApi.refetch} />
+        </div>
+      )
+    }
+    if (krMarketVolumeApi.loading || !krMarketVolumeApi.data) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {tabs}
+          <Skeleton />
+        </div>
+      )
+    }
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {tabs}
+        <LastUpdated timestamp={krMarketVolumeApi.lastUpdated} />
+        <KrMarketVolumeView data={krMarketVolumeApi.data} />
+      </div>
+    )
+  }
+
+  if (error && !data) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {tabs}
+        <ErrorState error={error} onRetry={refetch} />
+      </div>
+    )
+  }
+  if (loading || !data) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {tabs}
+        <Skeleton />
+      </div>
+    )
+  }
 
   const { current, avg_30d, history } = data
 
@@ -129,6 +292,7 @@ export function Volume() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {tabs}
       <LastUpdated timestamp={lastUpdated} />
       {/* 상단 요약 카드 4개 */}
       <div className="grid-4" style={{ gap: 12 }}>
