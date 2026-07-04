@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import math
+import statistics
 from datetime import date
 
 from dashboard.backend.db.connection import get_db
@@ -233,11 +234,18 @@ def find_similar_patterns(current: dict, top_n: int = 5) -> list[dict]:
     if not rows:
         return []
 
+    records = [dict(row) for row in rows]
+    history_vectors = [_record_to_vector(row) for row in records]
+    means = [statistics.mean(values) for values in zip(*history_vectors)]
+    stds = [statistics.pstdev(values) for values in zip(*history_vectors)]
+
+    def normalize(vec: list[float]) -> list[float]:
+        return [0 if std == 0 else (value - avg) / std for value, avg, std in zip(vec, means, stds)]
+
+    current_vec = normalize(current_vec)
     scored = []
-    for row in rows:
-        d = dict(row)
-        vec = _record_to_vector(d)
-        sim = _cosine_similarity(current_vec, vec)
+    for d, vec in zip(records, history_vectors):
+        sim = _cosine_similarity(current_vec, normalize(vec))
         if sim >= 0.85:
             price_then = d.get("price") or 0
             price_3d = d.get("price_after_3d") or 0
@@ -250,6 +258,7 @@ def find_similar_patterns(current: dict, top_n: int = 5) -> list[dict]:
                 "bearish_score": d.get("bearish_score"),
             })
 
+    logger.debug("유사 패턴 매칭 %d건", len(scored))
     scored.sort(key=lambda x: x["similarity"], reverse=True)
     return scored[:top_n]
 
