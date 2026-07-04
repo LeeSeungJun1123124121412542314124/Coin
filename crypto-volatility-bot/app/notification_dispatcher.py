@@ -15,7 +15,7 @@ import html
 import json
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from app.notifiers.message_formatter import MessageFormatter

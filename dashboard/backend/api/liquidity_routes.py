@@ -88,7 +88,7 @@ async def get_tga_history():
 
     def _find_nearest_btc(date_str: str):
         """TGA 날짜에서 ±3일 이내 가장 가까운 BTC 날짜 찾기."""
-        from datetime import datetime, timedelta
+        from datetime import datetime
         target = datetime.strptime(date_str, "%Y-%m-%d")
         best = None
         for bd in btc_dates:

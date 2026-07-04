@@ -110,13 +110,13 @@ async def fetch_naver_ohlcv(ticker: str, interval: str = "1d") -> list[dict] | N
                 parts = raw.split("|")
                 if len(parts) < 6:
                     continue
-                date_str, o, h, l, c, v = parts[:6]
+                date_str, o, h, lo, c, v = parts[:6]
                 try:
                     rows.append({
                         "date": _parse_date(date_str),
                         "open": int(o),
                         "high": int(h),
-                        "low": int(l),
+                        "low": int(lo),
                         "close": int(c),
                         "volume": int(v),
                     })

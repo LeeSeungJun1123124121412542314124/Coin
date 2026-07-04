@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import date, timedelta
+from datetime import date
 
 from dashboard.backend.utils.retry import async_retry
 from dashboard.backend.utils.alerting import notify_job_failure

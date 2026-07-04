@@ -176,8 +176,6 @@ def _build_key_indicators(data: dict) -> list[dict]:
 async def _get_vix_btc_history() -> list[dict]:
     """VIX + BTC 가격 30일 히스토리 (야후파이낸스 + 봇 DataCollector)."""
     import asyncio as _asyncio
-    from app.data.data_collector import DataCollector
-    import httpx
 
     loop = _asyncio.get_running_loop()
 

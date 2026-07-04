@@ -7,10 +7,9 @@ OI + FR 기반으로 포지션 흐름을 5종 분류하고,
 
 from __future__ import annotations
 
-import json
 import logging
 import math
-from datetime import date, timedelta
+from datetime import date
 
 from dashboard.backend.db.connection import get_db
 
@@ -34,9 +33,11 @@ def composite_prediction(tilt) -> dict:
     conf = int(round(getattr(tilt, "confidence", 0.0)))
     d = getattr(tilt, "direction", "neutral")
     if d == "long":
-        up = min(95, 50 + conf // 2); down = 100 - up
+        up = min(95, 50 + conf // 2)
+        down = 100 - up
     elif d == "short":
-        down = min(95, 50 + conf // 2); up = 100 - down
+        down = min(95, 50 + conf // 2)
+        up = 100 - down
     else:
         up = down = 50
     return {

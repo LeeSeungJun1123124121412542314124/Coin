@@ -380,7 +380,6 @@ class MessageFormatter:
         """12h 정기 리포트 — 시장 상황 + 기술적 분석 포함."""
         ts = result.timestamp.strftime("%Y-%m-%d %H:%M UTC")
         d = result.details
-        tech_score = _to_float(d.get("technical_score"), 0.0)
         onchain_score = _to_float(d.get("onchain_score"), 0.0)
         sentiment_score = _to_float(d.get("sentiment_score"), 0.0)
         onchain_sig = str(d.get("onchain_signal", "N/A"))

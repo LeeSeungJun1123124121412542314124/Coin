@@ -115,7 +115,10 @@ def fetch_sources() -> dict[str, pd.Series]:
     if close.empty:
         raise RuntimeError("BTC 일봉 수집 실패")
     idx = close.index
-    R = lambda s: s.reindex(idx, method="ffill")
+
+    def R(s: pd.Series) -> pd.Series:
+        return s.reindex(idx, method="ffill")
+
     walcl, tga, rrp = _fetch_fred("WALCL"), _fetch_fred("WTREGEN"), _fetch_fred("RRPONTSYD")
     tga_d = R(tga)  # TGA 원값(백만$) — 순유동성 성분이자 급변 알림·리더보드 지표 소스
     return {

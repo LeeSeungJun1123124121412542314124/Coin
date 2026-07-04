@@ -11,7 +11,6 @@ from fastapi.responses import JSONResponse
 from dashboard.backend.services.cvd_service import (
     run_screener, score_symbol, get_cvd_chart, SCREENER_SYMBOLS,
 )
-from dashboard.backend.cache import cached
 from dashboard.backend.utils.errors import api_error
 
 logger = logging.getLogger(__name__)

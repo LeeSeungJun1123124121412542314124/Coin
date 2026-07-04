@@ -20,7 +20,6 @@ from dashboard.backend.services.spf_service import (
     calc_bearish_score,
     calc_bullish_score,
     find_similar_patterns,
-    generate_prediction,
     get_bot_alert_level,
     get_spf_data,
     get_today_spf,
@@ -53,7 +52,6 @@ async def get_spf():
     similar = find_similar_patterns(current) if current else []
 
     # 오늘 예측
-    from dashboard.backend.services.spf_service import get_prediction_history as get_preds
     from dashboard.backend.db.connection import get_db
     import datetime
     today_str = datetime.date.today().isoformat()

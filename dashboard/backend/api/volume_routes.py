@@ -35,11 +35,10 @@ def _calc_btc_rsi(ohlcv_days: int = 70, rsi_period: int = 14) -> list[dict]:
     try:
         import asyncio as _asyncio
         from app.data.data_collector import DataCollector
-        from app.analyzers.indicators.rsi import calculate as calc_rsi
 
         loop = _asyncio.get_event_loop()
         collector = DataCollector()
-        df = loop.run_in_executor(None, collector.fetch_ohlcv, "BTC/USDT", "1d", ohlcv_days)
+        loop.run_in_executor(None, collector.fetch_ohlcv, "BTC/USDT", "1d", ohlcv_days)
         # run_in_executor는 코루틴이므로 await 필요 — 여기서는 동기 컨텍스트
         # volume_routes는 async 함수에서 호출되므로 별도 처리
         return []
@@ -138,7 +137,6 @@ async def get_volume_weekly():
 
     # 주간 그룹핑 (월요일 기준)
     from datetime import date as dt_date
-    import calendar
 
     weekly: dict[str, dict] = {}
     for row in history:

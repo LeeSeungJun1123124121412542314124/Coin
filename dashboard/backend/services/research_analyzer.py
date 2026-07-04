@@ -160,7 +160,7 @@ def _score_to_level(score: int) -> str:
 async def _analyze_derivatives() -> dict:
     from dashboard.backend.services.spf_service import (
         get_today_spf, calc_bearish_score, calc_bullish_score,
-        classify_flow, generate_prediction,
+        classify_flow,
     )
     from dashboard.backend.collectors.bybit_derivatives import (
         fetch_open_interest, fetch_funding_rate,
@@ -319,7 +319,6 @@ async def _analyze_market() -> dict:
     dashboard_data = await _get_dashboard_snapshot()
     insights = generate_insights(dashboard_data)
 
-    level_priority = {LEVEL_CRITICAL: 4, LEVEL_WARNING: 3, LEVEL_BEARISH: 2, LEVEL_BULLISH: 1, "neutral": 0}
     level_score = {LEVEL_CRITICAL: 85, LEVEL_WARNING: 65, LEVEL_BEARISH: 55, LEVEL_BULLISH: 25, "neutral": 45}
 
     if insights:

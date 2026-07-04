@@ -92,11 +92,11 @@ def _stochastic(
     pct_k = np.full(n, np.nan)
     for i in range(k - 1, n):
         h = np.max(highs[i - k + 1: i + 1])
-        l = np.min(lows[i - k + 1: i + 1])
-        if h == l:
+        lo = np.min(lows[i - k + 1: i + 1])
+        if h == lo:
             pct_k[i] = 50.0
         else:
-            pct_k[i] = 100.0 * (closes[i] - l) / (h - l)
+            pct_k[i] = 100.0 * (closes[i] - lo) / (h - lo)
     # %D = %K의 d-기간 단순 이동 평균
     pct_d = np.full(n, np.nan)
     for i in range(k - 1 + d - 1, n):
@@ -400,8 +400,8 @@ def signals_ichimoku(
         return []
     n = len(closes)
 
-    def mid_val(h: np.ndarray, l: np.ndarray, start: int, end: int) -> float:
-        return (np.max(h[start:end]) + np.min(l[start:end])) / 2.0
+    def mid_val(h: np.ndarray, lo: np.ndarray, start: int, end: int) -> float:
+        return (np.max(h[start:end]) + np.min(lo[start:end])) / 2.0
 
     result: list[tuple[int, str]] = []
     for i in range(MIN_LEN - 1, n):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging as _logging
 import os
 import sqlite3
 import threading
@@ -17,7 +18,6 @@ _conn: sqlite3.Connection | None = None
 # 동시 스케줄 job 간 트랜잭션 간섭 방지용 Lock
 _db_lock = threading.Lock()
 
-import logging as _logging
 _logger = _logging.getLogger(__name__)
 
 

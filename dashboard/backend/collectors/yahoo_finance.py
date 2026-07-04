@@ -38,7 +38,7 @@ async def _fetch_single_yahoo(client: httpx.AsyncClient, ticker: str) -> dict | 
         if not closes:
             return None
         highs = [h for h in quote.get("high", []) if h is not None]
-        lows = [l for l in quote.get("low", []) if l is not None]
+        lows = [lo for lo in quote.get("low", []) if lo is not None]
         current = closes[-1]
         prev = closes[-2] if len(closes) >= 2 else closes[-1]
         change_pct = (current - prev) / prev * 100 if prev else 0
@@ -126,7 +126,7 @@ async def _fetch_single_yahoo_stock(
         quote = result["indicators"]["quote"][0]
         closes = [c for c in quote.get("close", []) if c is not None]
         highs = [h for h in quote.get("high", []) if h is not None]
-        lows = [l for l in quote.get("low", []) if l is not None]
+        lows = [lo for lo in quote.get("low", []) if lo is not None]
         if not closes:
             return None
         current = closes[-1]
@@ -267,7 +267,7 @@ async def fetch_stock_ohlcv(ticker: str, interval: str = "1d") -> list[dict] | N
             closes = quote.get("close", [])
             volumes = quote.get("volume", [])
             rows = []
-            for t, o, h, l, c, v in zip(timestamps, opens, highs, lows, closes, volumes):
+            for t, o, h, lo, c, v in zip(timestamps, opens, highs, lows, closes, volumes):
                 # close가 None인 행 제외
                 if c is None:
                     continue
@@ -275,7 +275,7 @@ async def fetch_stock_ohlcv(ticker: str, interval: str = "1d") -> list[dict] | N
                     "date": datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%d"),
                     "open": round(o, 4) if o is not None else None,
                     "high": round(h, 4) if h is not None else None,
-                    "low": round(l, 4) if l is not None else None,
+                    "low": round(lo, 4) if lo is not None else None,
                     "close": round(c, 4),
                     "volume": int(v) if v is not None else 0,
                 })

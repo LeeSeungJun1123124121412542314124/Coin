@@ -7,6 +7,7 @@ apscheduler로 스케줄 작업을 내장 실행한다.
 
 from __future__ import annotations
 
+# ruff: noqa: E402 — 아래 sys.path 추가 이후에야 임포트 가능한 구조라 E402는 의도됨
 import asyncio
 import json
 import logging
@@ -31,7 +32,6 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 

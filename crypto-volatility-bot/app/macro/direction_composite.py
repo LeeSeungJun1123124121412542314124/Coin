@@ -10,7 +10,6 @@ composite > 0 강세 / < 0 약세, |composite| → 신뢰도. 시장(BTC) 전체
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 import pandas as pd
 
