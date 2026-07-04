@@ -425,7 +425,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 600;
   line-height: 1.35;
 }
@@ -442,6 +442,7 @@ body {
 
 .mock-header-menu-name {
   color: #dbeafe;
+  font-size: 0.95rem;
   font-weight: 800;
 }
 
@@ -468,7 +469,7 @@ body {
 
 .mock-brand-name {
   color: #f3f7fb;
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   font-weight: 800;
 }
 

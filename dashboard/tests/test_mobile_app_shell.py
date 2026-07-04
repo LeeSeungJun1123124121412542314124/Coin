@@ -95,6 +95,21 @@ def test_header_uses_active_menu_metadata_without_static_dashboard_title():
     assert "마지막 업데이트 :" in source
 
 
+def test_desktop_header_typography_emphasizes_brand_and_active_menu():
+    source = INDEX_CSS.read_text(encoding="utf-8")
+
+    brand_start = source.index(".mock-brand-name {")
+    brand_block = source[brand_start:source.index("}", brand_start)]
+    title_start = source.index(".mock-header-title {")
+    title_block = source[title_start:source.index("}", title_start)]
+    menu_start = source.index(".mock-header-menu-name {")
+    menu_block = source[menu_start:source.index("}", menu_start)]
+
+    assert "font-size: 1.25rem" in brand_block
+    assert "font-size: 0.82rem" in title_block
+    assert "font-size: 0.95rem" in menu_block
+
+
 def test_header_receives_last_updated_from_screen_component():
     app_source = APP_TSX.read_text(encoding="utf-8")
     last_updated_source = Path("dashboard/frontend/src/components/shared/LastUpdated.tsx").read_text(encoding="utf-8")
