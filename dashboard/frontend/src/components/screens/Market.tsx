@@ -9,6 +9,8 @@ import {
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
+import { AssetTabs } from '../shared/AssetTabs'
+import { readAssetTab, replaceAssetTab, type AssetTab } from '../shared/assetTabUtils'
 import { LEVEL_COLORS, LEVEL_BG, LEVEL_BORDER } from '../../lib/theme'
 
 interface Insight {
@@ -38,8 +40,6 @@ interface MarketData {
   bot_level: string | null
 }
 
-type AssetTab = 'coin' | 'us'
-
 interface MacroHistoryPoint {
   date: string
   close: number
@@ -62,11 +62,6 @@ interface MacroApiState {
   error: string | null
   refetch: () => void
   lastUpdated: Date | null
-}
-
-function readAssetTab(): AssetTab {
-  const value = new URLSearchParams(window.location.search).get('asset')
-  return value === 'us' ? 'us' : 'coin'
 }
 
 function formatMacroPrice(ticker: string, price: number) {
@@ -127,40 +122,6 @@ function MacroCard({ title, data, color }: { title: string; data: MacroHistoryDa
   )
 }
 
-function AssetTabs({ asset, onChange }: { asset: AssetTab; onChange: (asset: AssetTab) => void }) {
-  const tabs: { value: AssetTab; label: string }[] = [
-    { value: 'coin', label: '코인' },
-    { value: 'us', label: '미국/환율' },
-  ]
-
-  return (
-    <div style={{ display: 'flex', gap: 8 }}>
-      {tabs.map(tab => {
-        const active = asset === tab.value
-        return (
-          <button
-            key={tab.value}
-            type="button"
-            onClick={() => onChange(tab.value)}
-            style={{
-              border: `1px solid ${active ? '#38bdf8' : '#334155'}`,
-              background: active ? 'rgba(56,189,248,0.12)' : '#0f172a',
-              color: active ? '#e0f2fe' : '#94a3b8',
-              borderRadius: 8,
-              padding: '8px 12px',
-              fontSize: '0.82rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            {tab.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 function MacroMarketView({ markets }: { markets: { title: string; color: string; api: MacroApiState }[] }) {
   const loading = markets.some(item => item.api.loading && !item.api.data)
   const errored = markets.find(item => item.api.error && !item.api.data)
@@ -217,20 +178,18 @@ function IndicatorChip({ ind }: { ind: KeyIndicator }) {
 }
 
 export function Market() {
-  const [asset, setAsset] = useState<AssetTab>(() => readAssetTab())
+  const [asset, setAsset] = useState<AssetTab>(() => readAssetTab(['coin', 'us']))
   const coinApi = useApi<MarketData>(asset === 'coin' ? '/api/market-analysis' : null, 300_000)
   const dxyApi = useApi<MacroHistoryData>(asset === 'us' ? `/api/market/macro-history?ticker=${encodeURIComponent('DX-Y.NYB')}` : null, 300_000)
   const tnxApi = useApi<MacroHistoryData>(asset === 'us' ? `/api/market/macro-history?ticker=${encodeURIComponent('^TNX')}` : null, 300_000)
   const krwApi = useApi<MacroHistoryData>(asset === 'us' ? `/api/market/macro-history?ticker=${encodeURIComponent('KRW=X')}` : null, 300_000)
 
-  function changeAsset(next: AssetTab) {
+  function handleAssetChange(next: AssetTab) {
     setAsset(next)
-    const url = new URL(window.location.href)
-    url.searchParams.set('asset', next)
-    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+    replaceAssetTab(next)
   }
 
-  const tabs = <AssetTabs asset={asset} onChange={changeAsset} />
+  const tabs = <AssetTabs asset={asset} allowedTabs={['coin', 'us']} onChange={handleAssetChange} />
 
   if (asset === 'us') {
     const macroMarkets = [
