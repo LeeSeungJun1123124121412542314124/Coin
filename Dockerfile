@@ -4,7 +4,7 @@ FROM node:22-slim AS frontend-build
 
 WORKDIR /build/frontend
 COPY dashboard/frontend/package*.json ./
-RUN npm install --prefer-offline
+RUN npm ci --prefer-offline
 
 COPY dashboard/frontend/ .
 RUN npm run build
@@ -21,14 +21,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# 시스템 패키지 (numpy/pandas 빌드 의존성)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc g++ libffi-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Python 의존성 설치 (봇 requirements 사용)
+# Python 의존성 설치 (lock constraints 사용)
+COPY requirements-lock.txt /tmp/requirements-lock.txt
 COPY crypto-volatility-bot/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+RUN pip install --no-cache-dir -c /tmp/requirements-lock.txt -r /tmp/requirements.txt
 
 # 소스 복사
 COPY crypto-volatility-bot/ ./crypto-volatility-bot/

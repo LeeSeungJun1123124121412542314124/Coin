@@ -16,13 +16,11 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
           cache: 'pip'
 
       - name: 의존성 설치
-        run: |
-          pip install -r crypto-volatility-bot/requirements.txt
-          pip install ruff pytest pytest-asyncio pytest-cov
+        run: pip install -c requirements-lock.txt -r crypto-volatility-bot/requirements-dev.txt
 
       - name: Ruff 린팅
         run: ruff check crypto-volatility-bot/app dashboard/backend --select E,F,W --ignore E501
