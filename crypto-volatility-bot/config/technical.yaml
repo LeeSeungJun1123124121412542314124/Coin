@@ -4,8 +4,9 @@ indicators:
     weight: 0.25
     period: 14
     normalize:
-      min: 100
-      max: 5000
+      mode: pct_of_close
+      min: 0.1
+      max: 5.0
   bollinger_width:
     enabled: true
     weight: 0.20

@@ -104,6 +104,62 @@ class TestAnalyze:
         with pytest.raises(ValueError, match="[Rr]ow"):
             analyzer.analyze(tiny_df)
 
+    def test_atr_percent_normalization_is_price_scale_neutral(self, tmp_path):
+        cfg = {
+            "indicators": {
+                "atr": {
+                    "enabled": True,
+                    "weight": 1.0,
+                    "period": 14,
+                    "normalize": {"mode": "pct_of_close", "min": 0.0, "max": 4.0},
+                },
+            },
+            "signals": {"high_threshold": 70, "medium_threshold": 40},
+        }
+        config_path = tmp_path / "atr_pct.yaml"
+        config_path.write_text(yaml.dump(cfg))
+        ta = TechnicalAnalyzer(config_path=str(config_path))
+
+        def make_df(price: float) -> pd.DataFrame:
+            close = np.full(40, price)
+            return pd.DataFrame(
+                {
+                    "open": close,
+                    "high": close * 1.01,
+                    "low": close * 0.99,
+                    "close": close,
+                    "volume": np.full(40, 1000.0),
+                }
+            )
+
+        btc_score, btc_details = ta._compute_base_score(make_df(100_000.0))
+        eth_score, eth_details = ta._compute_base_score(make_df(3_000.0))
+
+        assert btc_details["atr"] != pytest.approx(eth_details["atr"])
+        assert btc_details["atr_pct"] == pytest.approx(eth_details["atr_pct"])
+        assert btc_score == pytest.approx(eth_score)
+
+    def test_default_atr_normalization_is_price_scale_neutral(self):
+        ta = TechnicalAnalyzer()
+
+        def make_df(price: float) -> pd.DataFrame:
+            close = np.full(40, price)
+            return pd.DataFrame(
+                {
+                    "open": close,
+                    "high": close * 1.01,
+                    "low": close * 0.99,
+                    "close": close,
+                    "volume": np.full(40, 1000.0),
+                }
+            )
+
+        btc_score, btc_details = ta._compute_base_score(make_df(100_000.0))
+        eth_score, eth_details = ta._compute_base_score(make_df(3_000.0))
+
+        assert btc_details["atr_pct"] == pytest.approx(eth_details["atr_pct"])
+        assert btc_score == pytest.approx(eth_score)
+
 
 class TestWeightNormalization:
     def test_partial_disable_weights_still_sum_to_one(self, tmp_path):

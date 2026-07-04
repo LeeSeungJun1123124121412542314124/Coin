@@ -141,7 +141,13 @@ class TechnicalAnalyzer(BaseAnalyzer):
                 continue
             raw_val = fn(df, cfg["period"])
             details[name] = raw_val
-            norm = self._normalize(raw_val, cfg["normalize"]["min"], cfg["normalize"]["max"])
+            normalize_cfg = cfg["normalize"]
+            norm_val = raw_val
+            if normalize_cfg.get("mode") == "pct_of_close":
+                close = float(df["close"].iloc[-1])
+                norm_val = raw_val / close * 100.0 if close else float("nan")
+                details[f"{name}_pct"] = norm_val
+            norm = self._normalize(norm_val, normalize_cfg["min"], normalize_cfg["max"])
             score += norm * cfg["weight"]
 
         return self._clamp(score), details
