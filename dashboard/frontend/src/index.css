@@ -409,7 +409,7 @@ body {
   top: 0;
   z-index: 50;
   display: grid;
-  grid-template-columns: minmax(270px, max-content) minmax(0, 1fr);
+  grid-template-columns: 168px minmax(0, 1fr);
   align-items: center;
   min-height: 52px;
   border-bottom: 1px solid rgba(56, 70, 85, 0.45);
@@ -428,6 +428,25 @@ body {
   font-size: 0.78rem;
   font-weight: 600;
   line-height: 1.35;
+}
+
+.mock-header-copy {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mock-header-menu-name {
+  color: #dbeafe;
+  font-weight: 800;
+}
+
+.mock-header-separator {
+  color: #3f4c5e;
 }
 
 .mock-header-meta {
@@ -451,17 +470,6 @@ body {
   color: #f3f7fb;
   font-size: 1.1rem;
   font-weight: 800;
-}
-
-.mock-brand-separator {
-  color: #3f4c5e;
-}
-
-.mock-brand-section {
-  color: #dbeafe;
-  font-size: 0.98rem;
-  font-weight: 800;
-  white-space: nowrap;
 }
 
 .mock-up {
@@ -1002,6 +1010,34 @@ body {
   display: none;
 }
 
+.leaderboard-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.leaderboard-toolbar-copy {
+  max-width: 620px;
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.leaderboard-reset-button {
+  flex-shrink: 0;
+  min-height: 34px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 6px 14px;
+  color: #94a3b8;
+  background: #0f172a;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
 .mock-real-dashboard {
   background: rgba(7, 15, 22, 0.46);
 }
@@ -1184,6 +1220,12 @@ body {
     font-size: 0.68rem;
   }
 
+  .mock-header-copy {
+    width: 100%;
+    gap: 7px;
+    white-space: normal;
+  }
+
   .app-main {
     padding: 12px 10px 88px;
   }
@@ -1279,5 +1321,18 @@ body {
   .mock-bottom-link-active {
     color: #2d9bff;
     background: rgba(28, 108, 158, 0.4);
+  }
+
+  .leaderboard-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .leaderboard-toolbar-copy {
+    max-width: none;
+  }
+
+  .leaderboard-reset-button {
+    width: 100%;
   }
 }

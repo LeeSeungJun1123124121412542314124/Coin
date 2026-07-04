@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import './index.css'
 import { Dashboard } from './components/screens/Dashboard'
@@ -98,9 +98,23 @@ export default function App() {
   const [authenticated, setAuthenticated] = useState(() => {
     return !!sessionStorage.getItem('auth_token')
   })
+  const [pageLastUpdated, setPageLastUpdated] = useState('')
   const activeTab = TABS.find(tab => (
     tab.path === '/' ? location.pathname === '/' : location.pathname.startsWith(tab.path)
   )) ?? TABS[0]
+
+  useEffect(() => {
+    setPageLastUpdated('')
+  }, [location.pathname])
+
+  useEffect(() => {
+    const handleLastUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<string>).detail
+      setPageLastUpdated(detail)
+    }
+    window.addEventListener('dashboard:last-updated', handleLastUpdated)
+    return () => window.removeEventListener('dashboard:last-updated', handleLastUpdated)
+  }, [])
 
   if (!authenticated) {
     return <PinScreen onSuccess={() => setAuthenticated(true)} />
@@ -111,12 +125,16 @@ export default function App() {
       <header className="mock-top-ticker">
         <div className="mock-brand">
           <span className="mock-brand-name">투자분석기</span>
-          <span className="mock-brand-separator">|</span>
-          <span className="mock-brand-section">{activeTab.label}</span>
         </div>
         <div className="mock-header-title">
-          <span>{activeTab.description}</span>
-          <span className="mock-header-meta">마지막 업데이트 : 화면별 데이터 기준</span>
+          <div className="mock-header-copy">
+            <span className="mock-header-menu-name">{activeTab.label}</span>
+            <span className="mock-header-separator">|</span>
+            <span>{activeTab.description}</span>
+          </div>
+          <span className="mock-header-meta">
+            {pageLastUpdated ? `마지막 업데이트 : ${pageLastUpdated}` : '마지막 업데이트 : -'}
+          </span>
         </div>
       </header>
       <aside className="mock-sidebar">

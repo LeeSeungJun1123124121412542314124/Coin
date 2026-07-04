@@ -57,6 +57,7 @@ def test_desktop_shell_css_uses_sidebar_layout():
 
     assert ".mock-sidebar" in source
     assert "grid-template-columns: 168px minmax(0, 1fr)" in source
+    assert "grid-template-columns: minmax(270px, max-content) minmax(0, 1fr)" not in source
     assert "box-sizing: border-box" in source
     assert "height: calc(100vh - 52px)" in source
     assert ".mock-header-title" in source
@@ -87,5 +88,30 @@ def test_header_uses_active_menu_metadata_without_static_dashboard_title():
     assert "useLocation" in source
     assert "activeTab.label" in source
     assert "activeTab.description" in source
+    assert 'className="mock-brand-section"' not in source
+    assert "mock-header-menu-name" in source
+    assert "mock-header-separator" in source
     assert "실시간 시장 데이터 대시보드" not in source
     assert "마지막 업데이트 :" in source
+
+
+def test_header_receives_last_updated_from_screen_component():
+    app_source = APP_TSX.read_text(encoding="utf-8")
+    last_updated_source = Path("dashboard/frontend/src/components/shared/LastUpdated.tsx").read_text(encoding="utf-8")
+
+    assert "dashboard:last-updated" in app_source
+    assert "pageLastUpdated" in app_source
+    assert "화면별 데이터 기준" not in app_source
+    assert "new CustomEvent('dashboard:last-updated'" in last_updated_source
+    assert "return null" in last_updated_source
+
+
+def test_mobile_leaderboard_reset_button_stacks_below_copy():
+    leaderboard_source = Path("dashboard/frontend/src/components/screens/Leaderboard.tsx").read_text(encoding="utf-8")
+    css_source = INDEX_CSS.read_text(encoding="utf-8")
+
+    assert "leaderboard-toolbar" in leaderboard_source
+    assert "leaderboard-reset-button" in leaderboard_source
+    assert ".leaderboard-toolbar" in css_source
+    assert ".leaderboard-reset-button" in css_source
+    assert "width: 100%" in css_source

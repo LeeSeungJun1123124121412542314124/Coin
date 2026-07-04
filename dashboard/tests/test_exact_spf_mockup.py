@@ -39,7 +39,6 @@ def test_css_contains_mockup_desktop_and_mobile_layout():
     source = INDEX_CSS.read_text(encoding="utf-8")
 
     assert ".mock-top-ticker" in source
-    assert "grid-template-columns: minmax(270px, max-content) minmax(0, 1fr)" in source
     assert "grid-template-columns: 168px minmax(0, 1fr)" in source
     assert ".mock-content-grid" in source
     assert "grid-template-columns: 1fr 1.35fr" in source
