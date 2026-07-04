@@ -12,7 +12,8 @@ import { ScoreBar } from '../shared/ScoreBar'
 
 interface SpfCurrent {
   date: string
-  oi: number | null
+  oi: number | null        // Bybit 선형 OI = BTC 개수 (USD 환산 = oi × price)
+  price: number | null     // BTC 가격 (USD 환산용)
   fr: number | null
   oi_change_3d: number
   oi_change_7d: number
@@ -249,7 +250,8 @@ export function SPF() {
       <div className="grid-2" style={{ gap: 12 }}>
         <Card>
           <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 10 }}>OI 지표</div>
-          <StatRow label="현재 OI" value={current?.oi ? `$${(current.oi / 1e9).toFixed(2)}B` : '—'} />
+          {/* Bybit OI는 BTC 개수 → USD 환산(oi × BTC가격) 후 10억 단위 표시 */}
+          <StatRow label="현재 OI" value={current?.oi && current?.price ? `$${(current.oi * current.price / 1e9).toFixed(2)}B` : '—'} />
           <StatRow
             label="3일 변화"
             value={`${(current?.oi_change_3d ?? 0) > 0 ? '+' : ''}${((current?.oi_change_3d ?? 0) * 100).toFixed(2)}%`}

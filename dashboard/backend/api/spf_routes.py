@@ -113,14 +113,19 @@ async def _calc_realtime_spf() -> dict | None:
     from dashboard.backend.collectors.bybit_derivatives import (
         fetch_oi_history, fetch_fr_history,
     )
+    from dashboard.backend.collectors.coinbase import fetch_btc_usd
 
-    oi_hist, fr_hist, oi_now, fr_now = await asyncio.gather(
+    oi_hist, fr_hist, oi_now, fr_now, btc_price = await asyncio.gather(
         fetch_oi_history("BTCUSDT", limit=20),
         fetch_fr_history("BTCUSDT", limit=45),
         fetch_open_interest("BTCUSDT"),
         fetch_funding_rate("BTCUSDT"),
+        fetch_btc_usd(),
         return_exceptions=True,
     )
+    if isinstance(btc_price, Exception):
+        logger.error("SPF 실시간 BTC 가격 실패: %s", btc_price, exc_info=btc_price)
+        btc_price = None
 
     if isinstance(oi_hist, Exception):
         logger.error("SPF 실시간 OI 히스토리 실패: %s", oi_hist, exc_info=oi_hist)
@@ -176,7 +181,7 @@ async def _calc_realtime_spf() -> dict | None:
         "date": "realtime",
         "oi": latest_oi,
         "fr": latest_fr,
-        "price": None,
+        "price": btc_price,   # OI USD 환산용 (프론트 oi × price)
         "oi_change_3d": oi_c3d,
         "oi_change_7d": oi_c7d,
         "oi_change_14d": oi_c14d,
