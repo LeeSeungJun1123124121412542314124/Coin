@@ -69,3 +69,13 @@ def test_desktop_shell_matches_mockup_geometry():
     assert "padding: 74px 24px 28px 28px" in source
     assert "max-width: none" in source
     assert "background: #0f1724" in source
+
+
+def test_desktop_sidebar_matches_mockup_spacing():
+    source = INDEX_CSS.read_text(encoding="utf-8")
+
+    assert "padding: 16px 0" in source
+    assert "padding-left: 20px" in source
+    assert "margin-top: 27px" in source
+    assert "padding: 0 11px" in source
+    assert "min-height: 38px" in source

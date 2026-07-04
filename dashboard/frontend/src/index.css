@@ -183,20 +183,21 @@ body {
     display: flex;
     width: 229px;
     flex-direction: column;
-    gap: 24px;
     border-right: 1px solid #1e293b;
     background: #0f1724;
-    padding: 18px 14px;
+    padding: 16px 0;
   }
 
   .app-desktop-brand {
-    padding: 0 6px;
+    padding-left: 20px;
   }
 
   .app-sidebar-nav {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    margin-top: 27px;
+    padding: 0 11px;
   }
 
   .app-sidebar-link {
