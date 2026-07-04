@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
@@ -16,6 +18,20 @@ from dashboard.backend.utils.errors import api_error
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _kst_today() -> date:
+    return datetime.now(ZoneInfo("Asia/Seoul")).date()
+
+
+def _is_kr_investor_flow_stale(latest_date: str | None) -> bool:
+    if latest_date is None:
+        return True
+    try:
+        parsed = date.fromisoformat(latest_date)
+    except ValueError:
+        return True
+    return (_kst_today() - parsed).days > 4
 
 
 @router.get("/hyperliquid-whales")
@@ -132,4 +148,37 @@ async def get_whale_consensus(top_n: int = Query(10, ge=5, le=20)):
         "consensus": consensus,
         "long_pct": round(long_count / total * 100, 1) if total else 0,
         "short_pct": round(short_count / total * 100, 1) if total else 0,
+    })
+
+
+@router.get("/whale/kr-investor-flow")
+async def get_kr_investor_flow(
+    market: str = Query("KOSPI", pattern="^(KOSPI|KOSDAQ)$"),
+    days: int = Query(30, ge=1, le=30),
+):
+    """한국 시장 투자자별 순매수 흐름을 DB의 마지막 성공 데이터로 제공한다."""
+    with get_db() as conn:
+        rows = conn.execute(
+            """SELECT date, foreign_net, institution_net, individual_net
+               FROM kr_investor_flow
+               WHERE market = ?
+               ORDER BY date DESC
+               LIMIT ?""",
+            (market, days),
+        ).fetchall()
+
+    records = [
+        {
+            "date": row["date"],
+            "foreign_net": row["foreign_net"],
+            "institution_net": row["institution_net"],
+            "individual_net": row["individual_net"],
+        }
+        for row in reversed(rows)
+    ]
+    latest_date = records[-1]["date"] if records else None
+    return JSONResponse({
+        "market": market,
+        "stale": _is_kr_investor_flow_stale(latest_date),
+        "records": records,
     })

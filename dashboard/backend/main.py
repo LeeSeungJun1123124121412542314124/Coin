@@ -279,6 +279,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     from dashboard.backend.jobs.collect_volume import collect_volume
     from dashboard.backend.jobs.collect_whales import collect_whales
     from dashboard.backend.jobs.collect_kimchi import collect_kimchi
+    from dashboard.backend.jobs.collect_kr_stock import collect_kr_investor_flow
     from dashboard.backend.jobs.update_predictions import update_predictions
     from dashboard.backend.jobs.settle_predictions import settle_expired_predictions
     from dashboard.backend.jobs.paper_rebalance import run_paper_rebalance
@@ -304,6 +305,13 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
 
     # 김치 프리미엄 히스토리 — 2시간마다
     scheduler.add_job(collect_kimchi, IntervalTrigger(hours=2))
+
+    # 한국 투자자별 수급 수집: 평일 08:30 UTC
+    scheduler.add_job(
+        collect_kr_investor_flow,
+        CronTrigger(day_of_week="mon-fri", hour=8, minute=30, timezone="UTC"),
+        id="collect_kr_investor_flow",
+    )
 
     # 코인 1시간봉 수집 — 매 시간 1분 (1시간 봉 마감 후)
     scheduler.add_job(collect_coin_ohlcv_1h, CronTrigger(minute=1))

@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 import logging
+import re
 import xml.etree.ElementTree as ET
+from datetime import datetime
+from html.parser import HTMLParser
+from math import ceil
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -37,6 +42,103 @@ _MARKET_SUFFIX: dict[str, str] = {
 
 # 네이버 자동완성 API — 응답은 UTF-8 JSON
 _NAVER_AC_URL = "https://ac.stock.naver.com/ac"
+_NAVER_INVESTOR_URL = "https://finance.naver.com/sise/investorDealTrendDay.nhn"
+_INVESTOR_MARKET_SOSOK: dict[str, str] = {
+    "KOSPI": "",
+    "KOSDAQ": "02",
+}
+_INVESTOR_DATE_RE = re.compile(r"^\d{2}\.\d{2}\.\d{2}$")
+
+
+class _TableRowParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.rows: list[list[str]] = []
+        self._current_row: list[str] | None = None
+        self._current_cell: list[str] | None = None
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        if tag == "tr":
+            self._current_row = []
+        elif tag in {"td", "th"} and self._current_row is not None:
+            self._current_cell = []
+
+    def handle_data(self, data: str) -> None:
+        if self._current_cell is not None:
+            self._current_cell.append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"td", "th"} and self._current_cell is not None and self._current_row is not None:
+            text = "".join(self._current_cell).strip()
+            self._current_row.append(re.sub(r"\s+", " ", text))
+            self._current_cell = None
+        elif tag == "tr" and self._current_row is not None:
+            if self._current_row:
+                self.rows.append(self._current_row)
+            self._current_row = None
+
+
+def _parse_investor_date(raw: str) -> str:
+    return f"20{raw[:2]}-{raw[3:5]}-{raw[6:8]}"
+
+
+def _parse_investor_number(raw: str) -> float:
+    return float(raw.replace(",", "").strip())
+
+
+def parse_investor_flow_html(html: str) -> list[dict]:
+    """네이버 투자자별 매매동향 HTML에서 핵심 순매수 컬럼을 파싱한다."""
+    parser = _TableRowParser()
+    parser.feed(html)
+
+    records: list[dict] = []
+    for row in parser.rows:
+        if len(row) < 4 or not _INVESTOR_DATE_RE.match(row[0]):
+            continue
+        try:
+            records.append({
+                "date": _parse_investor_date(row[0]),
+                "individual_net": _parse_investor_number(row[1]),
+                "foreign_net": _parse_investor_number(row[2]),
+                "institution_net": _parse_investor_number(row[3]),
+            })
+        except ValueError:
+            continue
+    return records
+
+
+async def fetch_investor_deal_trend(market: str, days: int = 30) -> list[dict]:
+    """네이버 일자별 순매수 페이지에서 최근 투자자 수급을 조회한다."""
+    if market not in _INVESTOR_MARKET_SOSOK:
+        raise ValueError("market은 KOSPI 또는 KOSDAQ만 허용됩니다")
+
+    target_days = min(max(1, days), 30)
+    pages = max(3, ceil(target_days / 10))
+    bizdate = datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y%m%d")
+    records: list[dict] = []
+    seen_dates: set[str] = set()
+
+    async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+        for page in range(1, pages + 1):
+            resp = await client.get(
+                _NAVER_INVESTOR_URL,
+                params={
+                    "bizdate": bizdate,
+                    "sosok": _INVESTOR_MARKET_SOSOK[market],
+                    "page": page,
+                },
+            )
+            resp.raise_for_status()
+            html = resp.content.decode("euc-kr", errors="replace")
+            for record in parse_investor_flow_html(html):
+                if record["date"] in seen_dates:
+                    continue
+                seen_dates.add(record["date"])
+                records.append(record)
+                if len(records) >= target_days:
+                    return records
+
+    return records[:target_days]
 
 
 async def search_naver_stocks(query: str) -> list[dict]:
