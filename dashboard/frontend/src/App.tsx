@@ -14,26 +14,35 @@ import { Simulator } from './components/screens/Simulator'
 import { Leaderboard } from './components/screens/Leaderboard'
 import { BASE } from './lib/api'
 
+const TICKERS = [
+  { label: 'BTC/USDT', value: '103,512.6', change: '0.68%', up: true },
+  { label: 'ETH/USDT', value: '2,489.21', change: '0.35%', up: false },
+  { label: 'SOL/USDT', value: '171.32', change: '1.20%', up: true },
+  { label: 'XRP/USDT', value: '2.35', change: '0.42%', up: false },
+  { label: 'TOTAL', value: '2.48T', change: '0.36%', up: true },
+  { label: 'BTC.D', value: '52.61%', change: '0.15%', up: false },
+  { label: 'USDT.KRW', value: '1,368.5', change: '0.09%', up: true },
+] as const
+
 // 탭 정의
 const TABS = [
-  { path: '/', label: '대시보드' },
-  { path: '/volume', label: '볼륨 트래커' },
-  { path: '/spf', label: 'SPF' },
-  { path: '/research', label: '리서치' },
-  { path: '/market', label: '시장 분석' },
-  { path: '/liquidity', label: '유동성' },
-  { path: '/cvd', label: 'CVD 스크리너' },
-  { path: '/whale', label: '고래 추적' },
-  { path: '/alerts', label: '알림 히스토리' },
-  { path: '/simulator', label: '시뮬레이터' },
-  { path: '/leaderboard', label: '리더보드' },
+  { path: '/', label: '대시보드', icon: '▦' },
+  { path: '/market', label: '시장 분석', icon: '⌁' },
+  { path: '/spf', label: '예측 모델', icon: '◎' },
+  { path: '/volume', label: '알트코인 분석', icon: '✣' },
+  { path: '/liquidity', label: '온체인 분석', icon: '⌘' },
+  { path: '/simulator', label: '시뮬레이터', icon: '⌕' },
+  { path: '/leaderboard', label: '포트폴리오', icon: '▣' },
+  { path: '/alerts', label: '알림', icon: '♢' },
+  { path: '/research', label: '리포트', icon: '▤' },
+  { path: '/cvd', label: '설정', icon: '⚙' },
 ] as const
 
 const PRIMARY_TABS = [
-  { path: '/', label: '홈' },
-  { path: '/spf', label: 'SPF' },
-  { path: '/simulator', label: '검증' },
-  { path: '/leaderboard', label: '순위' },
+  { path: '/', label: '대시보드', icon: '▦' },
+  { path: '/market', label: '시장', icon: '⌁' },
+  { path: '/simulator', label: '실험', icon: '⌕' },
+  { path: '/alerts', label: '알림', icon: '♢' },
 ] as const
 
 // PIN 인증 화면 — 서버 측 검증 후 토큰 발급
@@ -116,47 +125,49 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <aside className="app-desktop-sidebar">
-        <div className="app-desktop-brand">
-          <div className="app-brand-title">투자분석기</div>
-          <div className="app-brand-subtitle">시장 전망 · 예측 검증</div>
+      <header className="mock-top-ticker">
+        <div className="mock-brand">
+          <span className="mock-brand-mark">◉</span>
+          <span className="mock-brand-name">투자분석기</span>
         </div>
-        <nav className="app-sidebar-nav" aria-label="PC 주요 화면">
+        <div className="mock-ticker-strip">
+          {TICKERS.map(item => (
+            <div className="mock-ticker-item" key={item.label}>
+              <span>{item.label}</span>
+              <b>{item.value}</b>
+              <em className={item.up ? 'mock-up' : 'mock-down'}>{item.up ? '▲' : '▼'} {item.change}</em>
+            </div>
+          ))}
+        </div>
+        <div className="mock-top-actions">
+          <span>☼</span>
+          <span>☾</span>
+          <span className="mock-bell">♧<b>3</b></span>
+          <span>◎</span>
+          <span>기본 계정⌄</span>
+        </div>
+      </header>
+      <aside className="mock-sidebar">
+        <nav className="mock-sidebar-nav" aria-label="주요 화면">
           {TABS.map(tab => (
             <NavLink
               key={tab.path}
               to={tab.path}
               end={tab.path === '/'}
-              className={({ isActive }) => `app-sidebar-link${isActive ? ' app-sidebar-link-active' : ''}`}
+              className={({ isActive }) => `mock-sidebar-link${isActive ? ' mock-sidebar-link-active' : ''}`}
             >
-              {tab.label}
+              <span>{tab.icon}</span>
+              <b>{tab.label}</b>
             </NavLink>
           ))}
         </nav>
-      </aside>
-      <header className="app-topbar">
-        <div className="app-brand-row">
-          <div>
-            <div className="app-brand-title">투자분석기</div>
-            <div className="app-brand-subtitle">시장 전망 · 예측 검증 · 포트폴리오 실험</div>
-          </div>
-          <div className="app-status-pill">실시간 대시보드</div>
+        <div className="mock-api-status">
+          <div><span>API 연동</span><b><i />연결됨</b></div>
+          <div><span>데이터 갱신</span><button type="button">⟳</button></div>
+          <small>1분 전</small>
         </div>
-        <nav className="app-tab-scroll" aria-label="주요 화면">
-        {TABS.map(tab => (
-          <NavLink
-            key={tab.path}
-            to={tab.path}
-            end={tab.path === '/'}
-            className={({ isActive }) => `app-tab-link${isActive ? ' app-tab-link-active' : ''}`}
-          >
-            {tab.label}
-          </NavLink>
-        ))}
-        </nav>
-      </header>
+      </aside>
 
-      {/* 탭 콘텐츠 */}
       <main className="app-main">
         <Routes>
           <Route path="/" element={<Dashboard />} />
@@ -173,14 +184,15 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      <nav className="app-bottom-nav" aria-label="모바일 핵심 화면">
+      <nav className="mock-bottom-nav" aria-label="모바일 핵심 화면">
         {PRIMARY_TABS.map(tab => (
           <NavLink
             key={tab.path}
             to={tab.path}
             end={tab.path === '/'}
-            className={({ isActive }) => `app-bottom-link${isActive ? ' app-bottom-link-active' : ''}`}
+            className={({ isActive }) => `mock-bottom-link${isActive ? ' mock-bottom-link-active' : ''}`}
           >
+            <span>{tab.icon}</span>
             {tab.label}
           </NavLink>
         ))}
