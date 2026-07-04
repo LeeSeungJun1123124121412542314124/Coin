@@ -83,7 +83,7 @@ export function Volume() {
   const { data: weeklyRsi } = useApi<RsiData>('/api/btc-weekly-rsi', 3_600_000)
   const { data: fgHistory } = useApi<FearGreedHistory>('/api/fear-greed-history', 3_600_000)
 
-  if (error) return <ErrorState error={error} onRetry={refetch} />
+  if (error && !data) return <ErrorState error={error} onRetry={refetch} />
   if (loading || !data) return <Skeleton />
 
   const { current, avg_30d, history } = data

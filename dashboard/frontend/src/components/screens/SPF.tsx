@@ -90,7 +90,7 @@ export function SPF() {
   const { data, loading, error, refetch, lastUpdated } = useApi<SpfData>('/api/spf-data', 120_000)
   const { data: predData } = useApi<PredHistory>('/api/prediction-history')
 
-  if (error) return <ErrorState error={error} onRetry={refetch} />
+  if (error && !data) return <ErrorState error={error} onRetry={refetch} />
   if (loading || !data) return <Skeleton />
 
   const { current, history, similar_patterns, today_prediction } = data

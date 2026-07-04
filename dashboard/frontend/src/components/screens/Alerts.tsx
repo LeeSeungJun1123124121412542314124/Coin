@@ -74,7 +74,7 @@ export function Alerts() {
   const { data, loading, error, refetch, lastUpdated } = useApi<AlertsData>(url, 60_000)
 
   if (loading && !data) return <Skeleton />
-  if (error) return <ErrorState error={error} onRetry={refetch} />
+  if (error && !data) return <ErrorState error={error} onRetry={refetch} />
   if (!data) return null
 
   const alerts = data.alerts ?? []

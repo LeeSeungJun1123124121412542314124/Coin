@@ -76,7 +76,7 @@ function IndicatorChip({ ind }: { ind: KeyIndicator }) {
 export function Market() {
   const { data, loading, error, refetch, lastUpdated } = useApi<MarketData>('/api/market-analysis', 300_000)
 
-  if (error) return <ErrorState error={error} onRetry={refetch} />
+  if (error && !data) return <ErrorState error={error} onRetry={refetch} />
   if (loading || !data) return <Skeleton />
 
   const { insights, key_indicators, vix_btc_history, bot_level } = data

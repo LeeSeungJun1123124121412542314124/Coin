@@ -164,7 +164,7 @@ export function Dashboard() {
   }
 
   if (loading && !data) return <Skeleton />
-  if (error) return <ErrorState error={error} onRetry={refetch} />
+  if (error && !data) return <ErrorState error={error} onRetry={refetch} />
   if (!data) return null
 
   const btc = data.coins?.find(c => c.symbol === 'BTC')

@@ -109,7 +109,7 @@ export function Whale() {
   const { data, loading, error, refetch, lastUpdated } = useApi<WhaleData>('/api/hyperliquid-whales', 120_000)
   const { data: consensus } = useApi<Consensus>('/api/whale-consensus', 120_000)
 
-  if (error) return <ErrorState error={error} onRetry={refetch} />
+  if (error && !data) return <ErrorState error={error} onRetry={refetch} />
   if (loading || !data) return <Skeleton />
 
   const { whales } = data

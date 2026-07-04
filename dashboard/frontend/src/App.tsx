@@ -11,6 +11,7 @@ import { Whale } from './components/screens/Whale'
 import { Research } from './components/screens/Research'
 import { Alerts } from './components/screens/Alerts'
 import { Simulator } from './components/screens/Simulator'
+import { BASE } from './lib/api'
 
 // 탭 정의
 const TABS = [
@@ -37,7 +38,8 @@ function PinScreen({ onSuccess }: { onSuccess: () => void }) {
     setPin(next)
     if (next.length === 4) {
       try {
-        const res = await fetch('/api/auth/verify-pin', {
+        // apiFetch와 동일한 BASE 사용 — 프론트·API 오리진이 다른 배포에서도 로그인 동작
+        const res = await fetch(`${BASE}/api/auth/verify-pin`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ pin: next }),
