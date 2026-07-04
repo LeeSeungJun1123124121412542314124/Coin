@@ -191,8 +191,11 @@ def _build_app() -> FastAPI:
 
         @app.get("/{full_path:path}", include_in_schema=False)
         async def spa_fallback(full_path: str):
-            candidate = _FRONTEND_DIST / full_path
-            if candidate.is_file():
+            # 경로 탐색 차단 — dist 밖 파일은 index.html 폴백 (무인증 라우트)
+            from dashboard.backend.services.spa_files import safe_static_file
+
+            candidate = safe_static_file(_FRONTEND_DIST, full_path)
+            if candidate is not None:
                 return _FileResponse(str(candidate))
             return _FileResponse(_index_html)
 
