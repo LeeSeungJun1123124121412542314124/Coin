@@ -182,9 +182,9 @@ export function SPF() {
           </div>
         </Card>
 
-        {/* 오늘 예측 */}
+        {/* 복합 방향 전망 (7/14/30/60일 채점 — 옛 3일 예측 폐기) */}
         <Card>
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>3일 예측</div>
+          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>중기 방향 전망</div>
           {today_prediction ? (
             <>
               <div style={{ fontSize: '1.5rem', fontWeight: 700, color: directionColor, marginBottom: 4 }}>
@@ -249,7 +249,10 @@ export function SPF() {
       {/* 지표 패널 */}
       <div className="grid-2" style={{ gap: 12 }}>
         <Card>
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 10 }}>OI 지표</div>
+          {/* 예측 시계가 아니라 최근 포지션 관측 창(3일/7일 룩백) */}
+          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 10 }}>
+            OI 지표 <span style={{ color: '#475569', fontSize: '0.68rem' }}>· 최근 포지션 흐름</span>
+          </div>
           {/* Bybit OI는 BTC 개수 → USD 환산(oi × BTC가격) 후 10억 단위 표시 */}
           <StatRow label="현재 OI" value={current?.oi && current?.price ? `$${(current.oi * current.price / 1e9).toFixed(2)}B` : '—'} />
           <StatRow
@@ -261,7 +264,9 @@ export function SPF() {
           <StatRow label="연속 상승" value={`${current?.oi_consecutive_up ?? 0}일`} />
         </Card>
         <Card>
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 10 }}>FR 지표</div>
+          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 10 }}>
+            FR 지표 <span style={{ color: '#475569', fontSize: '0.68rem' }}>· 최근 펀딩 쏠림</span>
+          </div>
           <StatRow
             label="현재 FR"
             value={`${((current?.fr ?? 0) * 100).toFixed(4)}%`}
