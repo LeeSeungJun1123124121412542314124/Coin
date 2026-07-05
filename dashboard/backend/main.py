@@ -282,6 +282,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     from dashboard.backend.jobs.collect_kr_stock import collect_kr_investor_flow
     from dashboard.backend.jobs.collect_stock_fear_greed import collect_stock_fear_greed
     from dashboard.backend.jobs.collect_putcall import collect_putcall
+    from dashboard.backend.jobs.index_shadow import judge_index_shadow, settle_index_shadow
     from dashboard.backend.jobs.update_predictions import update_predictions
     from dashboard.backend.jobs.settle_predictions import settle_expired_predictions
     from dashboard.backend.jobs.paper_rebalance import run_paper_rebalance
@@ -327,6 +328,18 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
         collect_putcall,
         CronTrigger(day_of_week="mon-fri", hour=22, minute=30, timezone="UTC"),
         id="collect_putcall",
+    )
+
+    # 지수 방향 판정 그림자 기록: 평일 08:10 UTC, 정산 08:20 UTC
+    scheduler.add_job(
+        judge_index_shadow,
+        CronTrigger(day_of_week="mon-fri", hour=8, minute=10, timezone="UTC"),
+        id="judge_index_shadow",
+    )
+    scheduler.add_job(
+        settle_index_shadow,
+        CronTrigger(day_of_week="mon-fri", hour=8, minute=20, timezone="UTC"),
+        id="settle_index_shadow",
     )
 
     # 코인 1시간봉 수집 — 매 시간 1분 (1시간 봉 마감 후)
