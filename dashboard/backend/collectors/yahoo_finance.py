@@ -169,6 +169,25 @@ async def lookup_stock_info(ticker: str) -> dict | None:
         성공 시 {"name": str, "exchange": str}, 실패/종목없음 시 None
         exchange 값은 원본 그대로 반환 (NYSE, NasdaqGS, KRX 등).
     """
+    async def _from_chart() -> dict | None:
+        chart_url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+        try:
+            async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+                resp = await client.get(chart_url, params={"interval": "1d", "range": "5d"})
+                resp.raise_for_status()
+                result = resp.json().get("chart", {}).get("result")
+                if not result:
+                    return None
+                meta = result[0].get("meta", {})
+                name = meta.get("shortName") or meta.get("longName") or ticker
+                exchange = meta.get("fullExchangeName") or meta.get("exchangeName")
+                if not exchange:
+                    return None
+                return {"name": name, "exchange": exchange}
+        except Exception as e:
+            logger.warning("lookup_stock_info chart fallback 실패 (%s): %s", ticker, e)
+            return None
+
     url = f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{ticker}"
     try:
         async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
@@ -192,9 +211,9 @@ async def lookup_stock_info(ticker: str) -> dict | None:
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
             logger.info("lookup_stock_info: 존재하지 않는 티커 (%s)", ticker)
-        else:
-            logger.warning("lookup_stock_info HTTP 오류 (%s) %s", ticker, e.response.status_code)
-        return None
+            return None
+        logger.warning("lookup_stock_info HTTP 오류 (%s) %s", ticker, e.response.status_code)
+        return await _from_chart()
     except Exception as e:
         logger.warning("lookup_stock_info 조회 실패 (%s): %s", ticker, e)
         return None
@@ -205,8 +224,11 @@ async def search_stocks(query: str, market: str) -> list[dict]:
 
     Returns: [{"ticker": str, "name": str}, ...] (최대 5개)
     """
-    _KR_EXCHANGES = {"KSE", "KOE", "KPQ"}  # 코스피, 코스닥, 코넥스
-    _US_EXCHANGES = {"NasdaqGS", "NasdaqCM", "NasdaqGM", "NYQ", "NYSEArca", "NYSEAmerican", "NGM"}
+    _KR_EXCHANGES = {"KSE", "KOE", "KPQ", "KSC"}  # 코스피, 코스닥, 코넥스
+    _US_EXCHANGES = {
+        "NMS", "NGM", "NCM", "NYQ", "ASE", "PCX", "BTS",
+        "NasdaqGS", "NasdaqCM", "NasdaqGM", "NYSEArca", "NYSEAmerican",
+    }
 
     url = "https://query1.finance.yahoo.com/v1/finance/search"
     try:
@@ -216,15 +238,16 @@ async def search_stocks(query: str, market: str) -> list[dict]:
             quotes = resp.json().get("quotes", [])
 
             allowed = _KR_EXCHANGES if market == "kr" else _US_EXCHANGES
+            query_upper = query.strip().upper()
             results = []
-            for q in quotes:
+            for index, q in enumerate(quotes):
                 exchange = q.get("exchange", "")
                 ticker = q.get("symbol", "")
                 name = q.get("shortname") or q.get("longname") or ticker
                 if exchange in allowed and ticker:
-                    results.append({"ticker": ticker, "name": name})
-                if len(results) >= 5:
-                    break
+                    results.append((index, {"ticker": ticker, "name": name}))
+            results.sort(key=lambda item: (item[1]["ticker"].upper() != query_upper, item[0]))
+            results = [item for _, item in results[:5]]
             return results
     except Exception as e:
         logger.warning("search_stocks 실패 (%s, %s): %s", query, market, e)

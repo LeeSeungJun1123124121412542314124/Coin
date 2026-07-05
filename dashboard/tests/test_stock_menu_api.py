@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+import httpx
 import pytest
 
 
@@ -127,3 +128,109 @@ def test_market_analysis_top_level_keys_remain_stable(monkeypatch) -> None:
         "vix_btc_history",
         "bot_level",
     }
+
+
+@pytest.mark.asyncio
+async def test_us_stock_search_accepts_yahoo_nms_exchange_and_prioritizes_exact_symbol(monkeypatch) -> None:
+    from dashboard.backend.collectors import yahoo_finance
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return {
+                "quotes": [
+                    {
+                        "exchange": "NGM",
+                        "symbol": "PLA",
+                        "shortname": "GraniteShares Autocallable PLTR",
+                        "quoteType": "ETF",
+                    },
+                    {
+                        "exchange": "NMS",
+                        "symbol": "PLTR",
+                        "shortname": "Palantir Technologies Inc.",
+                        "quoteType": "EQUITY",
+                    },
+                ]
+            }
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        async def get(self, url: str, params: dict):
+            assert params["q"] == "PLTR"
+            return FakeResponse()
+
+    monkeypatch.setattr(yahoo_finance.httpx, "AsyncClient", FakeAsyncClient)
+
+    results = await yahoo_finance.search_stocks("PLTR", "us")
+
+    assert results[:2] == [
+        {"ticker": "PLTR", "name": "Palantir Technologies Inc."},
+        {"ticker": "PLA", "name": "GraniteShares Autocallable PLTR"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_lookup_stock_info_falls_back_to_chart_metadata_when_quote_summary_rejects(monkeypatch) -> None:
+    from dashboard.backend.collectors import yahoo_finance
+
+    calls: list[str] = []
+
+    class FakeResponse:
+        def __init__(self, url: str) -> None:
+            self.url = url
+            self.status_code = 401 if "quoteSummary" in url else 200
+
+        def raise_for_status(self) -> None:
+            if self.status_code >= 400:
+                request = httpx.Request("GET", self.url)
+                response = httpx.Response(self.status_code, request=request)
+                raise httpx.HTTPStatusError("blocked", request=request, response=response)
+
+        def json(self) -> dict:
+            return {
+                "chart": {
+                    "result": [{
+                        "meta": {
+                            "shortName": "Palantir Technologies Inc.",
+                            "fullExchangeName": "NasdaqGS",
+                            "exchangeName": "NMS",
+                        }
+                    }]
+                }
+            }
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        async def get(self, url: str, params: dict):
+            calls.append(url)
+            return FakeResponse(url)
+
+    monkeypatch.setattr(yahoo_finance.httpx, "AsyncClient", FakeAsyncClient)
+
+    assert await yahoo_finance.lookup_stock_info("PLTR") == {
+        "name": "Palantir Technologies Inc.",
+        "exchange": "NasdaqGS",
+    }
+    assert calls == [
+        "https://query1.finance.yahoo.com/v10/finance/quoteSummary/PLTR",
+        "https://query1.finance.yahoo.com/v8/finance/chart/PLTR",
+    ]
