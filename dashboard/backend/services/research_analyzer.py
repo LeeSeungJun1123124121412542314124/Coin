@@ -23,6 +23,8 @@ _FLOW_LABELS = {
 SEMICONDUCTOR_SIGNALS_AS_OF = "2026-07-04"
 # as_of가 이 일수를 초과하면 direction_watch가 '갱신 필요' 알림을 발송
 _SEMI_STALE_DAYS = 21
+STOCK_SENTIMENT_WEIGHTS = (0.5, 0.5)
+PUTCALL_BAND = (1.0, 0.5)
 
 # 반도체 사이클 정점 시그널 — 업황 공통 3 + 삼성 3 + 하이닉스 3. 수동 갱신 상수.
 SEMICONDUCTOR_SIGNALS = [
@@ -107,12 +109,15 @@ async def analyze_all() -> dict:
         _analyze_market(),
         _analyze_whale(),
         _analyze_semiconductor_signals(),
+        _analyze_stock_sentiment(),
         return_exceptions=True,
     )
 
     categories = []
     names = ["매크로", "온체인", "파생상품", "알트코인", "기술적분석", "시장분석", "기타", "반도체 정점"]
     keys = ["macro", "onchain", "derivatives", "altcoin", "technical", "market", "whale", "semiconductor_signals"]
+    names.append("주식심리")
+    keys.append("stock_sentiment")
 
     for i, result in enumerate(results):
         if isinstance(result, Exception):
@@ -152,6 +157,83 @@ def _score_to_level(score: int) -> str:
     if score <= 25:
         return "bullish"
     return "neutral"
+
+
+def _clamp_score(value: float) -> int:
+    return int(max(0, min(100, round(value))))
+
+
+def _clamp_float(value: float) -> float:
+    return max(0.0, min(100.0, value))
+
+
+def _putcall_score(value: float) -> float:
+    high, width = PUTCALL_BAND
+    return _clamp_float((high - value) / width * 100)
+
+
+async def _analyze_stock_sentiment() -> dict:
+    """주식 F&G와 Put/Call 최신값으로 주식심리 카테고리를 계산한다."""
+    from dashboard.backend.db import connection
+
+    with connection.get_db() as conn:
+        fg = conn.execute(
+            """SELECT date, value, rating, updated_at
+               FROM stock_fear_greed
+               ORDER BY date DESC
+               LIMIT 1"""
+        ).fetchone()
+        pc = conn.execute(
+            """SELECT date, total_pc, equity_pc, index_pc, updated_at
+               FROM cboe_putcall
+               ORDER BY date DESC
+               LIMIT 1"""
+        ).fetchone()
+
+    if fg is None or pc is None:
+        return _error_category("stock_sentiment", "주식심리")
+
+    used_pc = pc["equity_pc"] if pc["equity_pc"] is not None else pc["total_pc"]
+    if used_pc is None:
+        return _error_category("stock_sentiment", "주식심리")
+
+    fg_score = float(fg["value"])
+    pc_score = _putcall_score(float(used_pc))
+    fg_weight, pc_weight = STOCK_SENTIMENT_WEIGHTS
+    score = _clamp_score(fg_score * fg_weight + pc_score * pc_weight)
+    level = _score_to_level(score)
+    source = "equity_pc" if pc["equity_pc"] is not None else "total_pc"
+
+    return {
+        "key": "stock_sentiment",
+        "name": "주식심리",
+        "level": level,
+        "score": score,
+        "title": f"주식심리 {score}/100",
+        "summary": f"F&G {fg_score} | Put/Call {float(used_pc):.2f}",
+        "details": {
+            "stock_fear_greed": {
+                "date": fg["date"],
+                "value": fg["value"],
+                "rating": fg["rating"],
+                "updated_at": fg["updated_at"],
+            },
+            "putcall": {
+                "date": pc["date"],
+                "total_pc": pc["total_pc"],
+                "equity_pc": pc["equity_pc"],
+                "index_pc": pc["index_pc"],
+                "updated_at": pc["updated_at"],
+                "used_pc": used_pc,
+                "source": source,
+            },
+            "component_scores": {
+                "fear_greed": fg_score,
+                "putcall": pc_score,
+            },
+        },
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 # ─── 파생상품 ────────────────────────────────────────────────────────

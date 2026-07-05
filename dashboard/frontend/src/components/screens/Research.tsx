@@ -4,6 +4,12 @@ import ErrorState from '../shared/ErrorState'
 import LastUpdated from '../shared/LastUpdated'
 import { LEVEL_COLORS, LEVEL_BG, LEVEL_BORDER } from '../../lib/theme'
 import { ScoreBar } from '../shared/ScoreBar'
+import {
+  RESEARCH_CATEGORIES,
+  RESEARCH_CATEGORY_COLORS,
+  getResearchCategoryColor,
+  toStockSentimentDetailRows,
+} from './researchView'
 
 interface CategoryAnalysis {
   key: string
@@ -35,18 +41,6 @@ interface ResearchData {
   categories: CategoryAnalysis[]
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  '매크로': '#60a5fa',
-  '온체인': '#4ade80',
-  '파생상품': '#f97316',
-  '알트코인': '#a78bfa',
-  '기술적분석': '#f59e0b',
-  '시장분석': '#f87171',
-  '기타': '#94a3b8',
-  '반도체 정점': '#2dd4bf',
-}
-
-
 const LEVEL_LABELS: Record<string, string> = {
   critical: '위험',
   warning:  '경계',
@@ -63,8 +57,6 @@ const LEVEL_ICONS: Record<string, string> = {
   neutral:  '⚪',
 }
 
-const CATEGORIES = ['전체', '매크로', '온체인', '파생상품', '알트코인', '기술적분석', '시장분석', '기타', '반도체 정점']
-
 const STATUS_COLORS: Record<string, string> = {
   green: '#22c55e',
   yellow: '#f59e0b',
@@ -77,7 +69,7 @@ function AnalysisCard({ cat, expanded, onToggle }: {
   expanded: boolean
   onToggle: () => void
 }) {
-  const catColor = CATEGORY_COLORS[cat.name] ?? '#94a3b8'
+  const catColor = RESEARCH_CATEGORY_COLORS[cat.name] ?? '#94a3b8'
   const levelColor = LEVEL_COLORS[cat.level] ?? '#94a3b8'
   const levelBg = LEVEL_BG[cat.level] ?? 'rgba(100,116,139,0.08)'
   const levelBorder = LEVEL_BORDER[cat.level] ?? 'rgba(100,116,139,0.2)'
@@ -310,6 +302,19 @@ function _renderDetails(key: string, details: Record<string, unknown>) {
     )
   }
 
+  if (key === 'stock_sentiment') {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+        {toStockSentimentDetailRows(details).map(([label, value]) => (
+          <div key={label} style={{ fontSize: 12 }}>
+            <span style={{ color: '#64748b' }}>{label}: </span>
+            <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{value}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   // 기본: key-value 나열
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
@@ -370,9 +375,9 @@ export function Research() {
 
       {/* 카테고리 필터 */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-        {CATEGORIES.map(cat => {
+        {RESEARCH_CATEGORIES.map(cat => {
           const isActive = activeCategory === cat
-          const catColor = cat === '전체' ? '#60a5fa' : (CATEGORY_COLORS[cat] ?? '#94a3b8')
+          const catColor = getResearchCategoryColor(cat)
           const count = cat === '전체' ? categories.length : categories.filter(c => c.name === cat).length
           return (
             <button
