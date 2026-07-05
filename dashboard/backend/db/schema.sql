@@ -192,6 +192,33 @@ CREATE TABLE IF NOT EXISTS stock_fear_greed (
     updated_at TEXT NOT NULL
 );
 
+-- CBOE Put/Call 비율
+CREATE TABLE IF NOT EXISTS cboe_putcall (
+    date       TEXT NOT NULL PRIMARY KEY,
+    total_pc   REAL,
+    equity_pc  REAL,
+    index_pc   REAL,
+    updated_at TEXT NOT NULL
+);
+
+-- 지수 방향 판정 그림자 기록
+CREATE TABLE IF NOT EXISTS index_shadow_judgments (
+    date            TEXT NOT NULL,
+    symbol          TEXT NOT NULL CHECK(symbol IN ('^KS11','^GSPC')),
+    indicator       TEXT NOT NULL,
+    z               REAL,
+    direction       TEXT NOT NULL CHECK(direction IN ('long','short','neutral')),
+    price           REAL NOT NULL,
+    price_after_7d  REAL,
+    price_after_14d REAL,
+    price_after_30d REAL,
+    result_7d       TEXT,
+    result_14d      TEXT,
+    result_30d      TEXT,
+    created_at      TEXT NOT NULL,
+    PRIMARY KEY (date, symbol, indicator)
+);
+
 -- ============================================================
 -- 시뮬레이터 테이블
 -- ============================================================
