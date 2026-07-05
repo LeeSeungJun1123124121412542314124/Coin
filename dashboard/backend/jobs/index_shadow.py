@@ -83,6 +83,8 @@ def build_index_shadow_records(
     close = _history_to_close_series(history)
     if close.empty:
         return []
+    # build_context는 sources["close"]를 'BTC' 자산 슬롯에 담는다. 지수 종가를
+    # close로 주입하고 'BTC' 키로 조회하면 기술 지표(RSI·볼린저)가 지수에 적용된다.
     ctx = build_context(_align_sources_to_close(sources, close))
     indicator_fns = {
         "RSI": lambda: _rsi_sig(ctx, "BTC"),
