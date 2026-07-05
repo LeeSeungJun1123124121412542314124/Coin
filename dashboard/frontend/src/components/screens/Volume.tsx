@@ -12,6 +12,7 @@ import { AssetTabs } from '../shared/AssetTabs'
 import { readAssetTab, replaceAssetTab, type AssetTab } from '../shared/assetTabUtils'
 import { GaugeChart } from '../shared/GaugeChart'
 import { describePutcall, toPutcallChartRows, type PutcallRecord, type PutcallSeries } from './volumePutcall'
+import { resolveUsVolumeSections } from './volumeUsState'
 
 interface VolumeData {
   current: {
@@ -265,29 +266,24 @@ export function Volume() {
   const tabs = <AssetTabs asset={asset} allowedTabs={['coin', 'kr', 'us']} onChange={handleAssetChange} />
 
   if (asset === 'us') {
-    const usError = stockFearGreedApi.error || putcallApi.error
-    if (usError && (!stockFearGreedApi.data || !putcallApi.data)) {
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {tabs}
-          <ErrorState error={usError} onRetry={() => { stockFearGreedApi.refetch(); putcallApi.refetch() }} />
-        </div>
-      )
-    }
-    if (stockFearGreedApi.loading || putcallApi.loading || !stockFearGreedApi.data || !putcallApi.data) {
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {tabs}
-          <Skeleton />
-        </div>
-      )
-    }
+    const usSections = resolveUsVolumeSections({
+      stock: stockFearGreedApi,
+      putcall: putcallApi,
+    })
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {tabs}
-        <LastUpdated timestamp={stockFearGreedApi.lastUpdated} />
-        <StockFearGreedView data={stockFearGreedApi.data} />
-        <PutcallView data={putcallApi.data} />
+        {usSections.stock === 'data' && (
+          <>
+            <LastUpdated timestamp={stockFearGreedApi.lastUpdated} />
+            <StockFearGreedView data={stockFearGreedApi.data as StockFearGreedData} />
+          </>
+        )}
+        {usSections.stock === 'loading' && <Skeleton />}
+        {usSections.stock === 'error' && <ErrorState error={stockFearGreedApi.error ?? ''} onRetry={stockFearGreedApi.refetch} />}
+        {usSections.putcall === 'data' && <PutcallView data={putcallApi.data as PutcallData} />}
+        {usSections.putcall === 'loading' && <Skeleton />}
+        {usSections.putcall === 'error' && <ErrorState error={putcallApi.error ?? ''} onRetry={putcallApi.refetch} />}
       </div>
     )
   }

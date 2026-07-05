@@ -130,9 +130,14 @@ def upsert_index_shadow_records(records: list[dict]) -> int:
         return 0
     with get_db() as conn:
         conn.executemany(
-            """INSERT OR REPLACE INTO index_shadow_judgments
+            """INSERT INTO index_shadow_judgments
                (date, symbol, indicator, z, direction, price, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(date, symbol, indicator) DO UPDATE SET
+                 z = excluded.z,
+                 direction = excluded.direction,
+                 price = excluded.price,
+                 created_at = excluded.created_at""",
             [
                 (
                     record["date"],

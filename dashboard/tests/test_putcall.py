@@ -44,6 +44,26 @@ def test_parse_cboe_daily_statistics_html_extracts_selected_date_and_ratios() ->
     }
 
 
+def test_parse_cboe_daily_statistics_html_extracts_next_json_ratios() -> None:
+    from dashboard.backend.collectors.cboe import parse_putcall_html
+
+    html = r'''
+    <script>
+    self.__next_f.push([1,"selectedDate\":\"2026-07-02\""])
+    self.__next_f.push([1,"{\"name\":\"TOTAL PUT/CALL RATIO\",\"value\":\"0.79\"}"])
+    self.__next_f.push([1,"{\"name\":\"INDEX PUT/CALL RATIO\",\"value\":\"0.97\"}"])
+    self.__next_f.push([1,"{\"name\":\"EQUITY PUT/CALL RATIO\",\"value\":\"0.53\"}"])
+    </script>
+    '''
+
+    assert parse_putcall_html(html) == {
+        "date": "2026-07-02",
+        "total_pc": 0.79,
+        "equity_pc": 0.53,
+        "index_pc": 0.97,
+    }
+
+
 def test_parse_cboe_daily_statistics_html_returns_none_without_ratios() -> None:
     from dashboard.backend.collectors.cboe import parse_putcall_html
 

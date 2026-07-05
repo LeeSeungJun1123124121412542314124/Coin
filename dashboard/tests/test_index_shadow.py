@@ -111,6 +111,48 @@ async def test_judge_index_shadow_upserts_two_symbols_and_is_idempotent(monkeypa
     assert {row["direction"] for row in rows} <= {"long", "short", "neutral"}
 
 
+def test_index_shadow_upsert_preserves_settled_results(monkeypatch) -> None:
+    from dashboard.backend.jobs import index_shadow
+
+    conn = _memory_conn()
+    conn.execute(
+        """INSERT INTO index_shadow_judgments
+           (date, symbol, indicator, z, direction, price, created_at, price_after_7d, result_7d)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        ("2026-01-01", "^GSPC", "RSI", 0.8, "long", 100.0, "2026-01-01T22:00:00+00:00", 102.0, "hit"),
+    )
+
+    @contextmanager
+    def fake_get_db():
+        yield conn
+        conn.commit()
+
+    monkeypatch.setattr(index_shadow, "get_db", fake_get_db)
+
+    index_shadow.upsert_index_shadow_records([{
+        "date": "2026-01-01",
+        "symbol": "^GSPC",
+        "indicator": "RSI",
+        "z": -0.7,
+        "direction": "short",
+        "price": 101.0,
+        "created_at": "2026-01-02T22:00:00+00:00",
+    }])
+
+    row = conn.execute(
+        """SELECT z, direction, price, created_at, price_after_7d, result_7d
+           FROM index_shadow_judgments"""
+    ).fetchone()
+    assert dict(row) == {
+        "z": -0.7,
+        "direction": "short",
+        "price": 101.0,
+        "created_at": "2026-01-02T22:00:00+00:00",
+        "price_after_7d": 102.0,
+        "result_7d": "hit",
+    }
+
+
 @pytest.mark.asyncio
 async def test_settle_index_shadow_fills_due_horizon(monkeypatch) -> None:
     from dashboard.backend.jobs import index_shadow
