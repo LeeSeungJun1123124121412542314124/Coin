@@ -8,6 +8,7 @@ import {
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
+import { buildCvdChart, type CvdChartPoint, type CvdPoint } from './cvdChartData'
 
 interface ScreenerResult {
   symbol: string
@@ -21,16 +22,6 @@ interface ScreenerData {
   timeframe: string
   results: ScreenerResult[]
   total: number
-}
-
-interface CvdPoint {
-  date: string
-  cvd: number
-  close: number | null
-}
-
-interface CvdChartPoint extends CvdPoint {
-  delta: number
 }
 
 interface CvdDetail {
@@ -117,12 +108,7 @@ export function Alt() {
   if (loading || !screener) return <Skeleton />
 
   // CVD 차트 (선택 종목) + delta 계산
-  const cvdChart: CvdChartPoint[] = (detail?.chart ?? []).slice(-60).map((p, i, arr) => ({
-    date: p.date?.slice(5),
-    cvd: p.cvd,
-    close: p.close ?? null,
-    delta: i > 0 ? p.cvd - arr[i - 1].cvd : 0,
-  }))
+  const cvdChart: CvdChartPoint[] = buildCvdChart(detail?.chart ?? [])
 
   // 다이버전스 구간 감지
   const divergenceZones: { start: string; end: string; type: 'bearish' | 'bullish' }[] = []
@@ -143,17 +129,22 @@ export function Alt() {
         streak++
       } else {
         if (streak >= 3 && streakType) {
-          divergenceZones.push({ start: streakStart, end: cvdChart[i - 1].date, type: streakType })
+          divergenceZones.push({ start: streakStart, end: cvdChart[i - 1].xKey, type: streakType })
         }
         streak = currentType ? 1 : 0
         streakType = currentType
-        streakStart = cvdChart[i].date
+        streakStart = cvdChart[i].xKey
       }
     }
     // 마지막 구간 처리
     if (streak >= 3 && streakType) {
-      divergenceZones.push({ start: streakStart, end: cvdChart[cvdChart.length - 1].date, type: streakType })
+      divergenceZones.push({ start: streakStart, end: cvdChart[cvdChart.length - 1].xKey, type: streakType })
     }
+  }
+
+  const formatCvdAxisLabel = (value: unknown) => {
+    const index = Number.parseInt(String(value).split(':', 1)[0], 10)
+    return Number.isNaN(index) ? String(value) : (cvdChart[index]?.dateLabel ?? String(value))
   }
 
   return (
@@ -263,12 +254,13 @@ export function Alt() {
               </div>
               <ResponsiveContainer width="100%" height={200}>
                 <ComposedChart data={cvdChart}>
-                  <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 9 }} interval="preserveStartEnd" />
+                  <XAxis dataKey="xKey" tick={{ fill: '#64748b', fontSize: 9 }} interval="preserveStartEnd" tickFormatter={formatCvdAxisLabel} />
                   <YAxis yAxisId="cvd" orientation="left" tick={{ fill: '#60a5fa', fontSize: 10 }} width={45} />
                   <YAxis yAxisId="price" orientation="right" domain={['auto', 'auto']} tick={{ fill: '#f59e0b', fontSize: 10 }} width={50} />
                   <Tooltip
                     contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
                     labelStyle={{ color: '#94a3b8' }}
+                    labelFormatter={formatCvdAxisLabel}
                   />
                   <Legend wrapperStyle={{ fontSize: '0.75rem', color: '#94a3b8' }} />
                   {divergenceZones.map((zone, idx) => (
@@ -291,11 +283,12 @@ export function Alt() {
               </div>
               <ResponsiveContainer width="100%" height={80}>
                 <ComposedChart data={cvdChart}>
-                  <XAxis dataKey="date" tick={false} axisLine={false} />
+                  <XAxis dataKey="xKey" tick={false} axisLine={false} />
                   <YAxis tick={{ fill: '#64748b', fontSize: 9 }} width={45} />
                   <Tooltip
                     contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
                     labelStyle={{ color: '#94a3b8' }}
+                    labelFormatter={formatCvdAxisLabel}
                   />
                   <Bar dataKey="delta" name="CVD Delta">
                     {cvdChart.map((entry, idx) => (
