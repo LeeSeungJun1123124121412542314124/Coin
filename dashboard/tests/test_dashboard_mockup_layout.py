@@ -81,3 +81,23 @@ def test_mobile_coin_and_stock_cards_scroll_horizontally_at_desktop_card_width()
     assert "grid-auto-columns: 170px" in mobile_card_grid
     assert "overflow-x: auto" in mobile_card_grid
     assert "grid-template-columns: repeat(3, minmax(0, 1fr))" not in mobile_card_grid
+
+
+def test_mobile_index_card_value_row_wraps_without_clipping_change_percent():
+    source = INDEX_CSS.read_text(encoding="utf-8")
+
+    assert ".dashboard-index-value-row" in source
+    row_start = source.index(".dashboard-index-value-row {")
+    row_block = source[row_start:source.index("}", row_start)]
+    assert "flex-wrap: wrap" in row_block
+    assert "min-width: 0" in row_block
+
+    value_start = source.index(".dashboard-main-value {")
+    value_block = source[value_start:source.index("}", value_start)]
+    assert "overflow-wrap: anywhere" in value_block
+
+
+def test_stock_index_card_does_not_render_touch_sticky_sparkline_tooltip():
+    source = Path("dashboard/frontend/src/components/shared/StockIndexCard.tsx").read_text(encoding="utf-8")
+
+    assert "<Tooltip" not in source

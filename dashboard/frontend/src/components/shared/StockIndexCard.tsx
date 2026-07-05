@@ -1,4 +1,4 @@
-import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, ReferenceLine, Tooltip } from 'recharts'
+import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, ReferenceLine } from 'recharts'
 import { useId } from 'react'
 import { Card } from './Card'
 
@@ -30,12 +30,12 @@ export function StockIndexCard({ name, ticker, price, change_pct, sparkline, hig
       </div>
 
       {/* 현재가 + 변동률 */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+      <div className="dashboard-index-value-row">
         <span className="dashboard-main-value">
           {price != null ? price.toLocaleString() : '—'}
         </span>
         {change_pct != null && (
-          <span style={{ fontSize: '0.85rem', color, fontWeight: 600 }}>
+          <span className="dashboard-index-change" style={{ color }}>
             {isPositive ? '+' : ''}{change_pct.toFixed(2)}%
           </span>
         )}
@@ -73,11 +73,6 @@ export function StockIndexCard({ name, ticker, price, change_pct, sparkline, hig
               <XAxis dataKey="i" hide />
               <YAxis hide domain={['auto', 'auto']} />
               <ReferenceLine y={price} stroke={color} strokeDasharray="4 3" strokeOpacity={0.4} strokeWidth={1} />
-              <Tooltip
-                contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 6, fontSize: '0.7rem' }}
-                formatter={(v) => [Number(v).toLocaleString(), name]}
-                labelFormatter={() => ''}
-              />
               <Area type="monotone" dataKey="v" stroke={color} strokeWidth={2} fill={`url(#${gradId})`} dot={false} />
             </AreaChart>
           </ResponsiveContainer>

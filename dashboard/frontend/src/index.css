@@ -146,9 +146,26 @@ body {
 }
 
 .dashboard-main-value {
+  min-width: 0;
   color: #f8fafc;
   font-size: 1.9rem;
   font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-index-value-row {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+
+.dashboard-index-change {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
   line-height: 1.15;
 }
 
