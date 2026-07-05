@@ -48,11 +48,18 @@ def parse_putcall_html(html: str) -> dict | None:
 
 
 async def fetch_putcall() -> dict | None:
-    """공식 CBOE 일별 통계 페이지에서 최신 Put/Call 비율을 조회한다."""
+    """공식 CBOE 일별 통계 페이지에서 최신 Put/Call 비율을 조회한다.
+
+    404만 휴장(데이터 없음)으로 보고 None을 반환한다. 200인데 파싱이 실패하면
+    페이지 구조 변경 의심이므로 예외를 던져 job의 재시도·경보 경로를 태운다.
+    """
     async with httpx.AsyncClient(timeout=15, headers={"User-Agent": "Mozilla/5.0"}) as client:
         resp = await client.get(_DAILY_STATS_URL)
         if resp.status_code == 404:
             logger.info("CBOE Put/Call 데이터 없음: 404")
             return None
         resp.raise_for_status()
-    return parse_putcall_html(resp.text)
+    record = parse_putcall_html(resp.text)
+    if record is None:
+        raise ValueError("CBOE Put/Call 파싱 실패 — 페이지 구조 변경 의심")
+    return record

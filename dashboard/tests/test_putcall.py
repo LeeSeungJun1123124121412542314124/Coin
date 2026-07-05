@@ -70,6 +70,50 @@ def test_parse_cboe_daily_statistics_html_returns_none_without_ratios() -> None:
     assert parse_putcall_html("<html><body>No data</body></html>") is None
 
 
+class _FakeResponse:
+    def __init__(self, status_code: int, text: str = "") -> None:
+        self.status_code = status_code
+        self.text = text
+
+    def raise_for_status(self) -> None:
+        return None
+
+
+class _FakeClient:
+    def __init__(self, response: _FakeResponse) -> None:
+        self._response = response
+
+    async def __aenter__(self) -> "_FakeClient":
+        return self
+
+    async def __aexit__(self, *args) -> bool:
+        return False
+
+    async def get(self, url: str) -> _FakeResponse:
+        return self._response
+
+
+@pytest.mark.asyncio
+async def test_fetch_putcall_raises_when_page_is_unparseable(monkeypatch) -> None:
+    from dashboard.backend.collectors import cboe
+
+    response = _FakeResponse(200, "<html><body>redesigned page</body></html>")
+    monkeypatch.setattr(cboe.httpx, "AsyncClient", lambda **kwargs: _FakeClient(response))
+
+    with pytest.raises(ValueError):
+        await cboe.fetch_putcall()
+
+
+@pytest.mark.asyncio
+async def test_fetch_putcall_returns_none_on_404(monkeypatch) -> None:
+    from dashboard.backend.collectors import cboe
+
+    response = _FakeResponse(404)
+    monkeypatch.setattr(cboe.httpx, "AsyncClient", lambda **kwargs: _FakeClient(response))
+
+    assert await cboe.fetch_putcall() is None
+
+
 @pytest.mark.asyncio
 async def test_collect_putcall_upserts_latest_row(monkeypatch) -> None:
     from dashboard.backend.jobs import collect_putcall
