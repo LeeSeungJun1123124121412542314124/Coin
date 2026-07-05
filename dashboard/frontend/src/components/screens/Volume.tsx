@@ -11,6 +11,7 @@ import LastUpdated from '../shared/LastUpdated'
 import { AssetTabs } from '../shared/AssetTabs'
 import { readAssetTab, replaceAssetTab, type AssetTab } from '../shared/assetTabUtils'
 import { GaugeChart } from '../shared/GaugeChart'
+import { describePutcall, toPutcallChartRows, type PutcallRecord, type PutcallSeries } from './volumePutcall'
 
 interface VolumeData {
   current: {
@@ -61,6 +62,11 @@ interface KrMarketVolumeData {
     kospi_value: number | null
     kosdaq_value: number | null
   }>
+}
+
+interface PutcallData {
+  stale: boolean
+  records: PutcallRecord[]
 }
 
 function VolumeRatio({ upbit, bithumb }: { upbit: number | null; bithumb: number | null }) {
@@ -122,6 +128,83 @@ function StockFearGreedView({ data }: { data: StockFearGreedData }) {
   )
 }
 
+function PutcallView({ data }: { data: PutcallData }) {
+  const [series, setSeries] = useState<PutcallSeries>('equity')
+  const latest = data.records.at(-1)
+  const equity = latest?.equity_pc ?? null
+  const signal = describePutcall(equity)
+  const chartData = toPutcallChartRows(data.records)
+  const seriesLabel: Record<PutcallSeries, string> = {
+    equity: 'Equity',
+    total: 'Total',
+    index: 'Index',
+  }
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 14 }}>
+        <div>
+          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 4 }}>CBOE Put/Call</div>
+          <div style={{ color: '#64748b', fontSize: '0.72rem' }}>
+            {latest?.date ?? '데이터 없음'}
+            {data.stale && <span style={{ color: '#f59e0b', marginLeft: 8 }}>갱신 확인 필요</span>}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ color: signal.color, fontSize: '1.35rem', fontWeight: 800 }}>
+            {equity != null ? equity.toFixed(2) : '-'}
+          </div>
+          <div style={{ color: signal.color, fontSize: '0.75rem', fontWeight: 700 }}>
+            {signal.label} · {signal.help}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+        {(['equity', 'total', 'index'] as PutcallSeries[]).map(item => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => setSeries(item)}
+            style={{
+              border: '1px solid #334155',
+              background: series === item ? '#334155' : '#0f172a',
+              color: series === item ? '#e2e8f0' : '#94a3b8',
+              borderRadius: 6,
+              padding: '6px 10px',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+            }}
+          >
+            {seriesLabel[item]}
+          </button>
+        ))}
+      </div>
+
+      {chartData.length > 0 ? (
+        <ResponsiveContainer width="100%" height={190}>
+          <LineChart data={chartData}>
+            <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 9 }} interval="preserveStartEnd" />
+            <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} width={34} domain={['auto', 'auto']} />
+            <Tooltip
+              contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
+              labelStyle={{ color: '#94a3b8' }}
+              formatter={(v) => [typeof v === 'number' ? v.toFixed(2) : v, seriesLabel[series]]}
+            />
+            <ReferenceLine y={0.7} stroke="#f87171" strokeDasharray="3 3" />
+            <ReferenceLine y={1.0} stroke="#4ade80" strokeDasharray="3 3" />
+            <Line type="monotone" dataKey={series} stroke="#38bdf8" dot={false} strokeWidth={2} name={seriesLabel[series]} />
+          </LineChart>
+        </ResponsiveContainer>
+      ) : (
+        <div style={{ color: '#64748b', textAlign: 'center', padding: '48px 0', fontSize: '0.85rem' }}>
+          데이터가 없습니다
+        </div>
+      )}
+    </Card>
+  )
+}
+
 function KrMarketVolumeView({ data }: { data: KrMarketVolumeData }) {
   const chartData = data.records
     .filter(record => record.kospi_value != null && record.kosdaq_value != null)
@@ -171,6 +254,7 @@ export function Volume() {
   const { data: weeklyRsi } = useApi<RsiData>(asset === 'coin' ? '/api/btc-weekly-rsi' : null, 3_600_000)
   const { data: fgHistory } = useApi<FearGreedHistory>(asset === 'coin' ? '/api/fear-greed-history' : null, 3_600_000)
   const stockFearGreedApi = useApi<StockFearGreedData>(asset === 'us' ? '/api/volume/stock-fear-greed' : null, 300_000)
+  const putcallApi = useApi<PutcallData>(asset === 'us' ? '/api/volume/putcall?days=90' : null, 300_000)
   const krMarketVolumeApi = useApi<KrMarketVolumeData>(asset === 'kr' ? '/api/volume/kr-market-volume?days=30' : null, 300_000)
 
   function handleAssetChange(next: AssetTab) {
@@ -181,15 +265,16 @@ export function Volume() {
   const tabs = <AssetTabs asset={asset} allowedTabs={['coin', 'kr', 'us']} onChange={handleAssetChange} />
 
   if (asset === 'us') {
-    if (stockFearGreedApi.error && !stockFearGreedApi.data) {
+    const usError = stockFearGreedApi.error || putcallApi.error
+    if (usError && (!stockFearGreedApi.data || !putcallApi.data)) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {tabs}
-          <ErrorState error={stockFearGreedApi.error} onRetry={stockFearGreedApi.refetch} />
+          <ErrorState error={usError} onRetry={() => { stockFearGreedApi.refetch(); putcallApi.refetch() }} />
         </div>
       )
     }
-    if (stockFearGreedApi.loading || !stockFearGreedApi.data) {
+    if (stockFearGreedApi.loading || putcallApi.loading || !stockFearGreedApi.data || !putcallApi.data) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {tabs}
@@ -202,6 +287,7 @@ export function Volume() {
         {tabs}
         <LastUpdated timestamp={stockFearGreedApi.lastUpdated} />
         <StockFearGreedView data={stockFearGreedApi.data} />
+        <PutcallView data={putcallApi.data} />
       </div>
     )
   }

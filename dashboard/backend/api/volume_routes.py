@@ -56,6 +56,13 @@ def _is_kr_market_volume_stale(latest_date: str | None) -> bool:
     return (_kst_today() - parsed).days > 4
 
 
+def _is_putcall_stale(updated_at: str | None) -> bool:
+    parsed = _parse_utc_datetime(updated_at)
+    if parsed is None:
+        return True
+    return (_utc_now() - parsed).total_seconds() > 172800
+
+
 def _get_volume_history(days: int = 60) -> list[dict]:
     """volume_daily 테이블에서 최근 N일 데이터 조회."""
     with get_db() as conn:
@@ -121,6 +128,34 @@ async def get_kr_market_volume(days: int = Query(30, ge=1, le=30)):
     latest_date = records[-1]["date"] if records else None
     return JSONResponse({
         "stale": _is_kr_market_volume_stale(latest_date),
+        "records": records,
+    })
+
+
+@router.get("/volume/putcall")
+async def get_putcall(days: int = Query(90, ge=1, le=90)):
+    """CBOE Put/Call 비율 일별 DB 데이터를 제공한다."""
+    with get_db() as conn:
+        rows = conn.execute(
+            """SELECT date, total_pc, equity_pc, index_pc, updated_at
+               FROM cboe_putcall
+               ORDER BY date DESC
+               LIMIT ?""",
+            (days,),
+        ).fetchall()
+
+    records = [
+        {
+            "date": row["date"],
+            "total_pc": row["total_pc"],
+            "equity_pc": row["equity_pc"],
+            "index_pc": row["index_pc"],
+        }
+        for row in reversed(rows)
+    ]
+    latest_updated_at = rows[0]["updated_at"] if rows else None
+    return JSONResponse({
+        "stale": _is_putcall_stale(latest_updated_at),
         "records": records,
     })
 

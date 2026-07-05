@@ -281,6 +281,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     from dashboard.backend.jobs.collect_kimchi import collect_kimchi
     from dashboard.backend.jobs.collect_kr_stock import collect_kr_investor_flow
     from dashboard.backend.jobs.collect_stock_fear_greed import collect_stock_fear_greed
+    from dashboard.backend.jobs.collect_putcall import collect_putcall
     from dashboard.backend.jobs.update_predictions import update_predictions
     from dashboard.backend.jobs.settle_predictions import settle_expired_predictions
     from dashboard.backend.jobs.paper_rebalance import run_paper_rebalance
@@ -319,6 +320,13 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
         collect_stock_fear_greed,
         IntervalTrigger(hours=1),
         id="collect_stock_fear_greed",
+    )
+
+    # CBOE Put/Call 비율 수집: 평일 22:30 UTC
+    scheduler.add_job(
+        collect_putcall,
+        CronTrigger(day_of_week="mon-fri", hour=22, minute=30, timezone="UTC"),
+        id="collect_putcall",
     )
 
     # 코인 1시간봉 수집 — 매 시간 1분 (1시간 봉 마감 후)
