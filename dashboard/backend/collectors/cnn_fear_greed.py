@@ -10,7 +10,11 @@ import httpx
 
 CNN_FEAR_GREED_URL = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
 _HEADERS = {
-    "User-Agent": "Mozilla/5.0",
+    # CNN은 축약형 UA('Mozilla/5.0')를 봇으로 판정해 418을 반환하므로 완전한 브라우저 UA 필수
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+    ),
     "Accept": "application/json,text/plain,*/*",
     "Referer": "https://www.cnn.com/markets/fear-and-greed",
 }

@@ -80,6 +80,15 @@ def test_parse_cnn_fear_greed_history_fixture_falls_back_to_latest_point() -> No
     }
 
 
+def test_cnn_fear_greed_headers_use_full_browser_user_agent() -> None:
+    """CNN은 축약 UA('Mozilla/5.0')를 418로 차단 — 완전한 브라우저 UA 회귀 방지."""
+    from dashboard.backend.collectors.cnn_fear_greed import _HEADERS
+
+    ua = _HEADERS["User-Agent"]
+    assert ua != "Mozilla/5.0"
+    assert "AppleWebKit" in ua and "Chrome" in ua
+
+
 def test_parse_naver_market_volume_html_converts_million_krw_to_trillion_krw() -> None:
     from dashboard.backend.collectors.naver_finance import parse_market_volume_html
 
