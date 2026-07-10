@@ -1,0 +1,47 @@
+{
+  "generated_for": "SPF 0단계 — 동등가중 베이스라인 (3단계 재가중 비교 기준)",
+  "span": "2017-12-02 ~ 2026-07-10",
+  "rows": 3143,
+  "horizons": {
+    "7": {
+      "n_long": 1064,
+      "n_short": 1039,
+      "n_neutral": 770,
+      "hit_long": 58.7,
+      "hit_short": 54.2,
+      "hit_directional": 56.5,
+      "baseline_up_rate": 52.9,
+      "ic": 0.136
+    },
+    "14": {
+      "n_long": 1064,
+      "n_short": 1034,
+      "n_neutral": 768,
+      "hit_long": 61.3,
+      "hit_short": 55.9,
+      "hit_directional": 58.6,
+      "baseline_up_rate": 54.0,
+      "ic": 0.194
+    },
+    "30": {
+      "n_long": 1064,
+      "n_short": 1018,
+      "n_neutral": 768,
+      "hit_long": 65.7,
+      "hit_short": 56.9,
+      "hit_directional": 61.4,
+      "baseline_up_rate": 54.5,
+      "ic": 0.266
+    },
+    "60": {
+      "n_long": 1064,
+      "n_short": 998,
+      "n_neutral": 758,
+      "hit_long": 65.4,
+      "hit_short": 63.4,
+      "hit_directional": 64.5,
+      "baseline_up_rate": 54.4,
+      "ic": 0.306
+    }
+  }
+}
