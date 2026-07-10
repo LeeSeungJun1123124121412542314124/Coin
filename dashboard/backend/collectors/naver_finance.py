@@ -43,6 +43,8 @@ _MARKET_SUFFIX: dict[str, str] = {
 # 네이버 자동완성 API — 응답은 UTF-8 JSON
 _NAVER_AC_URL = "https://ac.stock.naver.com/ac"
 _NAVER_INVESTOR_URL = "https://finance.naver.com/sise/investorDealTrendDay.nhn"
+# 종목별 투자자 매매동향 — 모바일 JSON API (순매매량 기준, 주 단위)
+_NAVER_STOCK_TREND_URL = "https://m.stock.naver.com/api/stock/{code}/trend"
 _NAVER_MARKET_VOLUME_URL = "https://finance.naver.com/sise/sise_index_day.naver"
 _INVESTOR_MARKET_SOSOK: dict[str, str] = {
     "KOSPI": "",
@@ -166,6 +168,34 @@ async def fetch_investor_deal_trend(market: str, days: int = 30) -> list[dict]:
                     return records
 
     return records[:target_days]
+
+
+def parse_stock_trend_json(items: list) -> list[dict]:
+    """네이버 모바일 trend JSON → 일별 순매수 금액(억원, 순매매량×종가 환산) 레코드."""
+    records: list[dict] = []
+    for item in items:
+        try:
+            close = _parse_investor_number(item["closePrice"])
+            records.append({
+                "date": _parse_date(item["bizdate"]),
+                "foreign_net": round(_parse_investor_number(item["foreignerPureBuyQuant"]) * close / 1e8, 1),
+                "institution_net": round(_parse_investor_number(item["organPureBuyQuant"]) * close / 1e8, 1),
+            })
+        except (KeyError, ValueError, TypeError):
+            continue
+    return records
+
+
+async def fetch_stock_investor_trend(code: str, days: int = 30) -> list[dict]:
+    """네이버 모바일 API에서 종목별 투자자 순매수 금액(억원)을 조회한다 (최대 30영업일)."""
+    target_days = min(max(1, days), 30)
+    async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+        resp = await client.get(
+            _NAVER_STOCK_TREND_URL.format(code=code),
+            params={"pageSize": target_days, "page": 1},
+        )
+        resp.raise_for_status()
+        return parse_stock_trend_json(resp.json())
 
 
 async def fetch_market_volume(market: str, days: int = 30) -> list[dict]:

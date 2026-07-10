@@ -243,9 +243,13 @@ async def test_collect_kr_investor_flow_upserts_both_markets_and_market_volume(m
             "value": 12.3 if market == "KOSPI" else 5.2,
         }]
 
+    async def fake_fetch_stock_investor_trend(code: str, days: int = 30):
+        return [{"date": "2026-07-03", "foreign_net": 100.0, "institution_net": 50.0}]
+
     monkeypatch.setattr(collect_kr_stock, "get_db", fake_get_db)
     monkeypatch.setattr(collect_kr_stock, "fetch_investor_deal_trend", fake_fetch_investor_deal_trend)
     monkeypatch.setattr(collect_kr_stock, "fetch_market_volume", fake_fetch_market_volume, raising=False)
+    monkeypatch.setattr(collect_kr_stock, "fetch_stock_investor_trend", fake_fetch_stock_investor_trend)
 
     await collect_kr_stock.collect_kr_investor_flow()
 

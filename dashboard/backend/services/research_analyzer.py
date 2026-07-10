@@ -26,6 +26,17 @@ _SEMI_STALE_DAYS = 21
 STOCK_SENTIMENT_WEIGHTS = (0.5, 0.5)
 PUTCALL_BAND = (1.0, 0.5)
 
+# 외국인 4주 누적 순매수 임계값 (조원) — 운영하며 조정
+FOREIGN_FLOW_RED_KRW = -3.0     # 누적 ≤ -3조원 → red "경보"
+FOREIGN_FLOW_YELLOW_KRW = 0.0   # 누적 < 0원 → yellow "순매도 진행", ≥ 0원 → green "아직 아님"
+FLOW_STALE_CALENDAR_DAYS = 7    # 최신 행이 이보다 오래되면 수집 중단 의심 → 수동 폴백
+_FLOW_WINDOW_ROWS = 20          # 4주 = 20영업일
+# 자동 판정 대상 시그널 id ↔ 종목코드
+_FLOW_SIGNAL_TICKERS = {
+    "samsung_foreign_selling": "005930",
+    "hynix_foreign_selling": "000660",
+}
+
 # 반도체 사이클 정점 시그널 — 업황 공통 3 + 삼성 3 + 하이닉스 3. 수동 갱신 상수.
 SEMICONDUCTOR_SIGNALS = [
     {
@@ -796,14 +807,62 @@ async def _analyze_whale() -> dict:
 
 # ─── 반도체 정점 시그널 ────────────────────────────────────────────
 
+def _stock_flow_overlay(ticker: str, today: date | None = None) -> dict | None:
+    """최근 20영업일 누적 외국인 순매수(조원)로 시그널을 자동 판정.
+
+    행 부족·수집 정체 시 None을 반환해 수동 상수값 폴백 (경보 아님, warning 로그만).
+    """
+    from dashboard.backend.db import connection
+
+    with connection.get_db() as conn:
+        rows = conn.execute(
+            """SELECT date, foreign_net FROM kr_stock_investor_flow
+               WHERE ticker = ? ORDER BY date DESC LIMIT ?""",
+            (ticker, _FLOW_WINDOW_ROWS),
+        ).fetchall()
+    if len(rows) < _FLOW_WINDOW_ROWS:
+        logger.warning("종목 수급 오버레이 생략(%s): 행 %d개 < %d", ticker, len(rows), _FLOW_WINDOW_ROWS)
+        return None
+    if today is None:
+        today = datetime.now(timezone.utc).date()
+    latest = date.fromisoformat(rows[0]["date"])
+    if (today - latest).days > FLOW_STALE_CALENDAR_DAYS:
+        logger.warning("종목 수급 오버레이 생략(%s): 최신 행 %s → 수집 정체 의심", ticker, rows[0]["date"])
+        return None
+
+    cum = sum(row["foreign_net"] for row in rows) / 10_000  # 억원 → 조원
+    if cum <= FOREIGN_FLOW_RED_KRW:
+        status, label = "red", "경보"
+    elif cum < FOREIGN_FLOW_YELLOW_KRW:
+        status, label = "yellow", "순매도 진행"
+    else:
+        status, label = "green", "아직 아님"
+    direction = "순매수" if cum >= 0 else "순매도"
+    return {
+        "status": status,
+        "label": label,
+        "note": f"최근 4주 누적 {abs(cum):.1f}조원 {direction} (자동)",
+    }
+
+
 @cached(ttl=86400, key_prefix="research_semiconductor")
 async def _analyze_semiconductor_signals() -> dict:
     """삼성·SK하이닉스 반도체 정점 임박 시그널 9개(3섹션) 분석.
 
-    SEMICONDUCTOR_SIGNALS 상수 기반 정적 분석 (자동 수집 없음, 수동 갱신).
-    as_of가 오래되면 direction_watch가 갱신 알림을 발송한다.
+    SEMICONDUCTOR_SIGNALS 상수 기반 정적 분석 (수동 갱신).
+    외국인 순매도 시그널 2개는 DB 실측(kr_stock_investor_flow)으로 자동 덮어쓴다.
+    as_of가 오래되면 direction_watch가 갱신 알림을 발송한다 (수동 7개 기준).
     """
     sections = copy.deepcopy(SEMICONDUCTOR_SIGNALS)
+    # 자동화 대상 시그널은 DB 실측으로 오버레이 — 데이터 부족 시 수동값 유지
+    for sec in sections:
+        for sig in sec["signals"]:
+            ticker = _FLOW_SIGNAL_TICKERS.get(sig["id"])
+            if not ticker:
+                continue
+            overlay = _stock_flow_overlay(ticker)
+            if overlay:
+                sig.update(overlay)
     flat = [s for sec in sections for s in sec["signals"]]
     agg = _aggregate_signals(flat)
     peak_count = agg["peak_count"]

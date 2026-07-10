@@ -184,6 +184,15 @@ CREATE TABLE IF NOT EXISTS kr_market_volume (
     kosdaq_value REAL
 );
 
+-- 종목별 일별 투자자 순매수 금액 (억원, 순매매량×종가 환산) — 반도체 정점 시그널 자동 판정용
+CREATE TABLE IF NOT EXISTS kr_stock_investor_flow (
+    date            TEXT NOT NULL,   -- KST 거래일
+    ticker          TEXT NOT NULL,   -- 6자리 종목코드
+    foreign_net     REAL,            -- 외국인 순매수 (억원)
+    institution_net REAL,            -- 기관 순매수 (억원)
+    PRIMARY KEY (date, ticker)
+);
+
 -- 미국 주식 Fear & Greed 지수
 CREATE TABLE IF NOT EXISTS stock_fear_greed (
     date       TEXT NOT NULL PRIMARY KEY,
