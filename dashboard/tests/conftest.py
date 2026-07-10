@@ -12,6 +12,11 @@ os.environ.setdefault("PIN_CODE", "1234")
 os.environ.setdefault("APP_SECRET", "test-secret-key")
 os.environ.setdefault("ADMIN_KEY", "test-admin-key")
 
+# 텔레그램 자격 선점 차단 — main.py 임포트 시 load_dotenv(override=False)가
+# .env의 실제 토큰을 로드해, 잡 실패 경로 테스트가 진짜 알림을 발송하는 사고 방지
+os.environ["TELEGRAM_BOT_TOKEN"] = ""
+os.environ["TELEGRAM_CHAT_ID"] = ""
+
 # app.macro 임포트 경로 — 런타임 main.py가 crypto-volatility-bot을 sys.path에 넣는 것과 동일
 _BOT_DIR = str(Path(__file__).resolve().parents[2] / "crypto-volatility-bot")
 if _BOT_DIR not in sys.path:
