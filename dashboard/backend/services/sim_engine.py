@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+from dashboard.backend.collectors.bybit_derivatives import fetch_funding_rate
 from dashboard.backend.db.connection import get_db
 from dashboard.backend.utils.time_utils import iso_to_epoch_ms
 
@@ -91,17 +92,13 @@ def calc_funding_fee(quantity: float, entry_price: float, fr: float) -> float:
 # 3. 펀딩비 일괄 적용 (비동기)
 # ============================================================
 
-async def _fetch_funding_rate(symbol: str) -> float:
-    """현재 펀딩 레이트 조회 (플레이스홀더).
-
-    Task 4/5에서 실제 Bybit API 연동으로 교체 예정.
-    현재는 경고 로그 후 0.0 반환.
-    """
-    logger.warning(
-        "펀딩 레이트 조회 미구현 — symbol=%s, 0.0 반환 (Task 4/5에서 Bybit API 연동 예정)",
-        symbol,
-    )
-    return 0.0
+async def _fetch_funding_rate(symbol: str) -> float | None:
+    """최신 펀딩 레이트 조회 (Bybit). 실패 시 None — 호출측에서 해당 포지션 스킵."""
+    data = await fetch_funding_rate(symbol, limit=1)
+    if not data or data.get("funding_rate") is None:
+        logger.warning("펀딩 레이트 조회 실패 — symbol=%s, 이번 펀딩 스킵", symbol)
+        return None
+    return float(data["funding_rate"])
 
 
 async def apply_funding_fees(funding_time: str) -> None:
@@ -148,8 +145,10 @@ async def apply_funding_fees(funding_time: str) -> None:
         direction = row["direction"]
         asset_symbol = row["asset_symbol"]
         account_id = row["account_id"]
-        # 펀딩 레이트 조회 (플레이스홀더)
+        # 펀딩 레이트 조회 — 실패 시 가짜(0.0) 이벤트를 남기지 않고 스킵
         fr = await _fetch_funding_rate(asset_symbol)
+        if fr is None:
+            continue
 
         # 펀딩비 계산
         funding_amount = calc_funding_fee(quantity, entry_price, fr)
