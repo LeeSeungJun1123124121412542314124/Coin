@@ -7,7 +7,9 @@ import { ScoreBar } from '../shared/ScoreBar'
 import {
   RESEARCH_CATEGORIES,
   RESEARCH_CATEGORY_COLORS,
+  STOCK_SENTIMENT_INDEX_NOTES,
   getResearchCategoryColor,
+  toKrStockFlowDetailRows,
   toStockSentimentDetailRows,
 } from './researchView'
 
@@ -304,8 +306,30 @@ function _renderDetails(key: string, details: Record<string, unknown>) {
 
   if (key === 'stock_sentiment') {
     return (
+      <div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+          {toStockSentimentDetailRows(details).map(([label, value]) => (
+            <div key={label} style={{ fontSize: 12 }}>
+              <span style={{ color: '#64748b' }}>{label}: </span>
+              <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{value}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {STOCK_SENTIMENT_INDEX_NOTES.map(([name, note]) => (
+            <div key={name} style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5 }}>
+              <span style={{ color: '#94a3b8', fontWeight: 600 }}>{name}</span> — {note}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (key === 'kr_stock_flow') {
+    return (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-        {toStockSentimentDetailRows(details).map(([label, value]) => (
+        {toKrStockFlowDetailRows(details).map(([label, value]) => (
           <div key={label} style={{ fontSize: 12 }}>
             <span style={{ color: '#64748b' }}>{label}: </span>
             <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{value}</span>

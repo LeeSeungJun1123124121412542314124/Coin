@@ -26,6 +26,13 @@ _SEMI_STALE_DAYS = 21
 STOCK_SENTIMENT_WEIGHTS = (0.5, 0.5)
 PUTCALL_BAND = (1.0, 0.5)
 
+# 주식수급 카테고리 — 운영하며 조정
+KR_FLOW_BAND = (50_000.0, -50_000.0)   # 외국인+기관 20영업일 누적(억원): +5조 → 0점, -5조 → 100점 선형
+KR_VOLUME_BAND = (0.7, 1.5)            # 최근 5영업일/20영업일 거래대금 비율: 0.7 → 0점, 1.5 → 100점 선형
+KR_STOCK_FLOW_WEIGHTS = (0.7, 0.3)     # (수급, 거래대금)
+_KR_FLOW_WINDOW_ROWS = 20              # 판정 창 = 20영업일
+_KR_FLOW_RECENT_ROWS = 5               # 거래대금 최근 구간 = 5영업일
+
 # 외국인 4주 누적 순매수 임계값 (조원) — 운영하며 조정
 FOREIGN_FLOW_RED_KRW = -3.0     # 누적 ≤ -3조원 → red "경보"
 FOREIGN_FLOW_YELLOW_KRW = 0.0   # 누적 < 0원 → yellow "순매도 진행", ≥ 0원 → green "아직 아님"
@@ -121,6 +128,7 @@ async def analyze_all() -> dict:
         _analyze_whale(),
         _analyze_semiconductor_signals(),
         _analyze_stock_sentiment(),
+        _analyze_kr_stock_flow(),
         return_exceptions=True,
     )
 
@@ -129,6 +137,8 @@ async def analyze_all() -> dict:
     keys = ["macro", "onchain", "derivatives", "altcoin", "technical", "market", "whale", "semiconductor_signals"]
     names.append("주식심리")
     keys.append("stock_sentiment")
+    names.append("주식수급")
+    keys.append("kr_stock_flow")
 
     for i, result in enumerate(results):
         if isinstance(result, Exception):
@@ -241,6 +251,76 @@ async def _analyze_stock_sentiment() -> dict:
             "component_scores": {
                 "fear_greed": fg_score,
                 "putcall": pc_score,
+            },
+        },
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+async def _analyze_kr_stock_flow() -> dict:
+    """KOSPI 외국인·기관 수급과 시장 거래대금으로 주식수급 카테고리를 계산한다."""
+    from dashboard.backend.db import connection
+
+    with connection.get_db() as conn:
+        flow_rows = conn.execute(
+            """SELECT date, foreign_net, institution_net
+               FROM kr_investor_flow
+               WHERE market = 'KOSPI'
+               ORDER BY date DESC
+               LIMIT ?""",
+            (_KR_FLOW_WINDOW_ROWS,),
+        ).fetchall()
+        volume_rows = conn.execute(
+            """SELECT date, kospi_value, kosdaq_value
+               FROM kr_market_volume
+               ORDER BY date DESC
+               LIMIT ?""",
+            (_KR_FLOW_WINDOW_ROWS,),
+        ).fetchall()
+
+    sample = min(len(flow_rows), len(volume_rows))
+    if sample < _KR_FLOW_WINDOW_ROWS:
+        category = _error_category("kr_stock_flow", "주식수급")
+        category["title"] = "데이터 적재 중"
+        category["summary"] = f"데이터 적재 중 ({sample}/{_KR_FLOW_WINDOW_ROWS}영업일) — 표본이 차면 자동 판정됩니다."
+        return category
+
+    foreign_total = sum(row["foreign_net"] or 0.0 for row in flow_rows)
+    institution_total = sum(row["institution_net"] or 0.0 for row in flow_rows)
+    flow_total = foreign_total + institution_total
+
+    flow_high, flow_low = KR_FLOW_BAND
+    flow_score = _clamp_float((flow_high - flow_total) / (flow_high - flow_low) * 100)
+
+    daily_volumes = [(row["kospi_value"] or 0.0) + (row["kosdaq_value"] or 0.0) for row in volume_rows]
+    window_avg = sum(daily_volumes) / len(daily_volumes)
+    if window_avg <= 0:
+        return _error_category("kr_stock_flow", "주식수급")
+    recent_avg = sum(daily_volumes[:_KR_FLOW_RECENT_ROWS]) / _KR_FLOW_RECENT_ROWS
+    volume_ratio = recent_avg / window_avg
+    volume_low, volume_high = KR_VOLUME_BAND
+    volume_score = _clamp_float((volume_ratio - volume_low) / (volume_high - volume_low) * 100)
+
+    flow_weight, volume_weight = KR_STOCK_FLOW_WEIGHTS
+    score = _clamp_score(flow_score * flow_weight + volume_score * volume_weight)
+
+    return {
+        "key": "kr_stock_flow",
+        "name": "주식수급",
+        "level": _score_to_level(score),
+        "score": score,
+        "title": f"주식수급 {score}/100",
+        "summary": f"외국인+기관 20일 {flow_total / 10_000:+.1f}조 | 거래대금 {volume_ratio:.2f}x",
+        "details": {
+            "foreign_20d": foreign_total,
+            "institution_20d": institution_total,
+            "flow_total_20d": flow_total,
+            "volume_ratio": round(volume_ratio, 2),
+            "window_start": flow_rows[-1]["date"],
+            "window_end": flow_rows[0]["date"],
+            "component_scores": {
+                "flow": flow_score,
+                "volume": volume_score,
             },
         },
         "updated_at": datetime.now(timezone.utc).isoformat(),
