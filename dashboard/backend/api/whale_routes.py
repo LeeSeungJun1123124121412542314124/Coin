@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Query
@@ -148,6 +148,64 @@ async def get_whale_consensus(top_n: int = Query(10, ge=5, le=20)):
         "consensus": consensus,
         "long_pct": round(long_count / total * 100, 1) if total else 0,
         "short_pct": round(short_count / total * 100, 1) if total else 0,
+    })
+
+
+_US_INSIDER_WINDOW_DAYS = 90   # 표시 창 — 수집 job의 _LOOKBACK_DAYS와 동일
+_US_INSIDER_TRADES_LIMIT = 50
+
+
+@router.get("/whale/us-insider-trades")
+async def get_us_insider_trades():
+    """미국 관심종목 슬롯의 내부자 매매(Form 4) — 종목별 90일 합산 + 최근 거래 목록."""
+    since = (date.today() - timedelta(days=_US_INSIDER_WINDOW_DAYS)).isoformat()
+
+    with get_db() as conn:
+        slots = conn.execute(
+            "SELECT ticker, name FROM stock_slots WHERE market='us' ORDER BY position"
+        ).fetchall()
+        tickers = [slot["ticker"].upper() for slot in slots]
+        placeholders = ",".join("?" for _ in tickers) or "''"
+
+        summary_rows = conn.execute(
+            f"""SELECT ticker,
+                       SUM(CASE WHEN code='P' THEN value ELSE 0 END) AS buy_value,
+                       SUM(CASE WHEN code='S' THEN value ELSE 0 END) AS sell_value,
+                       COUNT(*) AS trade_count
+                FROM us_insider_trades
+                WHERE transaction_date >= ? AND ticker IN ({placeholders})
+                GROUP BY ticker""",
+            (since, *tickers),
+        ).fetchall()
+        trade_rows = conn.execute(
+            f"""SELECT ticker, transaction_date, filed_at, insider_name, insider_title,
+                       code, shares, price, value
+                FROM us_insider_trades
+                WHERE transaction_date >= ? AND ticker IN ({placeholders})
+                ORDER BY transaction_date DESC, filed_at DESC
+                LIMIT ?""",
+            (since, *tickers, _US_INSIDER_TRADES_LIMIT),
+        ).fetchall()
+
+    by_ticker = {row["ticker"]: row for row in summary_rows}
+    summaries = []
+    for slot in slots:
+        ticker = slot["ticker"].upper()
+        row = by_ticker.get(ticker)
+        buy_value = (row["buy_value"] if row else 0.0) or 0.0
+        sell_value = (row["sell_value"] if row else 0.0) or 0.0
+        summaries.append({
+            "ticker": ticker,
+            "name": slot["name"],
+            "buy_value": buy_value,
+            "sell_value": sell_value,
+            "net_value": buy_value + sell_value,
+            "trade_count": row["trade_count"] if row else 0,
+        })
+
+    return JSONResponse({
+        "summaries": summaries,
+        "trades": [dict(row) for row in trade_rows],
     })
 
 

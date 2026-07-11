@@ -72,6 +72,32 @@ interface KrInvestorFlowData {
 
 type KrMarket = 'KOSPI' | 'KOSDAQ'
 
+interface UsInsiderSummary {
+  ticker: string
+  name: string
+  buy_value: number
+  sell_value: number
+  net_value: number
+  trade_count: number
+}
+
+interface UsInsiderTrade {
+  ticker: string
+  transaction_date: string
+  filed_at: string
+  insider_name: string
+  insider_title: string | null
+  code: 'P' | 'S'
+  shares: number | null
+  price: number | null
+  value: number | null
+}
+
+interface UsInsiderData {
+  summaries: UsInsiderSummary[]
+  trades: UsInsiderTrade[]
+}
+
 function BtcBadge({ pos }: { pos: Position | null }) {
   if (!pos) return <span style={{ color: '#64748b', fontSize: '0.75rem' }}>—</span>
   const color = pos.side === 'long' ? '#4ade80' : '#f87171'
@@ -245,6 +271,96 @@ function KrInvestorFlowView({
   )
 }
 
+function UsInsiderView({ data }: { data: UsInsiderData }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ color: '#94a3b8', fontSize: '0.78rem' }}>
+        SEC EDGAR Form 4 · 관심종목 내부자 장내 매매 · 최근 90일
+      </div>
+
+      <div className="grid-4" style={{ gap: 10 }}>
+        {data.summaries.map(s => (
+          <div key={s.ticker} style={{ background: '#0f1117', border: '1px solid #1e293b', borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ color: '#64748b', fontSize: '0.72rem', marginBottom: 4 }}>
+              {s.name} <span style={{ color: '#475569' }}>({s.trade_count}건)</span>
+            </div>
+            <div style={{ color: s.net_value >= 0 ? '#4ade80' : '#f87171', fontSize: '1rem', fontWeight: 700 }}>
+              {s.net_value >= 0 ? '+' : ''}{fmt(s.net_value)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Card>
+        <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>
+          내부자 거래 내역 (거래일 역순)
+        </div>
+        {data.trades.length > 0 ? (
+          <div className="table-scroll">
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '80px 70px 1fr 70px 90px 90px',
+              gap: 8, padding: '4px 8px',
+              color: '#64748b', fontSize: '0.7rem', marginBottom: 6,
+              borderBottom: '1px solid #1e293b',
+              minWidth: 560,
+            }}>
+              <span>거래일</span>
+              <span>종목</span>
+              <span>내부자 (직함)</span>
+              <span style={{ textAlign: 'center' }}>구분</span>
+              <span style={{ textAlign: 'right' }}>수량</span>
+              <span style={{ textAlign: 'right' }}>금액</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 560 }}>
+              {data.trades.map((t, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '80px 70px 1fr 70px 90px 90px',
+                    gap: 8, padding: '8px 8px', borderRadius: 8,
+                    background: '#0f1117', alignItems: 'center',
+                    fontSize: '0.78rem',
+                  }}
+                >
+                  <span style={{ color: '#94a3b8' }}>{t.transaction_date.slice(5)}</span>
+                  <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{t.ticker}</span>
+                  <div>
+                    <div style={{ color: '#e2e8f0' }}>{t.insider_name}</div>
+                    {t.insider_title && (
+                      <div style={{ color: '#64748b', fontSize: '0.7rem' }}>{t.insider_title}</div>
+                    )}
+                  </div>
+                  <span style={{
+                    textAlign: 'center', fontWeight: 600,
+                    color: t.code === 'P' ? '#4ade80' : '#f87171',
+                  }}>
+                    {t.code === 'P' ? '매수' : '매도'}
+                  </span>
+                  <span style={{ color: '#cbd5e1', textAlign: 'right' }}>
+                    {t.shares != null ? t.shares.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—'}
+                  </span>
+                  <span style={{
+                    textAlign: 'right', fontWeight: 600,
+                    color: (t.value ?? 0) >= 0 ? '#4ade80' : '#f87171',
+                  }}>
+                    {fmt(t.value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div style={{ color: '#64748b', textAlign: 'center', padding: '40px 0', fontSize: '0.85rem' }}>
+            내부자 거래 없음 (최근 90일)
+          </div>
+        )}
+      </Card>
+    </div>
+  )
+}
+
 function CoinWhaleView({
   data,
   consensus,
@@ -351,7 +467,7 @@ function CoinWhaleView({
 }
 
 export function Whale() {
-  const [asset, setAsset] = useState<AssetTab>(() => readAssetTab(['coin', 'kr']))
+  const [asset, setAsset] = useState<AssetTab>(() => readAssetTab(['coin', 'kr', 'us']))
   const [krMarket, setKrMarket] = useState<KrMarket>('KOSPI')
   const coinApi = useApi<WhaleData>(asset === 'coin' ? '/api/hyperliquid-whales' : null, 120_000)
   const consensusApi = useApi<Consensus>(asset === 'coin' ? '/api/whale-consensus' : null, 120_000)
@@ -359,13 +475,41 @@ export function Whale() {
     asset === 'kr' ? `/api/whale/kr-investor-flow?market=${krMarket}&days=30` : null,
     300_000,
   )
+  const usApi = useApi<UsInsiderData>(asset === 'us' ? '/api/whale/us-insider-trades' : null, 300_000)
 
   function handleAssetChange(next: AssetTab) {
     setAsset(next)
     replaceAssetTab(next)
   }
 
-  const tabs = <AssetTabs asset={asset} allowedTabs={['coin', 'kr']} onChange={handleAssetChange} />
+  const tabs = <AssetTabs asset={asset} allowedTabs={['coin', 'kr', 'us']} onChange={handleAssetChange} />
+
+  if (asset === 'us') {
+    if (usApi.error && !usApi.data) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {tabs}
+          <ErrorState error={usApi.error} onRetry={usApi.refetch} />
+        </div>
+      )
+    }
+    if (usApi.loading || !usApi.data) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {tabs}
+          <Skeleton />
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {tabs}
+        <LastUpdated timestamp={usApi.lastUpdated} />
+        <UsInsiderView data={usApi.data} />
+      </div>
+    )
+  }
 
   if (asset === 'kr') {
     if (krApi.error && !krApi.data) {

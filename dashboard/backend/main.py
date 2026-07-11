@@ -280,6 +280,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     from dashboard.backend.jobs.collect_whales import collect_whales
     from dashboard.backend.jobs.collect_kimchi import collect_kimchi
     from dashboard.backend.jobs.collect_kr_stock import collect_kr_investor_flow
+    from dashboard.backend.jobs.collect_us_insider import collect_us_insider_trades
     from dashboard.backend.jobs.collect_stock_fear_greed import collect_stock_fear_greed
     from dashboard.backend.jobs.collect_putcall import collect_putcall
     from dashboard.backend.jobs.index_shadow import judge_index_shadow, settle_index_shadow
@@ -315,6 +316,13 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
         collect_kr_investor_flow,
         CronTrigger(day_of_week="mon-fri", hour=8, minute=30, timezone="UTC"),
         id="collect_kr_investor_flow",
+    )
+
+    # 미국 관심종목 내부자 매매(Form 4) 수집: 평일 09:00 UTC (미국 공시일 마감 후)
+    scheduler.add_job(
+        collect_us_insider_trades,
+        CronTrigger(day_of_week="mon-fri", hour=9, minute=0, timezone="UTC"),
+        id="collect_us_insider_trades",
     )
 
     # 미국 주식 Fear & Greed 지수 수집: 1시간마다

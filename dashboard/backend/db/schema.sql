@@ -210,6 +210,22 @@ CREATE TABLE IF NOT EXISTS cboe_putcall (
     updated_at TEXT NOT NULL
 );
 
+-- 미국 관심종목 내부자 매매 (SEC EDGAR Form 4, 장내 P/S만)
+CREATE TABLE IF NOT EXISTS us_insider_trades (
+    accession_no     TEXT NOT NULL,   -- SEC 공시 접수번호
+    seq              INTEGER NOT NULL,-- 공시 내 거래 순번
+    ticker           TEXT NOT NULL,
+    filed_at         TEXT NOT NULL,   -- 공시 접수일
+    transaction_date TEXT NOT NULL,
+    insider_name     TEXT NOT NULL,
+    insider_title    TEXT,
+    code             TEXT NOT NULL CHECK(code IN ('P','S')),
+    shares           REAL,
+    price            REAL,
+    value            REAL,            -- shares × price (달러, 매도는 음수)
+    PRIMARY KEY (accession_no, seq)
+);
+
 -- 지수 방향 판정 그림자 기록
 CREATE TABLE IF NOT EXISTS index_shadow_judgments (
     date            TEXT NOT NULL,
