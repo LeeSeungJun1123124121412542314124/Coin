@@ -89,6 +89,42 @@ def _migrate_predictions_horizons(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_sim_funding_unique(conn: sqlite3.Connection) -> None:
+    """sim_funding_events 중복 정리 후 (position_id, funding_time) 유니크 인덱스 적용.
+
+    중복 행이 이미 반영한 capital/funding_fee_accrued는 되돌리지 않으므로,
+    삭제 전에 보정 근거를 로그로 남긴다.
+    """
+    dupes = conn.execute(
+        """
+        SELECT position_id, funding_time, COUNT(*) AS n, SUM(funding_amount) AS total
+        FROM sim_funding_events
+        GROUP BY position_id, funding_time
+        HAVING COUNT(*) > 1
+        """
+    ).fetchall()
+    for row in dupes:
+        _logger.warning(
+            "sim_funding_events 중복 정리: position_id=%s funding_time=%s %d건 합계=%s"
+            " (자본 미보정 — 수동 확인 필요)",
+            row["position_id"], row["funding_time"], row["n"], row["total"],
+        )
+    if dupes:
+        conn.execute(
+            """
+            DELETE FROM sim_funding_events
+            WHERE id NOT IN (
+                SELECT MIN(id) FROM sim_funding_events GROUP BY position_id, funding_time
+            )
+            """
+        )
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_sim_funding_position_time"
+        " ON sim_funding_events(position_id, funding_time)"
+    )
+    conn.commit()
+
+
 def _init_schema(conn: sqlite3.Connection) -> None:
     schema = _SCHEMA_PATH.read_text(encoding="utf-8")
     conn.executescript(schema)
@@ -100,6 +136,8 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     _migrate_alert_history_direction(conn)
     # predictions horizon별 판정 컬럼 마이그레이션
     _migrate_predictions_horizons(conn)
+    # sim_funding_events 중복 정리 + 유니크 인덱스 (기존 DB 마이그레이션)
+    _migrate_sim_funding_unique(conn)
     # 마이그레이션 후 position 6 기본값 삽입 (schema.sql의 INSERT OR IGNORE는 구 제약 때문에 실패)
     conn.execute(
         "INSERT OR IGNORE INTO dashboard_coin_slots (position, coin_id, symbol, tv_symbol) VALUES (?,?,?,?)",

@@ -321,15 +321,6 @@ CREATE TABLE IF NOT EXISTS sim_funding_events (
     funding_amount  REAL NOT NULL
 );
 
--- 과거 job 재시도로 쌓인 동일 (position_id, funding_time) 중복 정리 후 유니크 인덱스 적용
--- (인덱스를 먼저 만들면 기존 중복 행 때문에 기동 실패하므로 정리가 선행)
-DELETE FROM sim_funding_events
-WHERE id NOT IN (
-    SELECT MIN(id) FROM sim_funding_events GROUP BY position_id, funding_time
-);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_sim_funding_position_time
-    ON sim_funding_events(position_id, funding_time);
-
 -- 계좌 리셋 이력 (히스토리 영구 보존)
 CREATE TABLE IF NOT EXISTS sim_account_resets (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,

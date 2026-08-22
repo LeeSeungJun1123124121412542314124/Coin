@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from datetime import datetime, timezone
+import logging
 import sqlite3
 
 import pytest
@@ -179,7 +180,7 @@ async def test_apply_funding_fees_is_idempotent_on_retry(monkeypatch):
     assert acct["capital"] == pytest.approx(10_000.0 - 5.0)
 
 
-def test_sim_funding_unique_migration_dedupes_legacy_rows(tmp_path):
+def test_sim_funding_unique_migration_dedupes_legacy_rows(tmp_path, caplog):
     """기존 DB의 중복 펀딩 이벤트는 스키마 초기화 시 정리되고 유니크 인덱스가 적용된다."""
     legacy = sqlite3.connect(tmp_path / "legacy.db")
     legacy.row_factory = sqlite3.Row
@@ -203,7 +204,12 @@ def test_sim_funding_unique_migration_dedupes_legacy_rows(tmp_path):
          (9, "2026-07-11T00:00:00+00:00", 0.0001, 4.0)],
     )
 
-    _init_schema(legacy)
+    with caplog.at_level(logging.WARNING, logger="dashboard.backend.db.connection"):
+        _init_schema(legacy)
+
+    # 삭제 전에 증거가 남아야 한다 (이미 반영된 자본은 되돌리지 않으므로)
+    assert "position_id=7" in caplog.text
+    assert "2건 합계=20.0" in caplog.text
 
     rows = legacy.execute(
         "SELECT position_id, funding_time FROM sim_funding_events ORDER BY id"
@@ -218,6 +224,24 @@ def test_sim_funding_unique_migration_dedupes_legacy_rows(tmp_path):
         for r in legacy.execute("SELECT name FROM pragma_index_list('sim_funding_events')")
     }
     assert "idx_sim_funding_position_time" in indexes
+    legacy.close()
+
+
+def test_sim_funding_migration_is_silent_without_duplicates(tmp_path, caplog):
+    """중복이 없는 DB에서는 경고도, DELETE도 실행되지 않아야 한다."""
+    clean = sqlite3.connect(tmp_path / "clean.db")
+    clean.row_factory = sqlite3.Row
+
+    with caplog.at_level(logging.WARNING, logger="dashboard.backend.db.connection"):
+        _init_schema(clean)
+
+    assert "sim_funding_events 중복 정리" not in caplog.text
+    indexes = {
+        r["name"]
+        for r in clean.execute("SELECT name FROM pragma_index_list('sim_funding_events')")
+    }
+    assert "idx_sim_funding_position_time" in indexes
+    clean.close()
 
 
 @pytest.mark.asyncio
