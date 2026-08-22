@@ -163,15 +163,23 @@ async def apply_funding_fees(funding_time: str) -> None:
             capital_delta = funding_amount    # 숏은 FR>0일 때 수취
 
         with get_db() as conn:
-            # 펀딩 이벤트 기록
-            conn.execute(
+            # 펀딩 이벤트 기록 — (position_id, funding_time) 유니크 제약으로
+            # job 재시도 시 이미 처리된 펀딩은 INSERT가 무시됨
+            cur = conn.execute(
                 """
-                INSERT INTO sim_funding_events
+                INSERT OR IGNORE INTO sim_funding_events
                     (position_id, funding_time, fr_value, funding_amount)
                 VALUES (?, ?, ?, ?)
                 """,
                 (position_id, funding_time, fr, funding_amount),
             )
+            if cur.rowcount != 1:
+                # 중복 펀딩 — 차감/수취를 재적용하지 않고 스킵
+                logger.info(
+                    "apply_funding_fees: position_id=%d funding_time=%s 이미 처리됨 — 스킵",
+                    position_id, funding_time,
+                )
+                continue
 
             # 포지션 누적 펀딩비 업데이트
             # C-2: 롱은 FR>0일 때 비용 발생(음수), 숏은 수취(양수)

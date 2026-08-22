@@ -155,6 +155,71 @@ async def test_apply_funding_fees_skips_position_when_fr_unavailable(monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_apply_funding_fees_is_idempotent_on_retry(monkeypatch):
+    """동일 funding_time 재실행(job 재시도) 시 펀딩비가 이중 차감되지 않아야 한다."""
+    from dashboard.backend.services import sim_engine
+
+    conn = _memory_conn()
+    _seed_futures_position(conn, direction="long", quantity=0.5, entry_price=100_000.0)
+
+    async def fake_fr(symbol: str):
+        return 0.0001
+
+    monkeypatch.setattr(sim_engine, "_fetch_funding_rate", fake_fr)
+    monkeypatch.setattr(sim_engine, "get_db", lambda: _fake_db(conn))
+
+    await sim_engine.apply_funding_fees("2026-07-11T00:00:00+00:00")
+    await sim_engine.apply_funding_fees("2026-07-11T00:00:00+00:00")
+
+    assert conn.execute("SELECT COUNT(*) c FROM sim_funding_events").fetchone()["c"] == 1
+    pos = conn.execute("SELECT funding_fee_accrued FROM sim_positions").fetchone()
+    assert pos["funding_fee_accrued"] == pytest.approx(-5.0)
+    acct = conn.execute("SELECT capital FROM sim_accounts WHERE id = 1").fetchone()
+    assert acct["capital"] == pytest.approx(10_000.0 - 5.0)
+
+
+def test_sim_funding_unique_migration_dedupes_legacy_rows(tmp_path):
+    """기존 DB의 중복 펀딩 이벤트는 스키마 초기화 시 정리되고 유니크 인덱스가 적용된다."""
+    legacy = sqlite3.connect(tmp_path / "legacy.db")
+    legacy.row_factory = sqlite3.Row
+    # 유니크 인덱스 없는 구버전 테이블 + job 재시도로 쌓인 중복 행 흉내
+    legacy.execute(
+        """
+        CREATE TABLE sim_funding_events (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            position_id     INTEGER NOT NULL REFERENCES sim_positions(id),
+            funding_time    TEXT NOT NULL,
+            fr_value        REAL NOT NULL,
+            funding_amount  REAL NOT NULL
+        )
+        """
+    )
+    legacy.executemany(
+        "INSERT INTO sim_funding_events (position_id, funding_time, fr_value, funding_amount) VALUES (?, ?, ?, ?)",
+        [(7, "2026-07-11T00:00:00+00:00", 0.0001, 10.0),
+         (7, "2026-07-11T00:00:00+00:00", 0.0001, 10.0),
+         (7, "2026-07-11T08:00:00+00:00", 0.0001, 10.0),
+         (9, "2026-07-11T00:00:00+00:00", 0.0001, 4.0)],
+    )
+
+    _init_schema(legacy)
+
+    rows = legacy.execute(
+        "SELECT position_id, funding_time FROM sim_funding_events ORDER BY id"
+    ).fetchall()
+    assert [(r["position_id"], r["funding_time"]) for r in rows] == [
+        (7, "2026-07-11T00:00:00+00:00"),
+        (7, "2026-07-11T08:00:00+00:00"),
+        (9, "2026-07-11T00:00:00+00:00"),
+    ]
+    indexes = {
+        r["name"]
+        for r in legacy.execute("SELECT name FROM pragma_index_list('sim_funding_events')")
+    }
+    assert "idx_sim_funding_position_time" in indexes
+
+
+@pytest.mark.asyncio
 async def test_apply_funding_fees_ignores_spot_and_settled(monkeypatch) -> None:
     from dashboard.backend.services import sim_engine
 
