@@ -91,6 +91,39 @@ def test_direction_kr_label():
     assert latest_tilt(_aligned(bullish=True)).direction_kr == "강세"
 
 
+def test_compute_composite_none_weights_matches_legacy_equal_mean():
+    inputs = _aligned(bullish=True)
+    expected = pd.concat(
+        [
+            ((s - s.expanding(min_periods=250).mean()) / s.expanding(min_periods=250).std() * sign).rename(name)
+            for name, _cat, sign in FACTORS
+            if (s := inputs[name]) is not None
+        ],
+        axis=1,
+    ).mean(axis=1, skipna=True)
+
+    pd.testing.assert_series_equal(compute_composite(inputs, weights=None), expected)
+
+
+def test_compute_composite_uses_weighted_mean():
+    inputs = {"vix_level": _RISING, "mvrv_level": _RISING}
+    actual = compute_composite(inputs, weights={"vix_level": 2.0, "mvrv_level": 1.0})
+    vix_z = (_RISING - _RISING.expanding(min_periods=250).mean()) / _RISING.expanding(min_periods=250).std()
+
+    pd.testing.assert_series_equal(actual, vix_z / 3.0)
+
+
+def test_compute_composite_renormalizes_weights_for_missing_values():
+    mvrv = _RISING.copy()
+    mvrv.iloc[-1] = float("nan")
+    inputs = {"vix_level": _RISING, "mvrv_level": mvrv}
+
+    actual = compute_composite(inputs, weights={"vix_level": 2.0, "mvrv_level": 1.0})
+    vix_z = (_RISING - _RISING.expanding(min_periods=250).mean()) / _RISING.expanding(min_periods=250).std()
+
+    assert actual.iloc[-1] == vix_z.iloc[-1]
+
+
 # ── build_factors ────────────────────────────────────────────
 def test_build_factors_13w_change():
     f = build_factors(
