@@ -105,7 +105,9 @@ async def apply_funding_fees(funding_time: str) -> None:
     """활성 선물 포지션에 펀딩비를 일괄 적용한다.
 
     Args:
-        funding_time: 펀딩 적용 시각 (ISO 8601 문자열)
+        funding_time: 펀딩 정산 슬롯 시각 (ISO 8601 문자열).
+            (position_id, funding_time)이 중복 방지 키이므로
+            호출측이 슬롯 단위(00/08/16 UTC)로 정규화해 넘겨야 한다.
 
     처리 흐름:
     1. status='pending' 이고 instrument_type='futures' 인 포지션 조회

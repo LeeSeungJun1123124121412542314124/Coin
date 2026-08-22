@@ -363,7 +363,11 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     # 선물 시뮬 펀딩비 적용 — Bybit 펀딩 정산(00/08/16 UTC) 직후
     @async_retry(max_retries=2, backoff_base=2.0, on_failure=notify_job_failure)
     async def _apply_sim_funding():
-        await apply_funding_fees(datetime.now(timezone.utc).isoformat())
+        # 재시도마다 now()가 달라지면 (position_id, funding_time) 중복 방지 키가
+        # 매번 새 값이 되어 이중 차감된다 → 펀딩 슬롯(00/08/16 UTC)으로 내림
+        now = datetime.now(timezone.utc)
+        slot = now.replace(hour=now.hour // 8 * 8, minute=0, second=0, microsecond=0)
+        await apply_funding_fees(slot.isoformat())
 
     scheduler.add_job(
         _apply_sim_funding,

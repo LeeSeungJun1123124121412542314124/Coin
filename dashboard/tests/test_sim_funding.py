@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from datetime import datetime, timezone
 import sqlite3
 
 import pytest
@@ -281,3 +282,54 @@ def test_sim_funding_job_is_registered_at_utc_0_8_16() -> None:
     assert hours == {0, 8, 16}
     assert job.trigger.fields[6].expressions[0].first == 2
     assert job.trigger.timezone.utcoffset(None).total_seconds() == 0
+
+
+@pytest.mark.asyncio
+async def test_sim_funding_job_passes_same_slot_on_retry(monkeypatch) -> None:
+    """재시도로 now()가 달라져도 같은 펀딩 슬롯 문자열이 넘어가야 한다.
+
+    회귀 배경: 호출부가 now().isoformat()(마이크로초 포함)을 넘겨
+    (position_id, funding_time) 중복 방지 키가 재시도마다 새 값이 됐고,
+    유니크 인덱스가 있어도 펀딩비가 이중 차감됐다.
+    """
+    from dashboard.backend import main
+    from dashboard.backend.services import sim_engine
+
+    captured: list[str] = []
+
+    async def fake_apply(funding_time: str) -> None:
+        captured.append(funding_time)
+
+    monkeypatch.setattr(sim_engine, "apply_funding_fees", fake_apply)
+
+    # 08:02 슬롯에서 2초 뒤 재시도된 상황
+    times = iter([
+        datetime(2026, 8, 22, 8, 2, 0, 123456, tzinfo=timezone.utc),
+        datetime(2026, 8, 22, 8, 2, 2, 987654, tzinfo=timezone.utc),
+    ])
+
+    class _FixedDatetime:
+        @staticmethod
+        def now(tz=None):
+            return next(times)
+
+    monkeypatch.setattr(main, "datetime", _FixedDatetime)
+
+    class DummyNotifier:
+        async def send_message(self, message: str) -> None:
+            return None
+
+    class DummyDispatcher:
+        _notifier = DummyNotifier()
+
+    scheduler = AsyncIOScheduler(timezone="UTC")
+    main._register_jobs(scheduler, config=object(), dispatcher=DummyDispatcher())
+
+    job = scheduler.get_job("sim_funding")
+    await job.func()   # 1차 시도
+    await job.func()   # async_retry 재시도
+
+    assert captured == [
+        "2026-08-22T08:00:00+00:00",
+        "2026-08-22T08:00:00+00:00",
+    ]
