@@ -433,7 +433,7 @@ COINGECKO_API_KEY=CG-xxxxxxxxxxxx        # coingecko.com 회원가입 후 Demo �
 FRED_API_KEY=abcdef123456                # fred.stlouisfed.org에서 발급
 
 # 앱 설정
-DATABASE_PATH=/data/crypto.db            # SQLite 파일 경로 (Railway Volume)
+DATABASE_PATH=/app/data/crypto.db        # SQLite 파일 경로 (Railway Volume)
 PIN_CODE=0000                            # 대시보드 PIN (변경 권장)
 ```
 
