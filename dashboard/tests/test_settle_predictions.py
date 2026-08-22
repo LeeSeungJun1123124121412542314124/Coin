@@ -315,3 +315,41 @@ async def test_us_stock_settlement_skips_when_no_bar_on_or_before_expiry(sim_db,
 
     assert settlement_count == 0
     assert status == "pending"
+
+
+@pytest.mark.asyncio
+async def test_us_stock_settlement_ignores_unfinished_session_bar(sim_db, monkeypatch):
+    """만료 시각이 미국장 마감 전이면 아직 진행 중인 당일 봉을 쓰면 안 된다.
+
+    UTC 날짜만 잘라 비교하면 만료가 UTC 00:00~20:00 구간일 때
+    아직 개장도 안 한 그날 봉이 필터를 통과해 최대 1거래일 look-ahead가 생긴다.
+    """
+    # 02:00 UTC = 전일 22:00 ET (전일 장 마감 후) → 전일 종가로 채점돼야 함
+    expiry = "2026-08-14T02:00:00+00:00"
+    with sim_db.get_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO sim_predictions
+                (account_id, asset_symbol, mode, direction, entry_price, entry_time, expiry_time, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (3, "AAPL", "direction", "long", 200.0, "2026-08-07T00:00:00+00:00", expiry, "pending", expiry),
+        )
+
+    async def fake_yahoo_ohlcv(ticker: str, interval: str = "1d"):
+        # 정산이 늦게 돌아 만료일 당일 봉까지 수집된 상황
+        return [
+            {"date": "2026-08-13", "open": 218, "high": 222, "low": 217, "close": 220.0, "volume": 1_000},
+            {"date": "2026-08-14", "open": 221, "high": 252, "low": 220, "close": 250.0, "volume": 1_000},
+        ]
+
+    monkeypatch.setattr(
+        "dashboard.backend.collectors.yahoo_finance.fetch_stock_ohlcv", fake_yahoo_ohlcv
+    )
+
+    await settle_expired_predictions()
+
+    with sim_db.get_db() as conn:
+        row = conn.execute("SELECT actual_price FROM sim_settlements").fetchone()
+
+    assert row["actual_price"] == 220.0

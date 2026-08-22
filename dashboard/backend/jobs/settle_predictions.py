@@ -11,7 +11,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from dashboard.backend.db.connection import get_db
@@ -72,10 +72,15 @@ async def _get_kr_stock_price(symbol: str, at: str | None = None) -> Optional[fl
 
 
 async def _get_us_stock_price(symbol: str, at: str | None = None) -> Optional[float]:
-    """Yahoo Finance에서 만료일 이하의 마지막 일봉 close 반환."""
+    """Yahoo Finance에서 만료 시점 이전 마지막 일봉 close 반환."""
     from dashboard.backend.collectors.yahoo_finance import fetch_stock_ohlcv
 
     bars = await fetch_stock_ohlcv(symbol, "1d")
+    if at is not None:
+        expiry = datetime.fromisoformat(at).astimezone(timezone.utc)
+        if expiry.hour < 20:
+            # 미국장 마감(≈20:00 UTC) 전 만료면 당일 봉은 아직 진행 중 → 전일까지만
+            at = (expiry.date() - timedelta(days=1)).isoformat()
     return _last_close_on_or_before(bars, at)
 
 
