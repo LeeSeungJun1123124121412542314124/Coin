@@ -48,24 +48,35 @@ async def _get_crypto_price(symbol: str, at: str | None = None) -> Optional[floa
     return float(row["close"])
 
 
-async def _get_kr_stock_price(symbol: str) -> Optional[float]:
-    """네이버 파이낸스에서 한국 주식 최근 일봉 close 반환."""
+def _last_close_on_or_before(bars: Optional[list[dict]], at: str | None) -> Optional[float]:
+    """일봉 리스트에서 만료일(at) 이하의 마지막 봉 close 반환.
+
+    스케줄러 중단 후 재개 시 최신 봉이 아닌 만료 시점 종가로 채점하기 위함.
+    """
+    if not bars:
+        return None
+    if at is not None:
+        expiry_date = at[:10]
+        bars = [b for b in bars if b["date"] <= expiry_date]
+        if not bars:
+            return None
+    return float(bars[-1]["close"])
+
+
+async def _get_kr_stock_price(symbol: str, at: str | None = None) -> Optional[float]:
+    """네이버 파이낸스에서 만료일 이하의 마지막 일봉 close 반환."""
     from dashboard.backend.collectors.naver_finance import fetch_naver_ohlcv
 
     bars = await fetch_naver_ohlcv(symbol, "1d")
-    if not bars:
-        return None
-    return float(bars[-1]["close"])
+    return _last_close_on_or_before(bars, at)
 
 
-async def _get_us_stock_price(symbol: str) -> Optional[float]:
-    """Yahoo Finance에서 미국 주식 최근 일봉 close 반환."""
+async def _get_us_stock_price(symbol: str, at: str | None = None) -> Optional[float]:
+    """Yahoo Finance에서 만료일 이하의 마지막 일봉 close 반환."""
     from dashboard.backend.collectors.yahoo_finance import fetch_stock_ohlcv
 
     bars = await fetch_stock_ohlcv(symbol, "1d")
-    if not bars:
-        return None
-    return float(bars[-1]["close"])
+    return _last_close_on_or_before(bars, at)
 
 
 async def _get_actual_price(market: str, symbol: str, at: str | None = None) -> Optional[float]:
@@ -73,9 +84,9 @@ async def _get_actual_price(market: str, symbol: str, at: str | None = None) -> 
     if market == "crypto":
         return await _get_crypto_price(symbol, at)
     elif market == "kr_stock":
-        return await _get_kr_stock_price(symbol)
+        return await _get_kr_stock_price(symbol, at)
     elif market == "us_stock":
-        return await _get_us_stock_price(symbol)
+        return await _get_us_stock_price(symbol, at)
     else:
         logger.warning("알 수 없는 마켓 유형: %s", market)
         return None
@@ -200,7 +211,8 @@ async def settle_expired_predictions() -> None:
                 with get_db() as conn:
                     position = conn.execute(
                         """
-                        SELECT id, quantity, leverage, instrument_type, liquidation_price
+                        SELECT id, quantity, leverage, instrument_type,
+                               liquidation_price, stop_loss, take_profit
                         FROM sim_positions
                         WHERE prediction_id = ?
                         LIMIT 1
@@ -216,6 +228,8 @@ async def settle_expired_predictions() -> None:
             quantity       = float(position["quantity"])   if position and position["quantity"]   is not None else None
             leverage       = int(position["leverage"])     if position and position["leverage"]   is not None else None
             liq_price_db   = float(position["liquidation_price"]) if position and position["liquidation_price"] is not None else None
+            sl_price_db    = float(position["stop_loss"])        if position and position["stop_loss"]        is not None else None
+            tp_price_db    = float(position["take_profit"])      if position and position["take_profit"]      is not None else None
             # Fix C-1: 첫 번째 SELECT에 id 포함 후 중복 쿼리 제거
             position_id    = position["id"] if position else None
 
@@ -231,6 +245,14 @@ async def settle_expired_predictions() -> None:
                     # 청산가를 실제 가격으로 사용
                     if liq_price_db is not None:
                         actual_price = liq_price_db
+                elif trigger == "stop_loss":
+                    # 손절가를 실제 가격으로 사용 (만료 종가 대신 SL 터치 가격으로 정산)
+                    if sl_price_db is not None:
+                        actual_price = sl_price_db
+                elif trigger == "take_profit":
+                    # 익절가를 실제 가격으로 사용
+                    if tp_price_db is not None:
+                        actual_price = tp_price_db
             else:
                 trigger = None
 
