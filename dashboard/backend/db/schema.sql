@@ -320,6 +320,8 @@ CREATE TABLE IF NOT EXISTS sim_funding_events (
     fr_value        REAL NOT NULL,
     funding_amount  REAL NOT NULL
 );
+-- (position_id, funding_time) 유니크 인덱스는 connection.py의 _migrate_sim_funding_unique에서 생성
+-- (레거시 중복 정리가 선행돼야 하므로 schema.sql에 둘 수 없음)
 
 -- 계좌 리셋 이력 (히스토리 영구 보존)
 CREATE TABLE IF NOT EXISTS sim_account_resets (

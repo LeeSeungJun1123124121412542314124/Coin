@@ -228,14 +228,42 @@ def test_sim_funding_unique_migration_dedupes_legacy_rows(tmp_path, caplog):
 
 
 def test_sim_funding_migration_is_silent_without_duplicates(tmp_path, caplog):
-    """중복이 없는 DB에서는 경고도, DELETE도 실행되지 않아야 한다."""
+    """중복 없는 기존 행은 경고 없이 그대로 보존되고 유니크 인덱스만 적용된다."""
     clean = sqlite3.connect(tmp_path / "clean.db")
     clean.row_factory = sqlite3.Row
+    # 유니크 인덱스 없는 구버전 테이블 + (position_id, funding_time)이 모두 다른 정상 행
+    clean.execute(
+        """
+        CREATE TABLE sim_funding_events (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            position_id     INTEGER NOT NULL REFERENCES sim_positions(id),
+            funding_time    TEXT NOT NULL,
+            fr_value        REAL NOT NULL,
+            funding_amount  REAL NOT NULL
+        )
+        """
+    )
+    clean.executemany(
+        "INSERT INTO sim_funding_events (position_id, funding_time, fr_value, funding_amount) VALUES (?, ?, ?, ?)",
+        [(7, "2026-07-11T00:00:00+00:00", 0.0001, 10.0),
+         (7, "2026-07-11T08:00:00+00:00", 0.0001, 10.0),
+         (9, "2026-07-11T00:00:00+00:00", 0.0001, 4.0)],
+    )
 
     with caplog.at_level(logging.WARNING, logger="dashboard.backend.db.connection"):
         _init_schema(clean)
 
+    # 정상 행을 중복으로 오탐해 경고를 남기면 안 된다 (경고 = 자본 보정 필요 신호)
     assert "sim_funding_events 중복 정리" not in caplog.text
+
+    rows = clean.execute(
+        "SELECT position_id, funding_time FROM sim_funding_events ORDER BY id"
+    ).fetchall()
+    assert [(r["position_id"], r["funding_time"]) for r in rows] == [
+        (7, "2026-07-11T00:00:00+00:00"),
+        (7, "2026-07-11T08:00:00+00:00"),
+        (9, "2026-07-11T00:00:00+00:00"),
+    ]
     indexes = {
         r["name"]
         for r in clean.execute("SELECT name FROM pragma_index_list('sim_funding_events')")
