@@ -34,6 +34,7 @@ load_dotenv(os.path.join(_BOT_ROOT, ".env"))
 
 from app.macro.backtest_baseline import build_history_frame, forward_hit_stats  # noqa: E402
 from app.macro.collectors import _fetch_coinmetrics, _fetch_daily, _fetch_fred  # noqa: E402
+from app.macro.direction_composite import build_factors, compute_composite  # noqa: E402
 
 _START = "2018-01-01"
 _DATA_DIR = os.path.join(_BOT_ROOT, "data")
@@ -76,6 +77,7 @@ def load_sources_csv(path: str) -> dict[str, pd.Series]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="8년 복합 백테스트 파이프라인 (SPF 0단계)")
     parser.add_argument("--from-csv", help="저장된 sources CSV로 오프라인 재계산 (수집 생략)")
+    parser.add_argument("--weights-json", help="derive_weights 산출 JSON 파일")
     args = parser.parse_args()
 
     if args.from_csv:
@@ -118,6 +120,21 @@ def main() -> None:
             f" {h['hit_directional'] if h['hit_directional'] is not None else '-':>8}"
             f" {h['baseline_up_rate']:>10} {h['ic'] if h['ic'] is not None else '-':>7}"
         )
+
+    if args.weights_json:
+        with open(args.weights_json, encoding="utf-8") as f:
+            weights = json.load(f)["weights"]
+        weighted_composite = compute_composite(build_factors(**sources), weights=weights)
+        weighted_stats = forward_hit_stats(weighted_composite, frame["close"])
+        print("\n동등가중 vs 재가중 비교")
+        print(f"{'H':>4} {'동등가중 적중률':>14} {'재가중 적중률':>13} {'동등가중 IC':>11} {'재가중 IC':>10}")
+        for horizon in (7, 14, 30, 60):
+            equal = stats[str(horizon)]
+            weighted = weighted_stats[str(horizon)]
+            print(
+                f"H{horizon:<3} {equal['hit_directional']!s:>14} {weighted['hit_directional']!s:>13}"
+                f" {equal['ic']!s:>11} {weighted['ic']!s:>10}"
+            )
 
 
 if __name__ == "__main__":

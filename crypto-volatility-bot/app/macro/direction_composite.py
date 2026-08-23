@@ -98,7 +98,10 @@ def _causal_z(s: pd.Series) -> pd.Series:
     return (s - mean) / std
 
 
-def compute_composite(factor_inputs: dict[str, pd.Series]) -> pd.Series:
+def compute_composite(
+    factor_inputs: dict[str, pd.Series],
+    weights: dict[str, float] | None = None,
+) -> pd.Series:
     """팩터 변환 시계열 dict → 복합 z 시계열 (bullish 부호정렬 causal z의 동등가중 평균).
 
     가용 팩터만 사용(누락 무시). 입력이 전무하면 ValueError.
@@ -111,12 +114,19 @@ def compute_composite(factor_inputs: dict[str, pd.Series]) -> pd.Series:
         aligned.append((_causal_z(s) * sign).rename(name))
     if not aligned:
         raise ValueError("compute_composite: 가용 팩터 없음")
-    return pd.concat(aligned, axis=1).mean(axis=1, skipna=True)
+    frame = pd.concat(aligned, axis=1)
+    if weights is None:
+        return frame.mean(axis=1, skipna=True)
+    factor_weights = pd.Series({name: weights.get(name, 1.0) for name in frame.columns})
+    return frame.mul(factor_weights).sum(axis=1, skipna=True) / frame.notna().mul(factor_weights).sum(axis=1)
 
 
-def latest_tilt(factor_inputs: dict[str, pd.Series]) -> DirectionTilt:
+def latest_tilt(
+    factor_inputs: dict[str, pd.Series],
+    weights: dict[str, float] | None = None,
+) -> DirectionTilt:
     """최신 시점의 방향 tilt. 워밍업 미달/데이터 부족 시 중립(confidence 0)."""
-    composite = compute_composite(factor_inputs)
+    composite = compute_composite(factor_inputs, weights=weights)
     z = float(composite.iloc[-1]) if len(composite) else float("nan")
     if z != z:  # NaN (워밍업 미달)
         return DirectionTilt(direction="neutral", confidence=0.0, composite_z=0.0, n_factors=0)
