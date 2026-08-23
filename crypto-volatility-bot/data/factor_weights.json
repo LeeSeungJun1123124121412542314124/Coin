@@ -1,0 +1,82 @@
+{
+  "weights": {
+    "net_liquidity_13w": 0.5,
+    "dxy_13w": 2.0,
+    "ust10y_13w": 2.0,
+    "vix_level": 0.5,
+    "mvrv_level": 2.0,
+    "active_addr_13w": 1.0,
+    "rsi14": 0.5,
+    "sma50_dist": 1.0,
+    "momentum_30d": 1.0
+  },
+  "meta": {
+    "version": "spf-phase3-v1",
+    "derived_at": "2026-08-23T10:43:00.943323+00:00",
+    "snapshot": [
+      {
+        "indicator": "MVRV",
+        "sharpe": 2.8107381718877553,
+        "n_days_equity": 71,
+        "total_return_pct": 91.44664432174017,
+        "n_trades": 0
+      },
+      {
+        "indicator": "복합방향",
+        "sharpe": 2.1821458284097592,
+        "n_days_equity": 71,
+        "total_return_pct": 24.134505042551147,
+        "n_trades": 42
+      },
+      {
+        "indicator": "긴축환경",
+        "sharpe": 0.8016072058941006,
+        "n_days_equity": 50,
+        "total_return_pct": 6.566038192535051,
+        "n_trades": 6
+      },
+      {
+        "indicator": "과열회귀",
+        "sharpe": 0.005828363010531058,
+        "n_days_equity": 50,
+        "total_return_pct": -0.3867392536399894,
+        "n_trades": 13
+      },
+      {
+        "indicator": "도미넌스",
+        "sharpe": -0.44478181943513484,
+        "n_days_equity": 71,
+        "total_return_pct": -3.506702586332089,
+        "n_trades": 9
+      },
+      {
+        "indicator": "볼린저밴드",
+        "sharpe": -0.2367351181000892,
+        "n_days_equity": 71,
+        "total_return_pct": -9.087457855054348,
+        "n_trades": 33
+      },
+      {
+        "indicator": "순유동성",
+        "sharpe": -0.8661774788382718,
+        "n_days_equity": 71,
+        "total_return_pct": -15.330197157457437,
+        "n_trades": 9
+      },
+      {
+        "indicator": "유동성",
+        "sharpe": -1.6119997766921477,
+        "n_days_equity": 50,
+        "total_return_pct": -17.87526888781531,
+        "n_trades": 6
+      },
+      {
+        "indicator": "VIX",
+        "sharpe": -2.5314677454850663,
+        "n_days_equity": 71,
+        "total_return_pct": -59.619752341880236,
+        "n_trades": 24
+      }
+    ]
+  }
+}
