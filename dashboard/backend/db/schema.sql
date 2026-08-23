@@ -226,6 +226,32 @@ CREATE TABLE IF NOT EXISTS us_insider_trades (
     PRIMARY KEY (accession_no, seq)
 );
 
+-- 미국 기관 보유 (SEC EDGAR 13F-HR, 화이트리스트 기관 × us 슬롯 종목)
+CREATE TABLE IF NOT EXISTS us_13f_holdings (
+    accession_no  TEXT NOT NULL,
+    seq           INTEGER NOT NULL,   -- 원본 infoTable 행 인덱스
+    institution   TEXT NOT NULL,
+    cik           INTEGER NOT NULL,
+    ticker        TEXT NOT NULL,
+    issuer_name   TEXT NOT NULL,
+    quarter       TEXT NOT NULL,      -- reportDate 'YYYY-MM-DD'
+    shares        REAL,
+    value_usd     REAL,               -- 2023-01-03+ 접수분 = 달러 단위 (배율 없음)
+    put_call      TEXT CHECK(put_call IN ('Call','Put')),
+    PRIMARY KEY (accession_no, seq)
+);
+CREATE INDEX IF NOT EXISTS idx_us_13f_ticker_q ON us_13f_holdings(ticker, quarter);
+
+-- 13F 접수 처리 이력 (0매칭 filing 재수집 방지)
+CREATE TABLE IF NOT EXISTS us_13f_filings (
+    accession_no  TEXT PRIMARY KEY,
+    cik           INTEGER NOT NULL,
+    institution   TEXT NOT NULL,
+    filed_at      TEXT NOT NULL,
+    report_date   TEXT NOT NULL,
+    processed_at  TEXT NOT NULL
+);
+
 -- 지수 방향 판정 그림자 기록
 CREATE TABLE IF NOT EXISTS index_shadow_judgments (
     date            TEXT NOT NULL,
