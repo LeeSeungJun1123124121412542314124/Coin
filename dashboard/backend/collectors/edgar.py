@@ -44,6 +44,67 @@ def parse_submissions(payload: dict, since: str) -> list[dict]:
     return filings
 
 
+def parse_submissions_13f(payload: dict, since: str) -> list[dict]:
+    """submissions 응답에서 since 이후 13F 원본·수정본을 추출한다."""
+    recent = payload.get("filings", {}).get("recent", {})
+    filings = []
+    for form, accession, filed_at, document, report_date in zip(
+        recent.get("form", []),
+        recent.get("accessionNumber", []),
+        recent.get("filingDate", []),
+        recent.get("primaryDocument", []),
+        recent.get("reportDate", []),
+    ):
+        if form not in ("13F-HR", "13F-HR/A") or filed_at < since or not report_date:
+            continue
+        filings.append({
+            "accession_no": accession,
+            "filed_at": filed_at,
+            "primary_document": document,
+            "report_date": report_date,
+        })
+    return filings
+
+
+def parse_filing_index(payload: dict) -> str:
+    """filing index에서 information table XML 문서명을 찾는다."""
+    items = payload.get("directory", {}).get("item", [])
+    for item in items:
+        if item.get("type", "").upper() == "INFORMATION TABLE":
+            return item["name"]
+    for item in items:
+        if "infotable" in item.get("name", "").lower():
+            return item["name"]
+    raise ValueError("13F information table 문서를 찾을 수 없습니다")
+
+
+def _child_text(element: ET.Element, name: str) -> str:
+    child = element.find(f"{{*}}{name}")
+    return (child.text or "").strip() if child is not None else ""
+
+
+def parse_infotable_xml(xml_text: str) -> list[dict]:
+    """13F information table XML의 원본 행을 순서대로 파싱한다."""
+    root = ET.fromstring(xml_text)
+    rows = []
+    for row in root.findall(".//{*}infoTable"):
+        amount = row.find("{*}shrsOrPrnAmt")
+        shares_text = _child_text(amount, "sshPrnamt") if amount is not None else ""
+        value_text = _child_text(row, "value")
+        put_call = _child_text(row, "putCall") or None
+        rows.append({
+            "issuer_name": _child_text(row, "nameOfIssuer"),
+            "cusip": _child_text(row, "cusip"),
+            "shares": float(shares_text) if shares_text else None,
+            # 2023-01-03 이후 제출분은 달러 단위이므로 배율을 적용하지 않는다.
+            "value_usd": float(value_text) if value_text else None,
+            "put_call": put_call,
+        })
+    if not rows:
+        raise ValueError("13F information table에 보유 행이 없습니다")
+    return rows
+
+
 def parse_form4_xml(xml_text: str) -> dict:
     """Form 4 XML에서 보고자와 장내(P/S) 거래를 추출한다. 매도 value는 음수."""
     root = ET.fromstring(xml_text)
@@ -98,12 +159,55 @@ async def fetch_cik_map() -> dict[str, int]:
     return {entry["ticker"].upper(): int(entry["cik_str"]) for entry in resp.json().values()}
 
 
+async def fetch_ticker_title_map() -> dict[str, str]:
+    """티커 → EDGAR 공식 회사명 매핑을 조회한다."""
+    async with httpx.AsyncClient(timeout=15, headers={"User-Agent": _EDGAR_UA}) as client:
+        resp = await client.get(_TICKER_MAP_URL)
+        resp.raise_for_status()
+    return {entry["ticker"].upper(): entry["title"] for entry in resp.json().values()}
+
+
 async def fetch_recent_form4_filings(cik: int, since: str) -> list[dict]:
     """종목의 since 이후 Form 4 공시 목록을 조회한다."""
     async with httpx.AsyncClient(timeout=15, headers={"User-Agent": _EDGAR_UA}) as client:
         resp = await client.get(_SUBMISSIONS_URL.format(cik=cik))
         resp.raise_for_status()
     return parse_submissions(resp.json(), since)
+
+
+async def fetch_recent_13f_filings(cik: int, since: str) -> tuple[str, list[dict]]:
+    """기관명과 since 이후 13F 공시 목록을 조회한다."""
+    async with httpx.AsyncClient(timeout=15, headers={"User-Agent": _EDGAR_UA}) as client:
+        resp = await client.get(_SUBMISSIONS_URL.format(cik=cik))
+        resp.raise_for_status()
+    payload = resp.json()
+    return payload.get("name", ""), parse_submissions_13f(payload, since)
+
+
+async def fetch_filing_index(cik: int, accession_no: str) -> str:
+    """13F filing index를 조회해 information table 문서명을 반환한다."""
+    url = _ARCHIVE_URL.format(
+        cik=cik,
+        acc_nodash=accession_no.replace("-", ""),
+        document="index.json",
+    )
+    async with httpx.AsyncClient(timeout=60, headers={"User-Agent": _EDGAR_UA}) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+    return parse_filing_index(resp.json())
+
+
+async def fetch_infotable(cik: int, accession_no: str, document: str) -> list[dict]:
+    """13F information table XML을 내려받아 파싱한다."""
+    url = _ARCHIVE_URL.format(
+        cik=cik,
+        acc_nodash=accession_no.replace("-", ""),
+        document=document,
+    )
+    async with httpx.AsyncClient(timeout=60, headers={"User-Agent": _EDGAR_UA}) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+    return parse_infotable_xml(resp.text)
 
 
 async def fetch_form4(cik: int, accession_no: str, primary_document: str) -> dict:
