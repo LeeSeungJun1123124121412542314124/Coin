@@ -98,6 +98,31 @@ interface UsInsiderData {
   trades: UsInsiderTrade[]
 }
 
+interface Us13fSummary {
+  ticker: string
+  latest_quarter: string | null
+  latest_value: number
+  prev_value: number
+  qoq_change: number | null
+}
+
+interface Us13fHolding {
+  accession_no: string
+  seq: number
+  institution: string
+  ticker: string
+  quarter: string
+  shares: number | null
+  value_usd: number | null
+  put_call: 'Call' | null
+}
+
+interface Us13fData {
+  quarters: string[]
+  holdings: Us13fHolding[]
+  summaries: Us13fSummary[]
+}
+
 function BtcBadge({ pos }: { pos: Position | null }) {
   if (!pos) return <span style={{ color: '#64748b', fontSize: '0.75rem' }}>—</span>
   const color = pos.side === 'long' ? '#4ade80' : '#f87171'
@@ -361,6 +386,61 @@ function UsInsiderView({ data }: { data: UsInsiderData }) {
   )
 }
 
+function Us13fView({ data }: { data: Us13fData }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ color: '#94a3b8', fontSize: '0.78rem' }}>
+        기관 보유 (13F) · 분기 · 45일 지연 · SEC EDGAR
+      </div>
+
+      <div className="grid-4" style={{ gap: 10 }}>
+        {data.summaries.map(summary => (
+          <div key={summary.ticker} style={{ background: '#0f1117', border: '1px solid #1e293b', borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ color: '#64748b', fontSize: '0.72rem', marginBottom: 4 }}>
+              {summary.ticker} · {summary.latest_quarter ?? '분기 없음'}
+            </div>
+            <div style={{ color: '#e2e8f0', fontSize: '1rem', fontWeight: 700 }}>
+              {fmt(summary.latest_value)}
+            </div>
+            <div style={{ color: summary.qoq_change == null ? '#64748b' : summary.qoq_change >= 0 ? '#4ade80' : '#f87171', fontSize: '0.7rem', marginTop: 3 }}>
+              QoQ {summary.qoq_change == null ? '—' : `${summary.qoq_change >= 0 ? '+' : ''}${summary.qoq_change.toFixed(1)}%`}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Card>
+        <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>
+          기관별 보유 내역 (최신 4분기)
+        </div>
+        {data.holdings.length > 0 ? (
+          <div className="table-scroll">
+            <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 70px 100px 110px', gap: 8, padding: '4px 8px', color: '#64748b', fontSize: '0.7rem', marginBottom: 6, borderBottom: '1px solid #1e293b', minWidth: 560 }}>
+              <span>분기</span><span>기관</span><span>종목</span>
+              <span style={{ textAlign: 'right' }}>수량</span><span style={{ textAlign: 'right' }}>가치</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 560 }}>
+              {data.holdings.map(holding => (
+                <div key={`${holding.accession_no}-${holding.seq}`} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 70px 100px 110px', gap: 8, padding: '8px', borderRadius: 8, background: '#0f1117', alignItems: 'center', fontSize: '0.78rem' }}>
+                  <span style={{ color: '#94a3b8' }}>{holding.quarter}</span>
+                  <span style={{ color: '#cbd5e1' }}>{holding.institution}</span>
+                  <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{holding.ticker}{holding.put_call === 'Call' ? ' Call' : ''}</span>
+                  <span style={{ color: '#cbd5e1', textAlign: 'right' }}>{holding.shares?.toLocaleString('en-US', { maximumFractionDigits: 0 }) ?? '—'}</span>
+                  <span style={{ color: '#e2e8f0', textAlign: 'right', fontWeight: 600 }}>{fmt(holding.value_usd)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div style={{ color: '#64748b', textAlign: 'center', padding: '40px 0', fontSize: '0.85rem' }}>
+            기관 보유 데이터가 없습니다
+          </div>
+        )}
+      </Card>
+    </div>
+  )
+}
+
 function CoinWhaleView({
   data,
   consensus,
@@ -476,6 +556,7 @@ export function Whale() {
     300_000,
   )
   const usApi = useApi<UsInsiderData>(asset === 'us' ? '/api/whale/us-insider-trades' : null, 300_000)
+  const us13fApi = useApi<Us13fData>(asset === 'us' ? '/api/whale/us-13f-holdings' : null, 300_000)
 
   function handleAssetChange(next: AssetTab) {
     setAsset(next)
@@ -485,15 +566,18 @@ export function Whale() {
   const tabs = <AssetTabs asset={asset} allowedTabs={['coin', 'kr', 'us']} onChange={handleAssetChange} />
 
   if (asset === 'us') {
-    if (usApi.error && !usApi.data) {
+    if ((usApi.error && !usApi.data) || (us13fApi.error && !us13fApi.data)) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {tabs}
-          <ErrorState error={usApi.error} onRetry={usApi.refetch} />
+          <ErrorState
+            error={usApi.error ?? us13fApi.error ?? '데이터를 불러오지 못했습니다'}
+            onRetry={() => { usApi.refetch(); us13fApi.refetch() }}
+          />
         </div>
       )
     }
-    if (usApi.loading || !usApi.data) {
+    if (usApi.loading || !usApi.data || us13fApi.loading || !us13fApi.data) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {tabs}
@@ -507,6 +591,7 @@ export function Whale() {
         {tabs}
         <LastUpdated timestamp={usApi.lastUpdated} />
         <UsInsiderView data={usApi.data} />
+        <Us13fView data={us13fApi.data} />
       </div>
     )
   }
