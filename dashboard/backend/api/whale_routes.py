@@ -153,6 +153,8 @@ async def get_whale_consensus(top_n: int = Query(10, ge=5, le=20)):
 
 _US_INSIDER_WINDOW_DAYS = 90   # 표시 창 — 수집 job의 _LOOKBACK_DAYS와 동일
 _US_INSIDER_TRADES_LIMIT = 50
+# 수집은 400일을 백필하지만 API는 그 안의 최신 4개 분기만 표시한다.
+_US_13F_QUARTERS = 4
 
 
 @router.get("/whale/us-insider-trades")
@@ -206,6 +208,66 @@ async def get_us_insider_trades():
     return JSONResponse({
         "summaries": summaries,
         "trades": [dict(row) for row in trade_rows],
+    })
+
+
+@router.get("/whale/us-13f-holdings")
+async def get_us_13f_holdings():
+    """미국 관심종목 슬롯의 최신 4분기 기관 13F 보유를 제공한다."""
+    with get_db() as conn:
+        slots = conn.execute(
+            "SELECT ticker FROM stock_slots WHERE market='us' ORDER BY position"
+        ).fetchall()
+        tickers = [slot["ticker"].upper() for slot in slots]
+        placeholders = ",".join("?" for _ in tickers) or "''"
+        quarter_rows = conn.execute(
+            f"""SELECT DISTINCT quarter FROM us_13f_holdings
+                WHERE ticker IN ({placeholders})
+                  AND (put_call IS NULL OR put_call != 'Put')
+                ORDER BY quarter DESC LIMIT ?""",
+            (*tickers, _US_13F_QUARTERS),
+        ).fetchall()
+        quarters = [row["quarter"] for row in quarter_rows]
+
+        if quarters:
+            quarter_placeholders = ",".join("?" for _ in quarters)
+            holding_rows = conn.execute(
+                f"""SELECT accession_no, seq, institution, cik, ticker, issuer_name,
+                           quarter, shares, value_usd, put_call
+                    FROM us_13f_holdings
+                    WHERE ticker IN ({placeholders})
+                      AND quarter IN ({quarter_placeholders})
+                      AND (put_call IS NULL OR put_call != 'Put')
+                    ORDER BY quarter DESC, ticker, institution, seq""",
+                (*tickers, *quarters),
+            ).fetchall()
+        else:
+            holding_rows = []
+
+    values = {}
+    for row in holding_rows:
+        key = (row["ticker"], row["quarter"])
+        values[key] = values.get(key, 0.0) + (row["value_usd"] or 0.0)
+
+    latest_quarter = quarters[0] if quarters else None
+    prev_quarter = quarters[1] if len(quarters) > 1 else None
+    summaries = []
+    for ticker in tickers:
+        latest_value = values.get((ticker, latest_quarter), 0.0)
+        prev_value = values.get((ticker, prev_quarter), 0.0)
+        summaries.append({
+            "ticker": ticker,
+            "latest_quarter": latest_quarter,
+            "latest_value": latest_value,
+            "prev_value": prev_value,
+            "qoq_change": round((latest_value - prev_value) / prev_value * 100, 1)
+            if prev_value else None,
+        })
+
+    return JSONResponse({
+        "quarters": quarters,
+        "holdings": [dict(row) for row in holding_rows],
+        "summaries": summaries,
     })
 
 
