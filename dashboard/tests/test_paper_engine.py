@@ -139,6 +139,18 @@ def test_curve_stats_mdd_and_total():
     assert st["mdd_pct"] == pytest.approx(-18.1818, abs=1e-3)  # 110→90
 
 
+def test_curve_stats_reports_equity_day_count():
+    """리더보드 소비자(factor_weights.derive_weights)가 표본 가드에 쓰는 일수."""
+    st = _curve_stats([100, 101, 99], [0.0, 0.01, -0.02], seed=100)
+    assert st["n_days_equity"] == 3
+
+
+def test_curve_stats_reports_zero_days_when_empty():
+    """에쿼티 기록이 없으면 0 — 가드가 자동으로 걸러낸다."""
+    st = _curve_stats([], [], seed=100)
+    assert st["n_days_equity"] == 0
+
+
 def _two_days(indicator, z1, z2, p1, p2):
     rebalance(indicator, {"BTC": z1}, {"BTC": _px(p1)}, "2026-01-01T00:00:00")
     rebalance(indicator, {"BTC": z2}, {"BTC": _px(p2)}, "2026-01-02T00:00:00")

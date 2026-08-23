@@ -200,7 +200,8 @@ def rebalance(indicator: str, signals: dict[str, float], prices: dict[str, dict]
 def _curve_stats(equities: list[float], daily_returns: list[float], seed: float) -> dict:
     """에쿼티 곡선 → 총수익·MDD·Sharpe."""
     if not equities:
-        return {"total_return_pct": 0.0, "mdd_pct": 0.0, "sharpe": 0.0, "equity": seed}
+        return {"total_return_pct": 0.0, "mdd_pct": 0.0, "sharpe": 0.0, "equity": seed,
+                "n_days_equity": 0}
     last = equities[-1]
     peak, mdd = equities[0], 0.0
     for e in equities:
@@ -218,6 +219,7 @@ def _curve_stats(equities: list[float], daily_returns: list[float], seed: float)
         "mdd_pct": mdd * 100,
         "sharpe": sharpe,
         "equity": last,
+        "n_days_equity": len(equities),   # derive_weights 표본 가드용
     }
 
 
