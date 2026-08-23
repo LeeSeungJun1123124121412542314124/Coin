@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 import sqlite3
+from unittest.mock import Mock
+
+import pytest
 
 from dashboard.backend.db.connection import _init_schema
 
@@ -45,3 +48,85 @@ def test_filing_metadata_is_idempotent_and_tracks_zero_matches(monkeypatch) -> N
     assert collect_us_13f.known_13f_accessions() == {"zero-match"}
     assert conn.execute("SELECT COUNT(*) FROM us_13f_filings").fetchone()[0] == 1
     assert conn.execute("SELECT COUNT(*) FROM us_13f_holdings").fetchone()[0] == 0
+
+
+@pytest.mark.asyncio
+async def test_collect_us_13f_end_to_end_and_second_run_skips_download(monkeypatch) -> None:
+    from dashboard.backend.collectors import edgar
+    from dashboard.backend.jobs import collect_us_13f
+
+    conn = _memory_conn()
+    monkeypatch.setattr(collect_us_13f, "get_db", lambda: _fake_db(conn))
+    monkeypatch.setattr(collect_us_13f, "_INSTITUTIONS", [("Berkshire Hathaway", 1067983)])
+    monkeypatch.setattr(collect_us_13f, "_REQUEST_DELAY_S", 0.0)
+    conn.execute("DELETE FROM stock_slots WHERE market='us'")
+    conn.execute(
+        "INSERT INTO stock_slots (market, position, ticker, name, tv_symbol) VALUES ('us', 1, 'AAPL', '애플', 'NASDAQ:AAPL')"
+    )
+
+    infotable_downloads = 0
+
+    class FakeResponse:
+        def __init__(self, payload=None, text=""):
+            self._payload = payload
+            self.text = text
+
+        def json(self):
+            return self._payload
+
+        def raise_for_status(self):
+            return None
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def get(self, url):
+            nonlocal infotable_downloads
+            if url.endswith("company_tickers.json"):
+                return FakeResponse({"0": {"ticker": "AAPL", "title": "APPLE INC"}})
+            if "submissions" in url:
+                return FakeResponse({
+                    "name": "BERKSHIRE HATHAWAY INC",
+                    "filings": {"recent": {
+                        "form": ["13F-HR"], "accessionNumber": ["acc-1"],
+                        "filingDate": ["2026-08-14"], "primaryDocument": ["primary.xml"],
+                        "reportDate": ["2026-06-30"],
+                    }},
+                })
+            if url.endswith("index.json"):
+                return FakeResponse({"directory": {"item": [{"name": "infotable.xml", "type": "INFORMATION TABLE"}]}})
+            if url.endswith("infotable.xml"):
+                infotable_downloads += 1
+                return FakeResponse(text="""<informationTable><infoTable><nameOfIssuer>APPLE INC</nameOfIssuer><cusip>037833100</cusip><value>123</value><shrsOrPrnAmt><sshPrnamt>10</sshPrnamt></shrsOrPrnAmt></infoTable><infoTable><nameOfIssuer>NOT IN SLOT</nameOfIssuer><cusip>000</cusip><value>9</value><shrsOrPrnAmt><sshPrnamt>1</sshPrnamt></shrsOrPrnAmt></infoTable></informationTable>""")
+            raise AssertionError(f"예상하지 못한 URL: {url}")
+
+    monkeypatch.setattr(edgar.httpx, "AsyncClient", FakeClient)
+
+    await collect_us_13f.collect_us_13f_holdings()
+    await collect_us_13f.collect_us_13f_holdings()
+
+    rows = conn.execute("SELECT seq, ticker, value_usd FROM us_13f_holdings").fetchall()
+    assert [tuple(row) for row in rows] == [(0, "AAPL", 123.0)]
+    assert infotable_downloads == 1
+    assert collect_us_13f.known_13f_accessions() == {"acc-1"}
+
+
+def test_registers_us_13f_schedule_on_monday_at_0920_utc() -> None:
+    from dashboard.backend.main import _register_jobs
+
+    scheduler = Mock()
+    _register_jobs(scheduler, Mock(), Mock())
+
+    call = next(call for call in scheduler.add_job.call_args_list if call.kwargs.get("id") == "collect_us_13f")
+    trigger = call.args[1]
+    assert str(trigger.fields[4]) == "mon"
+    assert str(trigger.fields[5]) == "9"
+    assert str(trigger.fields[6]) == "20"
+    assert str(trigger.timezone) == "UTC"

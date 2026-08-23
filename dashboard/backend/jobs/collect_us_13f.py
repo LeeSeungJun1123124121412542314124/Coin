@@ -2,9 +2,47 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import asyncio
+from datetime import date, datetime, timedelta, timezone
+import logging
+
+from dashboard.backend.collectors.edgar import (
+    fetch_filing_index,
+    fetch_infotable,
+    fetch_recent_13f_filings,
+    fetch_ticker_title_map,
+)
 
 from dashboard.backend.db.connection import get_db
+from dashboard.backend.utils.alerting import notify_job_failure
+from dashboard.backend.utils.retry import async_retry
+
+logger = logging.getLogger(__name__)
+
+_LOOKBACK_DAYS = 400
+_REQUEST_DELAY_S = 0.15
+
+# 2026-08-23 SEC submissions API의 CIK별 name으로 검증:
+# BERKSHIRE HATHAWAY INC, Bridgewater Associates LP,
+# CITADEL ADVISORS LLC, RENAISSANCE TECHNOLOGIES LLC.
+_INSTITUTIONS = [
+    ("Berkshire Hathaway", 1067983),
+    ("Bridgewater Associates", 1350694),
+    ("Citadel Advisors", 1423053),
+    ("Renaissance Technologies", 1037389),
+]
+
+
+def _us_slot_tickers() -> list[str]:
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT ticker FROM stock_slots WHERE market='us' ORDER BY position"
+        ).fetchall()
+    return [row["ticker"].upper() for row in rows]
+
+
+def _institution_matches(institution: str, edgar_name: str) -> bool:
+    return institution.casefold() in edgar_name.casefold()
 
 
 def known_13f_accessions() -> set[str]:
@@ -70,3 +108,72 @@ def replace_13f_holdings(
             ],
         )
     return len(holdings)
+
+
+@async_retry(max_retries=3, on_failure=notify_job_failure)
+async def collect_us_13f_holdings() -> None:
+    """화이트리스트 기관의 최근 13F에서 us 슬롯 종목 보유를 수집한다."""
+    tickers = _us_slot_tickers()
+    if not tickers:
+        logger.info("us 슬롯 없음 — 13F 수집 스킵")
+        return
+
+    title_map = await fetch_ticker_title_map()
+    title_to_ticker = {
+        title_map[ticker].casefold(): ticker
+        for ticker in tickers
+        if ticker in title_map
+    }
+    known = known_13f_accessions()
+    since = (date.today() - timedelta(days=_LOOKBACK_DAYS)).isoformat()
+    total = 0
+
+    for institution, cik in _INSTITUTIONS:
+        await asyncio.sleep(_REQUEST_DELAY_S)
+        edgar_name, filings = await fetch_recent_13f_filings(cik, since)
+        if not _institution_matches(institution, edgar_name):
+            logger.warning(
+                "13F 기관명 불일치: 설정=%s, EDGAR=%s, CIK=%s — 스킵",
+                institution,
+                edgar_name,
+                cik,
+            )
+            continue
+
+        for filing in sorted(filings, key=lambda item: item["filed_at"]):
+            accession_no = filing["accession_no"]
+            if accession_no in known:
+                continue
+            await asyncio.sleep(_REQUEST_DELAY_S)
+            document = await fetch_filing_index(cik, accession_no)
+            await asyncio.sleep(_REQUEST_DELAY_S)
+            rows = await fetch_infotable(cik, accession_no, document)
+            holdings = []
+            for seq, row in enumerate(rows):
+                ticker = title_to_ticker.get(row["issuer_name"].casefold())
+                if ticker is None:
+                    logger.warning(
+                        "13F issuer 슬롯 매칭 실패: %s (%s)",
+                        row["issuer_name"],
+                        accession_no,
+                    )
+                    continue
+                holdings.append({"seq": seq, "ticker": ticker, **row})
+
+            total += replace_13f_holdings(
+                accession_no,
+                institution,
+                cik,
+                filing["report_date"],
+                holdings,
+            )
+            upsert_13f_filing(
+                accession_no,
+                cik,
+                institution,
+                filing["filed_at"],
+                filing["report_date"],
+            )
+            known.add(accession_no)
+
+    logger.info("미국 기관 13F 보유 저장 완료: %d건", total)

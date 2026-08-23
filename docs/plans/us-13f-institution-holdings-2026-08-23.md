@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS us_13f_filings (
 - 흐름: 화이트리스트 순회 → known 스킵 → submissions(reportDate>=since) → 기관명 대조(EDGAR name 무관하면 스킵) → index→infotable→파싱→ticker/title 매칭 필터 → replace 저장 → 메타 기록
 - `@async_retry(max_retries=3, on_failure=notify_job_failure)`, delay 0.15s, since=오늘-400일
 - 화이트리스트: `_INSTITUTIONS = [("Berkshire Hathaway", 1067983), ...]` — **구현 첫 단계에서 4개 CIK를 company_tickers.json/browse-edgar로 검증하고 결과를 코드 주석+계획서에 기록**
+- CIK 검증(2026-08-23, SEC submissions API `name`): Berkshire Hathaway `1067983` → `BERKSHIRE HATHAWAY INC`, Bridgewater Associates `1350694` → `Bridgewater Associates, LP`, Citadel Advisors `1423053` → `CITADEL ADVISORS LLC`, Renaissance Technologies `1037389` → `RENAISSANCE TECHNOLOGIES LLC`
 - 스케줄: 월요일 09:20 UTC, id=`collect_us_13f`
 - AC: mock httpx로 end-to-end 1회 수집, 2회차 전량 스킵
 
