@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import date, timedelta
+from datetime import date
 import sqlite3
 
+import httpx
 import pytest
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
@@ -12,28 +13,33 @@ from fastapi.testclient import TestClient
 from dashboard.backend.db.connection import _init_schema
 
 
-NAVER_INVESTOR_HTML = """
-<html>
-  <body>
-    <table>
-      <caption>일자별 순매수</caption>
-      <tr>
-        <th>날짜</th><th>개인</th><th>외국인</th><th>기관계</th>
-        <th>금융투자</th><th>보험</th><th>투신(사모)</th><th>은행</th>
-        <th>기타금융기관</th><th>연기금등</th><th>기타법인</th>
-      </tr>
-      <tr>
-        <td>26.07.03</td><td>12,345</td><td>-22,942</td><td>10,597</td>
-        <td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td>
-      </tr>
-      <tr>
-        <td>26.07.02</td><td>-1,000</td><td>2,000</td><td>-3,000</td>
-        <td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td>
-      </tr>
-    </table>
-  </body>
-</html>
-"""
+def _mock_naver_index(monkeypatch, trading_days: list[str], trend: dict[str, tuple], bizdate_override: dict | None = None) -> list[httpx.Request]:
+    """네이버 모바일 지수 API(price=거래일 목록, trend=날짜별 수급)를 실제 응답 형식으로 흉내낸다."""
+    from dashboard.backend.collectors import naver_finance
+
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path.endswith("/price"):
+            return httpx.Response(200, json=[{"localTradedAt": d, "closePrice": "5,000.00"} for d in trading_days])
+        if request.url.path.endswith("/trend"):
+            bizdate = request.url.params["bizdate"]
+            personal, foreign, institutional = trend[bizdate]
+            return httpx.Response(200, json={
+                "bizdate": (bizdate_override or {}).get(bizdate, bizdate),
+                "personalValue": personal,
+                "foreignValue": foreign,
+                "institutionalValue": institutional,
+            })
+        raise AssertionError(f"예상하지 못한 URL: {request.url}")
+
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        naver_finance.httpx, "AsyncClient",
+        lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw),
+    )
+    return requests
 
 
 def _memory_conn() -> sqlite3.Connection:
@@ -43,76 +49,69 @@ def _memory_conn() -> sqlite3.Connection:
     return conn
 
 
-def test_parse_naver_investor_flow_html_extracts_core_columns() -> None:
-    from dashboard.backend.collectors.naver_finance import parse_investor_flow_html
+@pytest.mark.asyncio
+async def test_fetch_investor_deal_trend_parses_mobile_trend_per_trading_day(monkeypatch) -> None:
+    # 2026-09 실측 값 (운영 DB 기존 값과 일치 확인된 형식: 억원, 부호·콤마 문자열)
+    from dashboard.backend.collectors import naver_finance
 
-    records = parse_investor_flow_html(NAVER_INVESTOR_HTML)
+    requests = _mock_naver_index(
+        monkeypatch,
+        trading_days=["2026-09-16", "2026-09-15"],
+        trend={"20260916": ("-12,061", "-16,726", "+12,251"), "20260915": ("+8,596", "-15,458", "-9,585")},
+    )
+
+    records = await naver_finance.fetch_investor_deal_trend("KOSPI", days=30)
 
     assert records == [
-        {
-            "date": "2026-07-03",
-            "individual_net": 12345.0,
-            "foreign_net": -22942.0,
-            "institution_net": 10597.0,
-        },
-        {
-            "date": "2026-07-02",
-            "individual_net": -1000.0,
-            "foreign_net": 2000.0,
-            "institution_net": -3000.0,
-        },
+        {"date": "2026-09-16", "individual_net": -12061.0, "foreign_net": -16726.0, "institution_net": 12251.0},
+        {"date": "2026-09-15", "individual_net": 8596.0, "foreign_net": -15458.0, "institution_net": -9585.0},
     ]
+    assert all("/api/index/KOSPI/" in str(r.url) for r in requests)
 
 
 @pytest.mark.asyncio
-async def test_fetch_investor_deal_trend_caps_results_at_30(monkeypatch) -> None:
+async def test_fetch_investor_deal_trend_requests_only_trading_days(monkeypatch) -> None:
+    # 휴장일·주말 bizdate는 에러 대신 0/0/0을 돌려줘 가짜 행이 생긴다 → price 거래일만 요청해야 함
     from dashboard.backend.collectors import naver_finance
 
-    calls: list[dict] = []
+    requests = _mock_naver_index(
+        monkeypatch,
+        trading_days=["2026-10-12", "2026-10-08"],  # 10-09(한글날)·주말 없음
+        trend={"20261012": ("+1", "+2", "+3"), "20261008": ("+4", "+5", "+6")},
+    )
 
-    class FakeResponse:
-        def __init__(self, page: int) -> None:
-            self.page = page
-            self.content = self._html().encode("euc-kr")
+    await naver_finance.fetch_investor_deal_trend("KOSDAQ", days=30)
 
-        def _html(self) -> str:
-            base = date(2026, 7, 3) - timedelta(days=(self.page - 1) * 10)
-            rows = []
-            for offset in range(10):
-                row_date = base - timedelta(days=offset)
-                rows.append(
-                    "<tr>"
-                    f"<td>{row_date.strftime('%y.%m.%d')}</td>"
-                    f"<td>{offset}</td><td>{offset + 1}</td><td>{offset + 2}</td>"
-                    "<td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td>"
-                    "</tr>"
-                )
-            return "<table><caption>일자별 순매수</caption>" + "".join(rows) + "</table>"
+    asked = [r.url.params["bizdate"] for r in requests if r.url.path.endswith("/trend")]
+    assert asked == ["20261012", "20261008"]
 
-        def raise_for_status(self) -> None:
-            return None
 
-    class FakeAsyncClient:
-        def __init__(self, *args, **kwargs) -> None:
-            return None
+@pytest.mark.asyncio
+async def test_fetch_investor_deal_trend_skips_mismatched_bizdate(monkeypatch) -> None:
+    from dashboard.backend.collectors import naver_finance
 
-        async def __aenter__(self):
-            return self
+    _mock_naver_index(
+        monkeypatch,
+        trading_days=["2026-11-17", "2026-11-16"],
+        trend={"20261117": ("+1", "+2", "+3"), "20261116": ("+4", "+5", "+6")},
+        bizdate_override={"20261116": "20261117"},  # 요청과 다른 날짜 응답
+    )
 
-        async def __aexit__(self, exc_type, exc, tb) -> None:
-            return None
+    records = await naver_finance.fetch_investor_deal_trend("KOSPI", days=30)
 
-        async def get(self, url: str, params: dict):
-            calls.append(params)
-            return FakeResponse(params["page"])
+    assert [r["date"] for r in records] == ["2026-11-17"]
 
-    monkeypatch.setattr(naver_finance.httpx, "AsyncClient", FakeAsyncClient)
 
-    records = await naver_finance.fetch_investor_deal_trend("KOSDAQ", days=45)
+@pytest.mark.asyncio
+async def test_fetch_investor_deal_trend_caps_window_at_60(monkeypatch) -> None:
+    from dashboard.backend.collectors import naver_finance
 
-    assert len(records) == 30
-    assert [call["page"] for call in calls] == [1, 2, 3]
-    assert {call["sosok"] for call in calls} == {"02"}
+    requests = _mock_naver_index(monkeypatch, trading_days=[], trend={})
+
+    await naver_finance.fetch_investor_deal_trend("KOSPI", days=90)
+
+    price = next(r for r in requests if r.url.path.endswith("/price"))
+    assert price.url.params["pageSize"] == "60"
 
 
 def test_kr_investor_flow_api_returns_sorted_records_and_stale_flag(monkeypatch) -> None:

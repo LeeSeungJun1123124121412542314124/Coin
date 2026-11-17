@@ -5,10 +5,8 @@ from __future__ import annotations
 import logging
 import re
 import xml.etree.ElementTree as ET
-from datetime import datetime
 from html.parser import HTMLParser
 from math import ceil
-from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -42,14 +40,13 @@ _MARKET_SUFFIX: dict[str, str] = {
 
 # 네이버 자동완성 API — 응답은 UTF-8 JSON
 _NAVER_AC_URL = "https://ac.stock.naver.com/ac"
-_NAVER_INVESTOR_URL = "https://finance.naver.com/sise/investorDealTrendDay.nhn"
+# 지수 투자자 수급 — 모바일 JSON API (PC investorDealTrendDay는 2026-09 이후 410 Gone)
+_NAVER_INDEX_PRICE_URL = "https://m.stock.naver.com/api/index/{market}/price"
+_NAVER_INDEX_TREND_URL = "https://m.stock.naver.com/api/index/{market}/trend"
 # 종목별 투자자 매매동향 — 모바일 JSON API (순매매량 기준, 주 단위)
 _NAVER_STOCK_TREND_URL = "https://m.stock.naver.com/api/stock/{code}/trend"
 _NAVER_MARKET_VOLUME_URL = "https://finance.naver.com/sise/sise_index_day.naver"
-_INVESTOR_MARKET_SOSOK: dict[str, str] = {
-    "KOSPI": "",
-    "KOSDAQ": "02",
-}
+_MAX_WINDOW_DAYS = 60
 _MARKET_VOLUME_CODE: dict[str, str] = {
     "KOSPI": "KOSPI",
     "KOSDAQ": "KOSDAQ",
@@ -96,27 +93,6 @@ def _parse_investor_number(raw: str) -> float:
     return float(raw.replace(",", "").strip())
 
 
-def parse_investor_flow_html(html: str) -> list[dict]:
-    """네이버 투자자별 매매동향 HTML에서 핵심 순매수 컬럼을 파싱한다."""
-    parser = _TableRowParser()
-    parser.feed(html)
-
-    records: list[dict] = []
-    for row in parser.rows:
-        if len(row) < 4 or not _INVESTOR_DATE_RE.match(row[0]):
-            continue
-        try:
-            records.append({
-                "date": _parse_investor_date(row[0]),
-                "individual_net": _parse_investor_number(row[1]),
-                "foreign_net": _parse_investor_number(row[2]),
-                "institution_net": _parse_investor_number(row[3]),
-            })
-        except ValueError:
-            continue
-    return records
-
-
 def parse_market_volume_html(html: str) -> list[dict]:
     """네이버 시장 일별시세 HTML에서 거래대금(조원)을 추출한다."""
     parser = _TableRowParser()
@@ -137,37 +113,44 @@ def parse_market_volume_html(html: str) -> list[dict]:
 
 
 async def fetch_investor_deal_trend(market: str, days: int = 30) -> list[dict]:
-    """네이버 일자별 순매수 페이지에서 최근 투자자 수급을 조회한다."""
-    if market not in _INVESTOR_MARKET_SOSOK:
+    """네이버 모바일 지수 API에서 최근 거래일별 투자자 순매수(억원)를 조회한다 (최대 60영업일).
+
+    trend는 하루 1건만 주고 휴장일·주말 bizdate에도 에러 대신 0/0/0을 돌려주므로,
+    price 응답의 거래일 목록에 있는 날짜만 요청한다.
+    """
+    if market not in ("KOSPI", "KOSDAQ"):
         raise ValueError("market은 KOSPI 또는 KOSDAQ만 허용됩니다")
 
-    target_days = min(max(1, days), 30)
-    pages = max(3, ceil(target_days / 10))
-    bizdate = datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y%m%d")
+    target_days = min(max(1, days), _MAX_WINDOW_DAYS)
     records: list[dict] = []
-    seen_dates: set[str] = set()
 
     async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
-        for page in range(1, pages + 1):
+        resp = await client.get(
+            _NAVER_INDEX_PRICE_URL.format(market=market),
+            params={"pageSize": target_days, "page": 1},
+        )
+        resp.raise_for_status()
+        trading_days = [item["localTradedAt"] for item in resp.json()]
+
+        for day in trading_days:
+            bizdate = day.replace("-", "")
             resp = await client.get(
-                _NAVER_INVESTOR_URL,
-                params={
-                    "bizdate": bizdate,
-                    "sosok": _INVESTOR_MARKET_SOSOK[market],
-                    "page": page,
-                },
+                _NAVER_INDEX_TREND_URL.format(market=market),
+                params={"bizdate": bizdate},
             )
             resp.raise_for_status()
-            html = resp.content.decode("euc-kr", errors="replace")
-            for record in parse_investor_flow_html(html):
-                if record["date"] in seen_dates:
-                    continue
-                seen_dates.add(record["date"])
-                records.append(record)
-                if len(records) >= target_days:
-                    return records
+            item = resp.json()
+            if item.get("bizdate") != bizdate:
+                logger.warning("네이버 수급 응답 날짜 불일치: 요청=%s 응답=%s — 스킵", bizdate, item.get("bizdate"))
+                continue
+            records.append({
+                "date": day,
+                "individual_net": _parse_investor_number(item["personalValue"]),
+                "foreign_net": _parse_investor_number(item["foreignValue"]),
+                "institution_net": _parse_investor_number(item["institutionalValue"]),
+            })
 
-    return records[:target_days]
+    return records
 
 
 def parse_stock_trend_json(items: list) -> list[dict]:
