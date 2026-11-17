@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import date, datetime, timedelta
 import logging
+from zoneinfo import ZoneInfo
 
 from dashboard.backend.collectors.daum_finance import fetch_market_volume
 from dashboard.backend.collectors.naver_finance import (
@@ -85,28 +87,51 @@ def upsert_kr_stock_investor_flow(ticker: str, records: list[dict]) -> int:
     return len(records)
 
 
+def _kst_today() -> date:
+    return datetime.now(ZoneInfo("Asia/Seoul")).date()
+
+
+def _collect_window_days(last_date: str | None, today: date) -> int:
+    """수집할 최근 영업일 수: 기본 30(비확정 당일값 덮어쓰기), DB 공백이 더 길면 그만큼 백필(상한 60).
+
+    공휴일은 모르므로 평일 수로 센다 — 공휴일만큼 조금 더 받을 뿐 누락은 없다.
+    """
+    if last_date is None:
+        return 30
+    last = date.fromisoformat(last_date)
+    gap = sum(
+        1 for offset in range(1, (today - last).days + 1)
+        if (last + timedelta(days=offset)).weekday() < 5
+    )
+    return min(60, max(30, gap))
+
+
 @async_retry(max_retries=3, backoff_base=2.0, on_failure=notify_job_failure)
 async def collect_kr_investor_flow() -> None:
     """KOSPI/KOSDAQ 투자자별 수급과 시장 거래대금을 수집해 저장한다."""
+    with get_db() as conn:
+        last_date = conn.execute("SELECT MAX(date) FROM kr_investor_flow").fetchone()[0]
+    days = _collect_window_days(last_date, _kst_today())
+
     total = 0
     for market in ("KOSPI", "KOSDAQ"):
-        records = await fetch_investor_deal_trend(market, days=30)
+        records = await fetch_investor_deal_trend(market, days=days)
         if not records:
             raise RuntimeError(f"{market} 투자자 수급 데이터 없음")
         total += upsert_kr_investor_flow(market, records)
 
-    kospi_volume = await fetch_market_volume("KOSPI", days=30)
-    kosdaq_volume = await fetch_market_volume("KOSDAQ", days=30)
+    kospi_volume = await fetch_market_volume("KOSPI", days=days)
+    kosdaq_volume = await fetch_market_volume("KOSDAQ", days=days)
     if not kospi_volume:
         raise RuntimeError("KOSPI 거래대금 데이터 없음")
     if not kosdaq_volume:
         raise RuntimeError("KOSDAQ 거래대금 데이터 없음")
     volume_total = upsert_kr_market_volume(kospi_volume, kosdaq_volume)
 
-    # 종목별 수급 (반도체 정점 시그널용) — 매 실행 30영업일 수집으로 첫 실행 백필 겸용
+    # 종목별 수급 (반도체 정점 시그널용) — 시장 수급과 같은 창으로 수집해 공백도 함께 백필
     stock_total = 0
     for ticker in _INVESTOR_FLOW_TICKERS:
-        stock_records = await fetch_stock_investor_trend(ticker, days=30)
+        stock_records = await fetch_stock_investor_trend(ticker, days=days)
         if not stock_records:
             raise RuntimeError(f"{ticker} 종목별 수급 데이터 없음")
         stock_total += upsert_kr_stock_investor_flow(ticker, stock_records)

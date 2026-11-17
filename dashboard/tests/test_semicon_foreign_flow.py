@@ -117,7 +117,7 @@ async def test_fetch_stock_investor_trend_requests_page_size(monkeypatch) -> Non
 
     assert len(records) == 2
     assert calls[0][0] == "https://m.stock.naver.com/api/stock/005930/trend"
-    assert calls[0][1] == {"pageSize": 30, "page": 1}  # 45 → 30으로 클램프
+    assert calls[0][1] == {"pageSize": 45, "page": 1}  # 상한 60 이내라 그대로 (공백 백필용으로 30 → 60 상향)
 
 
 # ── T1-5: upsert 멱등 ─────────────────────────────────────────────

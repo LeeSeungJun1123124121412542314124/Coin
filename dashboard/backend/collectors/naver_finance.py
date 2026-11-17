@@ -107,8 +107,8 @@ def parse_stock_trend_json(items: list) -> list[dict]:
 
 
 async def fetch_stock_investor_trend(code: str, days: int = 30) -> list[dict]:
-    """네이버 모바일 API에서 종목별 투자자 순매수 금액(억원)을 조회한다 (최대 30영업일)."""
-    target_days = min(max(1, days), 30)
+    """네이버 모바일 API에서 종목별 투자자 순매수 금액(억원)을 조회한다 (최대 60영업일)."""
+    target_days = min(max(1, days), _MAX_WINDOW_DAYS)
     async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
         resp = await client.get(
             _NAVER_STOCK_TREND_URL.format(code=code),

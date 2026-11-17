@@ -284,6 +284,79 @@ async def test_collect_kr_investor_flow_upserts_both_markets_and_market_volume(m
     }]
 
 
+@pytest.mark.parametrize("last_date, expected", [
+    (None, 30),            # DB 비어있음 → 기존과 같은 30영업일
+    ("2026-11-17", 30),    # 정상 운영 → 최근 30영업일 재수집(비확정 당일값 덮어쓰기)
+    ("2026-09-17", 44),    # 2026-09-18~ 410 장애 공백 → 공백 평일 수만큼 백필
+    ("2026-01-02", 60),    # 아주 오래된 공백 → 상한 60영업일
+])
+def test_collect_window_days_backfills_gap_within_30_to_60(last_date, expected) -> None:
+    from dashboard.backend.jobs import collect_kr_stock
+
+    assert collect_kr_stock._collect_window_days(last_date, date(2026, 11, 18)) == expected
+
+
+@pytest.mark.asyncio
+async def test_collect_kr_investor_flow_passes_gap_window_to_all_fetchers(monkeypatch) -> None:
+    from dashboard.backend.jobs import collect_kr_stock
+
+    conn = _memory_conn()
+    conn.execute(
+        "INSERT INTO kr_investor_flow (date, market, foreign_net, institution_net, individual_net) VALUES ('2026-09-17', 'KOSPI', 0, 0, 0)"
+    )
+
+    @contextmanager
+    def fake_get_db():
+        yield conn
+
+    seen: list[tuple[str, int]] = []
+
+    async def fake_investor(market: str, days: int = 30):
+        seen.append(("investor", days))
+        return [{"date": "2026-11-18", "foreign_net": 1.0, "institution_net": 1.0, "individual_net": 1.0}]
+
+    async def fake_volume(market: str, days: int = 30):
+        seen.append(("volume", days))
+        return [{"date": "2026-11-18", "value": 1.0}]
+
+    async def fake_stock(code: str, days: int = 30):
+        seen.append(("stock", days))
+        return [{"date": "2026-11-18", "foreign_net": 1.0, "institution_net": 1.0}]
+
+    monkeypatch.setattr(collect_kr_stock, "get_db", fake_get_db)
+    monkeypatch.setattr(collect_kr_stock, "_kst_today", lambda: date(2026, 11, 18))
+    monkeypatch.setattr(collect_kr_stock, "fetch_investor_deal_trend", fake_investor)
+    monkeypatch.setattr(collect_kr_stock, "fetch_market_volume", fake_volume)
+    monkeypatch.setattr(collect_kr_stock, "fetch_stock_investor_trend", fake_stock)
+
+    await collect_kr_stock.collect_kr_investor_flow.__wrapped__()
+
+    assert {days for _, days in seen} == {44}
+    assert {kind for kind, _ in seen} == {"investor", "volume", "stock"}
+
+
+@pytest.mark.asyncio
+async def test_fetch_stock_investor_trend_caps_window_at_60(monkeypatch) -> None:
+    # API는 page를 무시하고 pageSize=60까지 반환 — 종목별 수급도 공백 백필 가능해야 함
+    from dashboard.backend.collectors import naver_finance
+
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=[])
+
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        naver_finance.httpx, "AsyncClient",
+        lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw),
+    )
+
+    await naver_finance.fetch_stock_investor_trend("005930", days=90)
+
+    assert requests[0].url.params["pageSize"] == "60"
+
+
 @pytest.mark.asyncio
 async def test_collect_kr_investor_flow_raises_when_market_returns_no_records(monkeypatch) -> None:
     from dashboard.backend.jobs import collect_kr_stock
