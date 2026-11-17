@@ -67,15 +67,20 @@ def parse_submissions_13f(payload: dict, since: str) -> list[dict]:
 
 
 def parse_filing_index(payload: dict) -> str:
-    """filing index에서 information table XML 문서명을 찾는다."""
+    """filing index에서 information table XML 문서명을 찾는다.
+
+    index.json의 type은 문서 종류가 아니라 아이콘명(text.gif)이고 파일명도 기관마다 제각각
+    (46994.xml, *_holding.xml 등)이다. 13F 공시 루트의 XML은 표지(primary_doc.xml)와
+    정보테이블 둘뿐이므로, primary_doc.xml이 아닌 유일한 XML을 정보테이블로 본다.
+    """
     items = payload.get("directory", {}).get("item", [])
-    for item in items:
-        if item.get("type", "").upper() == "INFORMATION TABLE":
-            return item["name"]
-    for item in items:
-        if "infotable" in item.get("name", "").lower():
-            return item["name"]
-    raise ValueError("13F information table 문서를 찾을 수 없습니다")
+    candidates = [
+        item["name"] for item in items
+        if item.get("name", "").lower().endswith(".xml") and item["name"] != "primary_doc.xml"
+    ]
+    if len(candidates) == 1:
+        return candidates[0]
+    raise ValueError(f"13F information table 문서를 찾을 수 없습니다 (후보: {candidates})")
 
 
 def _child_text(element: ET.Element, name: str) -> str:

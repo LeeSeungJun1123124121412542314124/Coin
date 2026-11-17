@@ -46,15 +46,29 @@ def test_parse_submissions_13f_filters_form_date_and_requires_report_date():
     ]
 
 
-def test_parse_filing_index_prefers_information_table_then_filename_fallback():
-    assert parse_filing_index({"directory": {"item": [
-        {"name": "first-infotable.xml", "type": "XML"},
-        {"name": "official.xml", "type": "INFORMATION TABLE"},
-    ]}}) == "official.xml"
-    assert parse_filing_index({"directory": {"item": [
-        {"name": "primary.xml", "type": "XML"},
-        {"name": "xslForm13F_X02/infotable.xml", "type": "XML"},
-    ]}}) == "xslForm13F_X02/infotable.xml"
+def _real_index(acc: str, *names: str) -> dict:
+    """실제 EDGAR index.json 형식 — type은 문서 종류가 아니라 아이콘명(text.gif)."""
+    base = [f"{acc}-index-headers.html", f"{acc}-index.html", f"{acc}.txt"]
+    return {"directory": {"item": [
+        {"name": name, "type": "text.gif", "size": ""} for name in [*base, *names]
+    ]}}
+
+
+@pytest.mark.parametrize("names, expected", [
+    # 2026-11-16 실측: Berkshire는 숫자 파일명 (기존 로직으로 판별 실패 → 잡 전체 중단)
+    (("46994.xml", "primary_doc.xml"), "46994.xml"),
+    # Renaissance는 '_holding' 파일명
+    (("primary_doc.xml", "renaissance13Fq32026_holding.xml"), "renaissance13Fq32026_holding.xml"),
+    # Bridgewater·Citadel
+    (("infotable.xml", "primary_doc.xml"), "infotable.xml"),
+])
+def test_parse_filing_index_picks_the_only_non_primary_xml(names, expected):
+    assert parse_filing_index(_real_index("0001193125-26-463399", *names)) == expected
+
+
+def test_parse_filing_index_raises_when_non_primary_xml_is_ambiguous():
+    with pytest.raises(ValueError, match="a.xml"):
+        parse_filing_index(_real_index("0000000000-26-000001", "a.xml", "b.xml", "primary_doc.xml"))
 
 
 def test_parse_filing_index_raises_when_document_is_missing():
