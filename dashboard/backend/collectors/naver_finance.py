@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 import logging
-import re
 import xml.etree.ElementTree as ET
-from html.parser import HTMLParser
-from math import ceil
 
 import httpx
 
@@ -45,71 +42,11 @@ _NAVER_INDEX_PRICE_URL = "https://m.stock.naver.com/api/index/{market}/price"
 _NAVER_INDEX_TREND_URL = "https://m.stock.naver.com/api/index/{market}/trend"
 # 종목별 투자자 매매동향 — 모바일 JSON API (순매매량 기준, 주 단위)
 _NAVER_STOCK_TREND_URL = "https://m.stock.naver.com/api/stock/{code}/trend"
-_NAVER_MARKET_VOLUME_URL = "https://finance.naver.com/sise/sise_index_day.naver"
 _MAX_WINDOW_DAYS = 60
-_MARKET_VOLUME_CODE: dict[str, str] = {
-    "KOSPI": "KOSPI",
-    "KOSDAQ": "KOSDAQ",
-}
-_INVESTOR_DATE_RE = re.compile(r"^(?:\d{2}|\d{4})\.\d{2}\.\d{2}$")
-
-
-class _TableRowParser(HTMLParser):
-    def __init__(self) -> None:
-        super().__init__()
-        self.rows: list[list[str]] = []
-        self._current_row: list[str] | None = None
-        self._current_cell: list[str] | None = None
-
-    def handle_starttag(self, tag: str, attrs) -> None:
-        if tag == "tr":
-            self._current_row = []
-        elif tag in {"td", "th"} and self._current_row is not None:
-            self._current_cell = []
-
-    def handle_data(self, data: str) -> None:
-        if self._current_cell is not None:
-            self._current_cell.append(data)
-
-    def handle_endtag(self, tag: str) -> None:
-        if tag in {"td", "th"} and self._current_cell is not None and self._current_row is not None:
-            text = "".join(self._current_cell).strip()
-            self._current_row.append(re.sub(r"\s+", " ", text))
-            self._current_cell = None
-        elif tag == "tr" and self._current_row is not None:
-            if self._current_row:
-                self.rows.append(self._current_row)
-            self._current_row = None
-
-
-def _parse_investor_date(raw: str) -> str:
-    year, month, day = raw.split(".")
-    if len(year) == 2:
-        year = f"20{year}"
-    return f"{year}-{month}-{day}"
 
 
 def _parse_investor_number(raw: str) -> float:
     return float(raw.replace(",", "").strip())
-
-
-def parse_market_volume_html(html: str) -> list[dict]:
-    """네이버 시장 일별시세 HTML에서 거래대금(조원)을 추출한다."""
-    parser = _TableRowParser()
-    parser.feed(html)
-
-    records: list[dict] = []
-    for row in parser.rows:
-        if len(row) < 6 or not _INVESTOR_DATE_RE.match(row[0]):
-            continue
-        try:
-            records.append({
-                "date": _parse_investor_date(row[0]),
-                "value": round(_parse_investor_number(row[5]) / 1_000_000, 4),
-            })
-        except ValueError:
-            continue
-    return records
 
 
 async def fetch_investor_deal_trend(market: str, days: int = 30) -> list[dict]:
@@ -180,34 +117,6 @@ async def fetch_stock_investor_trend(code: str, days: int = 30) -> list[dict]:
         resp.raise_for_status()
         return parse_stock_trend_json(resp.json())
 
-
-async def fetch_market_volume(market: str, days: int = 30) -> list[dict]:
-    """네이버 시장 일별시세에서 KOSPI/KOSDAQ 거래대금(조원)을 조회한다."""
-    if market not in _MARKET_VOLUME_CODE:
-        raise ValueError("market은 KOSPI 또는 KOSDAQ만 허용됩니다")
-
-    target_days = min(max(1, days), 30)
-    pages = max(3, ceil(target_days / 10))
-    records: list[dict] = []
-    seen_dates: set[str] = set()
-
-    async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
-        for page in range(1, pages + 1):
-            resp = await client.get(
-                _NAVER_MARKET_VOLUME_URL,
-                params={"code": _MARKET_VOLUME_CODE[market], "page": page},
-            )
-            resp.raise_for_status()
-            html = resp.content.decode("euc-kr", errors="replace")
-            for record in parse_market_volume_html(html):
-                if record["date"] in seen_dates:
-                    continue
-                seen_dates.add(record["date"])
-                records.append(record)
-                if len(records) >= target_days:
-                    return records
-
-    return records[:target_days]
 
 
 async def search_naver_stocks(query: str) -> list[dict]:

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import logging
 
+from dashboard.backend.collectors.daum_finance import fetch_market_volume
 from dashboard.backend.collectors.naver_finance import (
     fetch_investor_deal_trend,
-    fetch_market_volume,
     fetch_stock_investor_trend,
 )
 from dashboard.backend.db.connection import get_db

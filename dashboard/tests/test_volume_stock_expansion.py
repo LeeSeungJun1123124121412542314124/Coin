@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from datetime import date, datetime, timezone
 import sqlite3
 
+import httpx
 import pytest
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
@@ -29,26 +30,32 @@ CNN_HISTORY_FIXTURE = {
     }
 }
 
-NAVER_MARKET_VOLUME_HTML = """
-<html>
-  <body>
-    <table>
-      <tr>
-        <th>날짜</th><th>체결가</th><th>전일비</th><th>등락률</th>
-        <th>거래량(천주)</th><th>거래대금(백만)</th>
-      </tr>
-      <tr>
-        <td>2026.07.03</td><td>3,054.28</td><td>10.10</td><td>+0.33%</td>
-        <td>612,345</td><td>12,345,678</td>
-      </tr>
-      <tr>
-        <td>2026.07.02</td><td>3,044.18</td><td>4.30</td><td>+0.14%</td>
-        <td>512,345</td><td>9,876,543</td>
-      </tr>
-    </table>
-  </body>
-</html>
-"""
+# 다음 금융 market_index/days 실측 응답 형식 (2026-09 값 — 운영 DB 기존 네이버 값 16.6858/17.1256 조원과 일치)
+DAUM_MARKET_DAYS_FIXTURE = {
+    "code": 200,
+    "message": "OK",
+    "data": [
+        {"date": "2026-09-16 00:00:00", "tradePrice": 3100.0, "accTradeVolume": 500000, "accTradePrice": 16685829.000},
+        {"date": "2026-09-15 00:00:00", "tradePrice": 3090.0, "accTradeVolume": 510000, "accTradePrice": 17125579.000},
+    ],
+}
+
+
+def _mock_daum(monkeypatch) -> list[httpx.Request]:
+    from dashboard.backend.collectors import daum_finance
+
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=DAUM_MARKET_DAYS_FIXTURE)
+
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        daum_finance.httpx, "AsyncClient",
+        lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw),
+    )
+    return requests
 
 
 def _memory_conn() -> sqlite3.Connection:
@@ -89,13 +96,31 @@ def test_cnn_fear_greed_headers_use_full_browser_user_agent() -> None:
     assert "AppleWebKit" in ua and "Chrome" in ua
 
 
-def test_parse_naver_market_volume_html_converts_million_krw_to_trillion_krw() -> None:
-    from dashboard.backend.collectors.naver_finance import parse_market_volume_html
+@pytest.mark.asyncio
+async def test_fetch_market_volume_converts_daum_million_krw_to_trillion_krw(monkeypatch) -> None:
+    from dashboard.backend.collectors import daum_finance
 
-    assert parse_market_volume_html(NAVER_MARKET_VOLUME_HTML) == [
-        {"date": "2026-07-03", "value": 12.3457},
-        {"date": "2026-07-02", "value": 9.8765},
+    _mock_daum(monkeypatch)
+
+    assert await daum_finance.fetch_market_volume("KOSPI", days=30) == [
+        {"date": "2026-09-16", "value": 16.6858},
+        {"date": "2026-09-15", "value": 17.1256},
     ]
+
+
+@pytest.mark.asyncio
+async def test_fetch_market_volume_sends_referer_and_caps_window_at_60(monkeypatch) -> None:
+    # 다음 API는 Referer 없으면 거부 — 수집 창 상한은 투자자 수급과 같은 60영업일
+    from dashboard.backend.collectors import daum_finance
+
+    requests = _mock_daum(monkeypatch)
+
+    await daum_finance.fetch_market_volume("KOSDAQ", days=90)
+
+    req = requests[0]
+    assert req.headers["Referer"].startswith("https://finance.daum.net")
+    assert req.url.params["market"] == "KOSDAQ"
+    assert req.url.params["perPage"] == "60"
 
 
 def test_stock_fear_greed_api_returns_latest_row_and_stale_flag(monkeypatch) -> None:
