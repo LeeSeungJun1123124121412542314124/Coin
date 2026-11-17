@@ -1,5 +1,6 @@
 """잡 실패 시 텔레그램 알림."""
 from __future__ import annotations
+import html
 import logging
 import os
 import httpx
@@ -13,12 +14,16 @@ async def notify_job_failure(job_name: str, error: str) -> None:
     if not _TELEGRAM_TOKEN or not _CHAT_ID:
         logger.warning("텔레그램 설정 없음 — 잡 실패 알림 스킵: %s", job_name)
         return
-    text = f"⚠️ <b>잡 실패</b>\n잡: {job_name}\n오류: {error}"
+    # 예외 문자열의 <, >, & 이스케이프 — 미처리 시 텔레그램이 400(can't parse entities)으로 거부
+    text = f"⚠️ <b>잡 실패</b>\n잡: {html.escape(job_name)}\n오류: {html.escape(error)}"
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            await client.post(
+            resp = await client.post(
                 f"https://api.telegram.org/bot{_TELEGRAM_TOKEN}/sendMessage",
                 json={"chat_id": _CHAT_ID, "text": text, "parse_mode": "HTML"},
             )
+        # httpx는 4xx에서 예외를 던지지 않음 — 거부도 로그로 남김 (raise_for_status는 URL의 토큰을 노출)
+        if resp.status_code != 200:
+            logger.error("잡 실패 알림 발송 실패: HTTP %d %s", resp.status_code, resp.text[:200])
     except Exception as e:
         logger.error("잡 실패 알림 발송 실패: %s", e)
