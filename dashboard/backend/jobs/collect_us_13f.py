@@ -127,6 +127,7 @@ async def collect_us_13f_holdings() -> None:
     known = known_13f_accessions()
     since = (date.today() - timedelta(days=_LOOKBACK_DAYS)).isoformat()
     total = 0
+    failed: list[str] = []
 
     for institution, cik in _INSTITUTIONS:
         await asyncio.sleep(_REQUEST_DELAY_S)
@@ -145,9 +146,15 @@ async def collect_us_13f_holdings() -> None:
             if accession_no in known:
                 continue
             await asyncio.sleep(_REQUEST_DELAY_S)
-            document = await fetch_filing_index(cik, accession_no)
-            await asyncio.sleep(_REQUEST_DELAY_S)
-            rows = await fetch_infotable(cik, accession_no, document)
+            try:
+                document = await fetch_filing_index(cik, accession_no)
+                await asyncio.sleep(_REQUEST_DELAY_S)
+                rows = await fetch_infotable(cik, accession_no, document)
+            except Exception as e:
+                # 공시 1건 실패가 나머지 공시·기관 수집을 막지 않도록 건너뛰고, 루프 후 예외로 알림
+                logger.warning("13F 공시 처리 실패 — 스킵: %s %s: %s", institution, accession_no, e)
+                failed.append(f"{accession_no}({e})")
+                continue
             holdings = []
             for seq, row in enumerate(rows):
                 ticker = title_to_ticker.get(row["issuer_name"].casefold())
@@ -177,3 +184,5 @@ async def collect_us_13f_holdings() -> None:
             known.add(accession_no)
 
     logger.info("미국 기관 13F 보유 저장 완료: %d건", total)
+    if failed:
+        raise RuntimeError(f"13F 공시 {len(failed)}건 처리 실패: {', '.join(failed)}")
