@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from datetime import date, datetime, timedelta, timezone
 import logging
+import re
 
 from dashboard.backend.collectors.edgar import (
     fetch_filing_index,
@@ -43,6 +44,17 @@ def _us_slot_tickers() -> list[str]:
 
 def _institution_matches(institution: str, edgar_name: str) -> bool:
     return institution.casefold() in edgar_name.casefold()
+
+
+# 회사 형태 접미사 표기 통일 — EDGAR 공식명('Apple Inc.', 'NVIDIA CORP')과
+# 13F nameOfIssuer('APPLE INC', 'NVIDIA CORPORATION')가 기관마다 다르게 적힌다
+_SUFFIX_ALIASES = {"CORPORATION": "CORP", "INCORPORATED": "INC", "COMPANY": "CO", "LIMITED": "LTD"}
+
+
+def _issuer_key(name: str) -> str:
+    """대소문자·구두점·회사 형태 접미사 표기 차이를 지운 발행사 매칭 키."""
+    words = re.sub(r"[^\w\s]", " ", name.upper()).split()
+    return " ".join(_SUFFIX_ALIASES.get(word, word) for word in words)
 
 
 def known_13f_accessions() -> set[str]:
@@ -120,7 +132,7 @@ async def collect_us_13f_holdings() -> None:
 
     title_map = await fetch_ticker_title_map()
     title_to_ticker = {
-        title_map[ticker].casefold(): ticker
+        _issuer_key(title_map[ticker]): ticker
         for ticker in tickers
         if ticker in title_map
     }
@@ -157,7 +169,7 @@ async def collect_us_13f_holdings() -> None:
                 continue
             holdings = []
             for seq, row in enumerate(rows):
-                ticker = title_to_ticker.get(row["issuer_name"].casefold())
+                ticker = title_to_ticker.get(_issuer_key(row["issuer_name"]))
                 if ticker is None:
                     logger.warning(
                         "13F issuer 슬롯 매칭 실패: %s (%s)",

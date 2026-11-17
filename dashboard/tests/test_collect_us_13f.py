@@ -90,7 +90,8 @@ async def test_collect_us_13f_end_to_end_and_second_run_skips_download(monkeypat
         async def get(self, url):
             nonlocal infotable_downloads
             if url.endswith("company_tickers.json"):
-                return FakeResponse({"0": {"ticker": "AAPL", "title": "APPLE INC"}})
+                # 실제 EDGAR 공식명 — 13F nameOfIssuer('APPLE INC')와 표기가 다르다
+                return FakeResponse({"0": {"ticker": "AAPL", "title": "Apple Inc."}})
             if "submissions" in url:
                 return FakeResponse({
                     "name": "BERKSHIRE HATHAWAY INC",
@@ -116,6 +117,25 @@ async def test_collect_us_13f_end_to_end_and_second_run_skips_download(monkeypat
     assert [tuple(row) for row in rows] == [(0, "AAPL", 123.0)]
     assert infotable_downloads == 1
     assert collect_us_13f.known_13f_accessions() == {"acc-1"}
+
+
+@pytest.mark.parametrize("edgar_title, issuer_name", [
+    # 2026-11-18 실측: 정확 일치 비교로 매칭 실패하던 쌍 (EDGAR 공식명, 13F nameOfIssuer)
+    ("Apple Inc.", "APPLE INC"),
+    ("Tesla, Inc.", "TESLA INC"),
+    ("NVIDIA CORP", "NVIDIA CORPORATION"),
+    ("MICROSOFT CORP", "MICROSOFT CORP"),
+])
+def test_issuer_key_matches_edgar_title_and_13f_issuer_name(edgar_title, issuer_name) -> None:
+    from dashboard.backend.jobs import collect_us_13f
+
+    assert collect_us_13f._issuer_key(edgar_title) == collect_us_13f._issuer_key(issuer_name)
+
+
+def test_issuer_key_keeps_different_companies_apart() -> None:
+    from dashboard.backend.jobs import collect_us_13f
+
+    assert collect_us_13f._issuer_key("Apple Inc.") != collect_us_13f._issuer_key("APPLE HOSPITALITY REIT INC")
 
 
 @pytest.mark.asyncio
