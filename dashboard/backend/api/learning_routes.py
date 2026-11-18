@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, Query
@@ -10,7 +11,9 @@ from pydantic import BaseModel, Field
 
 from dashboard.backend.collectors import binance_spot, exchange_rate
 from dashboard.backend.db.connection import get_db
-from dashboard.backend.services import learning_account, learning_indicators, learning_review, learning_symbols
+from dashboard.backend.services import (
+    learning_account, learning_indicators, learning_metrics, learning_review, learning_symbols,
+)
 from dashboard.backend.services.learning_snapshot import build_snapshot
 from dashboard.backend.services.learning_settings import LearningError, get_settings, update_settings
 
@@ -229,3 +232,30 @@ async def post_review_confirm(position_id: int, horizon_days: int, req: ReviewCo
         return learning_review.confirm_review(position_id, horizon_days, req.verdict, req.reason)
     except LearningError as e:
         return _bad_request(e)
+
+
+@router.get("/learning/performance")
+async def get_learning_performance():
+    """적중률·승률·계좌 자산 곡선·DCA 기준선·환율."""
+    start = datetime.fromisoformat(learning_account.get_account()["started_at"]).astimezone(timezone.utc).date()
+    until = datetime.now(timezone.utc).date()
+    symbol = get_settings()["dca"]["symbol"]
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT open_time, close FROM learning_candles WHERE symbol=? AND interval='1d' ORDER BY open_time",
+            (symbol,)).fetchall()
+    if rows:
+        closes = {datetime.fromtimestamp(r["open_time"] / 1000, tz=timezone.utc).date(): r["close"] for r in rows}
+        dca = {"symbol": symbol, "series": learning_metrics.dca_baseline(start, until, closes)}
+        dca_reason = None
+    else:
+        dca = None
+        dca_reason = f"기준 종목({symbol}) 캔들이 없습니다. 추적 목록에 추가하세요"
+    return {
+        "hit_rate": {"14": learning_metrics.hit_rate(14), "28": learning_metrics.hit_rate(28)},
+        "win_rate": learning_metrics.win_rate(),
+        "equity": learning_metrics.account_equity_series(start, until),
+        "dca": dca,
+        "dca_reason": dca_reason,
+        "usd_krw": await exchange_rate.fetch_usd_krw(),
+    }
