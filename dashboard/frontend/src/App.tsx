@@ -11,6 +11,7 @@ import { Whale } from './components/screens/Whale'
 import { Research } from './components/screens/Research'
 import { Alerts } from './components/screens/Alerts'
 import { Leaderboard } from './components/screens/Leaderboard'
+import { Learning } from './components/screens/Learning'
 import { BASE } from './lib/api'
 
 const TABS = [
@@ -24,6 +25,7 @@ const TABS = [
   { path: '/whale', label: '고래추적', description: 'Hyperliquid 상위 지갑 포지션과 BTC 방향 합의를 추적합니다.' },
   { path: '/leaderboard', label: '리더보드', description: '지표별 포워드 자동매매 성과와 에쿼티 곡선을 비교합니다.' },
   { path: '/alerts', label: '알림히스토리', description: '전송된 경보와 방향 판정 기록을 심볼별로 확인합니다.' },
+  { path: '/learning', label: '학습', description: '차트로 국면을 판단하고 근거와 함께 모의매매한 뒤 복기합니다.' },
 ] as const
 
 function PinScreen({ onSuccess }: { onSuccess: () => void }) {
@@ -164,6 +166,7 @@ export default function App() {
           <Route path="/whale" element={<Whale />} />
           <Route path="/alerts" element={<Alerts />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/learning" element={<Learning />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
