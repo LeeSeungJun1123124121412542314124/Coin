@@ -6,6 +6,9 @@ import json
 import sqlite3
 
 import pytest
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 _SIM_TABLES = (
     "sim_predictions", "sim_positions", "sim_settlements",
@@ -48,3 +51,38 @@ def test_no_legacy_tables_no_backup(tmp_path, conn_module):
     names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert not any(n.startswith("sim_") for n in names)
     assert not (tmp_path / "backups").exists() or not list((tmp_path / "backups").glob("*.json"))
+
+
+
+@pytest.mark.parametrize("method,path", [
+    ("get", "/api/sim/accounts"),
+    ("get", "/api/sim/predictions"),
+    ("get", "/api/sim/scorecard"),
+    ("get", "/api/sim/signals"),
+    ("get", "/api/sim/macro-context"),
+    ("get", "/api/sim/projection"),
+    ("get", "/api/sim/win-rate-analysis"),
+])
+def test_legacy_endpoints_404(method, path):
+    from dashboard.backend.api.sim_routes import router
+
+    app = FastAPI()
+    app.include_router(router, prefix="/api")
+    assert getattr(TestClient(app), method)(path).status_code == 404
+
+
+def test_legacy_jobs_not_registered():
+    from dashboard.backend import main
+
+    class DummyNotifier:
+        async def send_message(self, message: str) -> None:
+            return None
+
+    class DummyDispatcher:
+        _notifier = DummyNotifier()
+
+    scheduler = AsyncIOScheduler(timezone="UTC")
+    main._register_jobs(scheduler, config=object(), dispatcher=DummyDispatcher())
+
+    assert scheduler.get_job("settle_predictions") is None
+    assert scheduler.get_job("sim_funding") is None

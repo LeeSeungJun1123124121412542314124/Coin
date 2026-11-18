@@ -286,9 +286,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     from dashboard.backend.jobs.collect_putcall import collect_putcall
     from dashboard.backend.jobs.index_shadow import judge_index_shadow, settle_index_shadow
     from dashboard.backend.jobs.update_predictions import update_predictions
-    from dashboard.backend.jobs.settle_predictions import settle_expired_predictions
     from dashboard.backend.jobs.paper_rebalance import run_paper_rebalance
-    from dashboard.backend.services.sim_engine import apply_funding_fees
     from dashboard.backend.jobs.direction_watch import (
         prepare_direction_and_health,
         prepare_semiconductor_stale,
@@ -362,26 +360,8 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     # 코인 1시간봉 수집 — 매 시간 1분 (1시간 봉 마감 후)
     scheduler.add_job(collect_coin_ohlcv_1h, CronTrigger(minute=1))
 
-    # 만료 예측 자동 채점 — 매 시간 5분 (OHLCV 수집 완료 후)
-    scheduler.add_job(settle_expired_predictions, CronTrigger(minute=5), id="settle_predictions")
-
     # 페이퍼 리더보드 리밸런스 — 매일 00:05 UTC (지표별 포트폴리오 1일 갱신)
     scheduler.add_job(run_paper_rebalance, CronTrigger(hour=0, minute=5), id="paper_rebalance")
-
-    # 선물 시뮬 펀딩비 적용 — Bybit 펀딩 정산(00/08/16 UTC) 직후
-    @async_retry(max_retries=2, backoff_base=2.0, on_failure=notify_job_failure)
-    async def _apply_sim_funding():
-        # 재시도마다 now()가 달라지면 (position_id, funding_time) 중복 방지 키가
-        # 매번 새 값이 되어 이중 차감된다 → 펀딩 슬롯(00/08/16 UTC)으로 내림
-        now = datetime.now(timezone.utc)
-        slot = now.replace(hour=now.hour // 8 * 8, minute=0, second=0, microsecond=0)
-        await apply_funding_fees(slot.isoformat())
-
-    scheduler.add_job(
-        _apply_sim_funding,
-        CronTrigger(hour="0,8,16", minute=2, timezone="UTC"),
-        id="sim_funding",
-    )
 
     # 방향 전환·데이터 헬스 알림 — 매일 00:20 UTC (매크로 수집 갱신 후)
     @async_retry(max_retries=2, backoff_base=2.0, on_failure=notify_job_failure)
