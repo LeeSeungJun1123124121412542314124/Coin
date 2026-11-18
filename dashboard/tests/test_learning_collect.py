@@ -107,7 +107,8 @@ def test_jobs_scheduled() -> None:
     assert str(scheduler.get_job("learning_daily").trigger) == "cron[hour='0', minute='10']"
     assert str(scheduler.get_job("learning_daily_retry").trigger) == "cron[hour='4', minute='0']"
     assert str(scheduler.get_job("learning_4h").trigger) == "cron[hour='0,4,8,12,16,20', minute='5']"
-    for job_id in ("learning_daily", "learning_daily_retry", "learning_4h"):
+    assert str(scheduler.get_job("learning_1h").trigger) == "cron[minute='5']"
+    for job_id in ("learning_daily", "learning_daily_retry", "learning_4h", "learning_1h"):
         assert str(scheduler.get_job(job_id).trigger.timezone) == "UTC"
 
 
@@ -177,8 +178,9 @@ async def test_futures_failure_alerts_with_symbol_prefix(state_db, sent, monkeyp
 async def test_daily_candles_incremental_and_backfill_pending(state_db, sent, monkeypatch) -> None:
     _add_symbol("SOLUSDT")
     _add_symbol("NEWUSDT", "pending")
-    binance_spot.save_candles("SOLUSDT", "1d", [
-        {"open_time": 1000, "open": 1, "high": 1, "low": 1, "close": 1, "volume": 1}])
+    for itv in ("1d", "1w", "1M"):
+        binance_spot.save_candles("SOLUSDT", itv, [
+            {"open_time": 1000, "open": 1, "high": 1, "low": 1, "close": 1, "volume": 1}])
     calls = []
 
     async def fake_klines(symbol, interval, start_ms, end_ms=None, now_ms=None):
@@ -188,13 +190,80 @@ async def test_daily_candles_incremental_and_backfill_pending(state_db, sent, mo
     monkeypatch.setattr(binance_spot, "fetch_klines", fake_klines)
     _stub_all(monkeypatch)
     await jobs.collect_learning_daily()
-    # 캔들이 없는(백필 미완) 종목은 상장일부터 다시 백필, 나머지는 증분 수집
-    assert calls == [("NEWUSDT", "1d", 0), ("NEWUSDT", "4h", 0), ("SOLUSDT", "1d", 1001)]
+    # 백필 미완 종목은 5개 시간봉을 상장일부터 다시 백필(종목당 한 번), 완료 종목은 증분 수집
+    assert calls == [
+        ("NEWUSDT", "1d", 0), ("NEWUSDT", "4h", 0), ("NEWUSDT", "1h", 0),
+        ("NEWUSDT", "1w", 0), ("NEWUSDT", "1M", 0),
+        ("SOLUSDT", "1d", 1001), ("SOLUSDT", "1w", 1001), ("SOLUSDT", "1M", 1001),
+    ]
     assert binance_spot.last_open_time("SOLUSDT", "1d") == 1001
     assert binance_spot.last_open_time("NEWUSDT", "4h") == 0
     from dashboard.backend.services.learning_symbols import list_symbols
     assert {s["symbol"]: s["backfill_status"] for s in list_symbols()}["NEWUSDT"] == "done"
     assert _runs("binance-spot")[-1]["status"] == "ok"
+
+
+def _bar(t: int) -> list[dict]:
+    return [{"open_time": t, "open": 1, "high": 1, "low": 1, "close": 1, "volume": 1}]
+
+
+@pytest.mark.asyncio
+async def test_daily_collects_weekly_and_monthly(state_db, sent, monkeypatch) -> None:
+    _add_symbol("SOLUSDT")
+    for itv in ("1d", "1w", "1M"):
+        binance_spot.save_candles("SOLUSDT", itv, _bar(1000))
+    calls = []
+
+    async def fake_klines(symbol, interval, start_ms, end_ms=None, now_ms=None):
+        calls.append((symbol, interval, start_ms))
+        return []
+
+    monkeypatch.setattr(binance_spot, "fetch_klines", fake_klines)
+    _stub_all(monkeypatch)
+    await jobs.collect_learning_daily()
+    assert calls == [("SOLUSDT", "1d", 1001), ("SOLUSDT", "1w", 1001), ("SOLUSDT", "1M", 1001)]
+
+
+@pytest.mark.asyncio
+async def test_missing_interval_filled_without_full_backfill(state_db, sent, monkeypatch) -> None:
+    _add_symbol("SOLUSDT")
+    binance_spot.save_candles("SOLUSDT", "1d", _bar(1000))
+    calls = []
+
+    async def fake_klines(symbol, interval, start_ms, end_ms=None, now_ms=None):
+        calls.append((symbol, interval, start_ms))
+        return _bar(start_ms)
+
+    async def no_backfill(symbol):
+        raise AssertionError("backfill_symbol 호출 금지")
+
+    monkeypatch.setattr(binance_spot, "fetch_klines", fake_klines)
+    monkeypatch.setattr(jobs, "backfill_symbol", no_backfill)
+    _stub_all(monkeypatch)
+    await jobs.collect_learning_daily()
+    assert calls == [("SOLUSDT", "1d", 1001), ("SOLUSDT", "1w", 0), ("SOLUSDT", "1M", 0)]
+    assert binance_spot.last_open_time("SOLUSDT", "1w") == 0
+
+
+@pytest.mark.asyncio
+async def test_1h_failure_recorded_without_alert(state_db, sent, monkeypatch) -> None:
+    _add_symbol("SOLUSDT")
+    binance_spot.save_candles("SOLUSDT", "1h", _bar(1000))
+    monkeypatch.setattr(binance_spot, "fetch_klines", _raiser(_http_error(451)))
+    await jobs.collect_learning_1h()
+    assert [r["status"] for r in _runs("binance-spot-1h")] == ["failed"]
+    assert sent == []
+
+
+@pytest.mark.asyncio
+async def test_1h_run_does_not_mask_daily_failure(state_db, sent, monkeypatch) -> None:
+    _add_symbol("SOLUSDT")
+    binance_spot.save_candles("SOLUSDT", "1h", _bar(1000))
+    jobs._record_run("binance-spot", "failed", "x")
+    monkeypatch.setattr(binance_spot, "fetch_klines", _ok([]))
+    await jobs.collect_learning_1h()
+    assert _runs("binance-spot-1h")[-1]["status"] == "ok"
+    assert "binance-spot" in jobs._stale_sources()
 
 
 @pytest.mark.asyncio

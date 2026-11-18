@@ -17,6 +17,7 @@ from dashboard.backend.utils.alerting import notify_job_failure
 logger = logging.getLogger(__name__)
 
 SPOT_SOURCE = "binance-spot"
+SPOT_1H_SOURCE = "binance-spot-1h"
 
 
 def _utc_now() -> datetime:
@@ -109,26 +110,32 @@ async def _collect_futures(is_retry: bool) -> None:
         _record_run("binance-futures", "skipped", "선물 없는 종목이거나 추적 종목 없음", is_retry)
 
 
-async def _collect_candles(interval: str, is_retry: bool = False) -> None:
-    """마지막 저장 봉 이후 캔들 증분 수집. 캔들이 없는(백필 미완·실패) 종목은 상장일부터 다시 백필."""
+async def _collect_candles(
+    intervals: tuple[str, ...], is_retry: bool = False, source: str = SPOT_SOURCE, alert: bool = True
+) -> None:
+    """시간봉별 캔들 증분 수집. 백필 미완 종목은 상장일부터 전체 백필(종목당 한 번),
+    백필 완료인데 해당 시간봉만 비어 있으면 그 시간봉만 처음부터 받는다."""
     errors: list[str] = []
     for item in list_symbols():
         sym = item["symbol"]
-        last = binance_spot.last_open_time(sym, interval)
-        if last is None:
+        if item["backfill_status"] != "done":
             # backfill_symbol은 예외를 던지지 않고 failed 상태로 돌려준다 — 실패도 이 실행의 오류로 기록
             if (await backfill_symbol(sym))["status"] != "done":
                 errors.append(f"{sym}: 백필 실패")
             continue
-        try:
-            bars = await binance_spot.fetch_klines(sym, interval, last + 1)
-            binance_spot.save_candles(sym, interval, bars)
-        except Exception as e:
-            errors.append(f"{sym}: {_reason(e)}")
-    if errors:
-        await _fail(SPOT_SOURCE, "; ".join(errors), is_retry)
+        for interval in intervals:
+            last = binance_spot.last_open_time(sym, interval)
+            try:
+                bars = await binance_spot.fetch_klines(sym, interval, 0 if last is None else last + 1)
+                binance_spot.save_candles(sym, interval, bars)
+            except Exception as e:
+                errors.append(f"{sym} {interval}: {_reason(e)}")
+    if not errors:
+        _record_run(source, "ok", None, is_retry)
+    elif alert:
+        await _fail(source, "; ".join(errors), is_retry)
     else:
-        _record_run(SPOT_SOURCE, "ok", None, is_retry)
+        _record_run(source, "failed", "; ".join(errors), is_retry)
 
 
 def _source_runners(is_retry: bool) -> dict:
@@ -140,7 +147,7 @@ def _source_runners(is_retry: bool) -> dict:
         "binance-futures": lambda: _collect_futures(is_retry),
         "bgeometrics": lambda: _collect_bgeometrics(is_retry),
         "fred": lambda: _collect_source("fred", onchain.fetch_fred_liquidity, is_retry),
-        SPOT_SOURCE: lambda: _collect_candles("1d", is_retry),
+        SPOT_SOURCE: lambda: _collect_candles(("1d", "1w", "1M"), is_retry),
     }
 
 
@@ -167,7 +174,15 @@ async def collect_learning_daily() -> None:
 
 
 async def collect_learning_4h() -> None:
-    await _guarded(SPOT_SOURCE, lambda: _collect_candles("4h"), False)
+    await _guarded(SPOT_SOURCE, lambda: _collect_candles(("4h",)), False)
+
+
+async def collect_learning_1h() -> None:
+    """1h 캔들 — 알림·재시도 없이 별도 소스명으로만 기록(일봉 실패 이력을 가리지 않는다)."""
+    try:
+        await _collect_candles(("1h",), source=SPOT_1H_SOURCE, alert=False)
+    except Exception as e:
+        _record_run(SPOT_1H_SOURCE, "failed", _reason(e))
 
 
 def _stale_sources() -> list[str]:

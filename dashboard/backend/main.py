@@ -287,6 +287,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     from dashboard.backend.jobs.collect_stock_fear_greed import collect_stock_fear_greed
     from dashboard.backend.jobs.collect_putcall import collect_putcall
     from dashboard.backend.jobs.learning_collect import (
+        collect_learning_1h,
         collect_learning_4h,
         collect_learning_daily,
         retry_learning_daily,
@@ -352,7 +353,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
         id="collect_putcall",
     )
 
-    # 학습 탭 수집: 매일 00:10 UTC, 실패 소스 재시도 04:00 UTC, 4h 캔들 4시간마다
+    # 학습 탭 수집: 매일 00:10 UTC, 실패 소스 재시도 04:00 UTC, 4h 캔들 4시간마다, 1h 캔들 매시 05분
     scheduler.add_job(
         collect_learning_daily,
         CronTrigger(hour=0, minute=10, timezone="UTC"),
@@ -367,6 +368,11 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
         collect_learning_4h,
         CronTrigger(hour="0,4,8,12,16,20", minute=5, timezone="UTC"),
         id="learning_4h",
+    )
+    scheduler.add_job(
+        collect_learning_1h,
+        CronTrigger(minute=5, timezone="UTC"),
+        id="learning_1h",
     )
 
     # 지수 방향 판정 그림자 기록: 평일 08:10 UTC, 정산 08:20 UTC

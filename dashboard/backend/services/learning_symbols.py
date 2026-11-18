@@ -86,15 +86,19 @@ def _set_status(symbol: str, status: str, listed_at: str | None = None) -> None:
 
 
 async def backfill_symbol(symbol: str) -> dict:
-    """1d·4h 전체 이력을 상장일부터 수집·저장. 실패해도 예외를 던지지 않고 failed 처리."""
+    """5개 시간봉 전체 이력을 상장일부터 수집·저장. 실패해도 예외를 던지지 않고 failed 처리."""
     symbol = symbol.strip().upper()
     try:
         daily = await binance_spot.fetch_klines(symbol, "1d", 0)
         if not daily:
             raise RuntimeError("1d 캔들이 비어 있습니다.")
-        h4 = await binance_spot.fetch_klines(symbol, "4h", 0)
+        others = {
+            interval: await binance_spot.fetch_klines(symbol, interval, 0)
+            for interval in ("4h", "1h", "1w", "1M")
+        }
         binance_spot.save_candles(symbol, "1d", daily)
-        binance_spot.save_candles(symbol, "4h", h4)
+        for interval, bars in others.items():
+            binance_spot.save_candles(symbol, interval, bars)
         listed_at = datetime.fromtimestamp(daily[0]["open_time"] / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
         _set_status(symbol, "done", listed_at)
         return {"symbol": symbol, "status": "done", "listed_at": listed_at}

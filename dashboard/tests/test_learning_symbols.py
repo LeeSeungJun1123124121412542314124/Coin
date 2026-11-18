@@ -117,6 +117,9 @@ async def test_backfill_from_listing(state_db, mock_binance):
     assert res["status"] == "done" and list_symbols()[0]["listed_at"] == "2017-08-17"
     assert _count("learning_candles", interval="1d") == 3000
     assert _count("learning_candles", interval="4h") == 18000
+    with state_db_conn() as conn:
+        intervals = {r[0] for r in conn.execute("SELECT DISTINCT interval FROM learning_candles")}
+    assert intervals == {"1h", "4h", "1d", "1w", "1M"}
 
 
 @pytest.mark.asyncio
