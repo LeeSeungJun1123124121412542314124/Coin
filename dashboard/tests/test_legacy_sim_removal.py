@@ -53,7 +53,6 @@ def test_no_legacy_tables_no_backup(tmp_path, conn_module):
     assert not (tmp_path / "backups").exists() or not list((tmp_path / "backups").glob("*.json"))
 
 
-
 @pytest.mark.parametrize("method,path", [
     ("get", "/api/sim/accounts"),
     ("get", "/api/sim/predictions"),
@@ -86,3 +85,15 @@ def test_legacy_jobs_not_registered():
 
     assert scheduler.get_job("settle_predictions") is None
     assert scheduler.get_job("sim_funding") is None
+
+
+def test_deleted_paths_absent_from_router():
+    from dashboard.backend.api.sim_routes import router
+
+    deleted = {
+        "/sim/accounts", "/sim/accounts/{market}/reset", "/sim/predictions",
+        "/sim/predictions/{prediction_id}", "/sim/scorecard", "/sim/scorecard/by-indicator",
+        "/sim/positions/{position_id}", "/sim/projection", "/sim/signals",
+        "/sim/macro-context", "/sim/win-rate-analysis",
+    }
+    assert {r.path for r in router.routes}.isdisjoint(deleted)
