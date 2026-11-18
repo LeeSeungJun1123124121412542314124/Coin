@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging as _logging
 import os
 import sqlite3
@@ -48,22 +49,40 @@ def get_connection() -> sqlite3.Connection:
     return _conn
 
 
-def _migrate_sim_positions_v2(conn: sqlite3.Connection) -> None:
-    """sim_positions에 v2 신호/예측 컬럼 추가 (없으면 ALTER TABLE)."""
-    existing = {row[1] for row in conn.execute("PRAGMA table_info(sim_positions)").fetchall()}
-    new_cols = [
-        ("signal_score",    "INTEGER"),
-        ("signal_snapshot", "TEXT"),
-        ("macro_snapshot",  "TEXT"),
-        ("predicted_1d",    "REAL"),
-        ("predicted_1w",    "REAL"),
-        ("predicted_1m",    "REAL"),
-        ("predicted_3m",    "REAL"),
-    ]
-    for col_name, col_type in new_cols:
-        if col_name not in existing:
-            conn.execute(f"ALTER TABLE sim_positions ADD COLUMN {col_name} {col_type}")
+_LEGACY_SIM_TABLES = (
+    "sim_accounts", "sim_predictions", "sim_positions",
+    "sim_settlements", "sim_funding_events", "sim_account_resets",
+)
+
+
+def _backup_and_drop_legacy_sim(conn: sqlite3.Connection, backup_dir: Path) -> Path | None:
+    """레거시 수동 모의투자(sim_*) 테이블을 JSON으로 백업한 뒤 삭제.
+
+    sim_accounts가 없으면(새 DB 또는 이미 삭제됨) 아무것도 하지 않고 None 반환.
+    """
+    exists = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='sim_accounts'"
+    ).fetchone()
+    if not exists:
+        return None
+    dump: dict[str, list[dict]] = {}
+    for table in _LEGACY_SIM_TABLES:
+        try:
+            cur = conn.execute(f"SELECT * FROM {table}")
+        except sqlite3.OperationalError:
+            continue  # 일부 테이블이 없는 구버전 DB
+        cols = [d[0] for d in cur.description]
+        dump[table] = [dict(zip(cols, row)) for row in cur.fetchall()]
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    path = backup_dir / f"legacy_sim_backup_{stamp}.json"
+    path.write_text(json.dumps(dump, ensure_ascii=False, indent=1), encoding="utf-8")
+    # 자식 → 부모 순서로 삭제 (FK 위반 방지)
+    for table in reversed(_LEGACY_SIM_TABLES):
+        conn.execute(f"DROP TABLE IF EXISTS {table}")
     conn.commit()
+    _logger.warning("레거시 sim_* 테이블 백업 후 삭제: %s", path)
+    return path
 
 
 def _migrate_alert_history_direction(conn: sqlite3.Connection) -> None:
@@ -89,69 +108,21 @@ def _migrate_predictions_horizons(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def _migrate_sim_funding_unique(conn: sqlite3.Connection) -> None:
-    """sim_funding_events 중복 정리 후 (position_id, funding_time) 유니크 인덱스 적용.
-
-    중복 행이 이미 반영한 capital/funding_fee_accrued는 되돌리지 않으므로,
-    삭제 전에 보정 근거를 로그로 남긴다.
-    """
-    dupes = conn.execute(
-        """
-        SELECT position_id, funding_time, COUNT(*) AS n, SUM(funding_amount) AS total
-        FROM sim_funding_events
-        GROUP BY position_id, funding_time
-        HAVING COUNT(*) > 1
-        """
-    ).fetchall()
-    for row in dupes:
-        _logger.warning(
-            "sim_funding_events 중복 정리: position_id=%s funding_time=%s %d건 합계=%s"
-            " (자본 미보정 — 수동 확인 필요)",
-            row["position_id"], row["funding_time"], row["n"], row["total"],
-        )
-    if dupes:
-        conn.execute(
-            """
-            DELETE FROM sim_funding_events
-            WHERE id NOT IN (
-                SELECT MIN(id) FROM sim_funding_events GROUP BY position_id, funding_time
-            )
-            """
-        )
-    conn.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_sim_funding_position_time"
-        " ON sim_funding_events(position_id, funding_time)"
-    )
-    conn.commit()
-
-
 def _init_schema(conn: sqlite3.Connection) -> None:
+    # 레거시 sim_* 테이블 백업 후 삭제 (스키마 적용 전에 수행)
+    _backup_and_drop_legacy_sim(conn, Path(_resolve_db_path()).parent / "backups")
     schema = _SCHEMA_PATH.read_text(encoding="utf-8")
     conn.executescript(schema)
     # 코인 슬롯 CHECK 제약 마이그레이션: BETWEEN 0 AND 5 → BETWEEN 0 AND 6
     _migrate_coin_slots_constraint(conn)
-    # sim_positions v2 컬럼 마이그레이션 (신호/매크로/예측)
-    _migrate_sim_positions_v2(conn)
     # alert_history 방향 컬럼 마이그레이션
     _migrate_alert_history_direction(conn)
     # predictions horizon별 판정 컬럼 마이그레이션
     _migrate_predictions_horizons(conn)
-    # sim_funding_events 중복 정리 + 유니크 인덱스 (기존 DB 마이그레이션)
-    _migrate_sim_funding_unique(conn)
     # 마이그레이션 후 position 6 기본값 삽입 (schema.sql의 INSERT OR IGNORE는 구 제약 때문에 실패)
     conn.execute(
         "INSERT OR IGNORE INTO dashboard_coin_slots (position, coin_id, symbol, tv_symbol) VALUES (?,?,?,?)",
         (6, 'ripple', 'XRP', 'BINANCE:XRPUSDT'),
-    )
-    # 시뮬레이터 초기 계좌 생성 (이미 존재하면 무시)
-    now = datetime.now(timezone.utc).isoformat()
-    conn.executemany(
-        "INSERT OR IGNORE INTO sim_accounts (id, market, currency, capital, initial_capital, created_at, updated_at) VALUES (?,?,?,?,?,?,?)",
-        [
-            (1, 'crypto',   'USDT', 10000.0, 10000.0, now, now),
-            (2, 'kr_stock', 'KRW',  10000000.0, 10000000.0, now, now),
-            (3, 'us_stock', 'USD',  10000.0, 10000.0, now, now),
-        ]
     )
     # 기본 주식 슬롯 초기화 (이미 존재하면 무시)
     conn.executemany(
