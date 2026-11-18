@@ -114,7 +114,7 @@ def test_order_context_prefill(client):
     assert _buy(client, GOOD).status_code == 201
     with get_db() as conn:
         row = conn.execute("SELECT detected_json, phase, ichimoku_json FROM learning_fills").fetchone()
-    assert json.loads(row["detected_json"]) == ctx
+    assert json.loads(row["detected_json"]) == {**ctx, "interval": "1d"}
     assert row["phase"] == "markup" and json.loads(row["ichimoku_json"]) == _ICH
 
 
@@ -179,3 +179,6 @@ def test_order_uses_requested_interval_context(client, monkeypatch):
     monkeypatch.setattr(learning_routes, "_order_context", spy)
     assert _buy(client, GOOD, interval="1M").status_code == 201
     assert calls == ["1M"]
+    with get_db() as conn:
+        detected = json.loads(conn.execute("SELECT detected_json FROM learning_fills").fetchone()[0])
+    assert detected["interval"] == "1M"

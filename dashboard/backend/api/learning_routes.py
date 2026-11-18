@@ -209,7 +209,7 @@ async def post_order(req: OrderRequest):
     try:
         return learning_account.place_order(
             symbol, req.side, price, rationale, build_snapshot(symbol),
-            usdt_amount=req.usdt_amount, qty=req.qty, detected=_order_context(symbol, req.interval))
+            usdt_amount=req.usdt_amount, qty=req.qty, detected={**_order_context(symbol, req.interval), "interval": req.interval})
     except LearningError as e:
         return _bad_request(e)
 
