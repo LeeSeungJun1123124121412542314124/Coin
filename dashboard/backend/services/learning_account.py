@@ -11,6 +11,9 @@ from dashboard.backend.services.learning_settings import LearningError
 INITIAL_USDT = 10_000.0
 FEE_RATE = 0.001
 QTY_EPS = 1e-9
+# 화면 표시 정밀도(수량 소수 8자리·금액 2자리) — 표시값 그대로 주문해도 전량 매도·현금 전액 매수가 되도록 (R18)
+FULL_QTY_TOL = 1e-8
+FULL_CASH_TOL = 0.005
 PHASES = {"accumulation", "markup", "distribution", "markdown", "unclear"}
 _ICHIMOKU_ALLOWED = {
     "cloud_position": {"above", "inside", "below"},
@@ -97,8 +100,10 @@ def place_order(symbol: str, side: str, price: float, rationale: dict, snapshot:
         if side == "buy":
             if usdt_amount is None or usdt_amount <= 0:
                 raise LearningError("매수 금액(usdt_amount)은 0보다 커야 합니다")
-            if usdt_amount > cash + 1e-9:
-                raise LearningError("보유 현금이 부족합니다")
+            if usdt_amount > cash:
+                if usdt_amount - cash >= FULL_CASH_TOL or cash <= 0:
+                    raise LearningError("보유 현금이 부족합니다")
+                usdt_amount = cash  # 표시 반올림으로 생긴 초과분 — 현금 전액으로 체결
             fee = usdt_amount * FEE_RATE
             fill_qty = (usdt_amount - fee) / price
             fill_amount = usdt_amount
@@ -118,6 +123,8 @@ def place_order(symbol: str, side: str, price: float, rationale: dict, snapshot:
             held = _held_qty(conn, position_id)
             if qty is None or qty <= 0:
                 raise LearningError("매도 수량(qty)은 0보다 커야 합니다")
+            if abs(qty - held) < FULL_QTY_TOL:
+                qty = held  # 표시 반올림 차이 — 보유 전량으로 체결해 청산
             if qty > held + QTY_EPS:
                 raise LearningError("보유 수량을 초과할 수 없습니다")
             fill_qty = qty

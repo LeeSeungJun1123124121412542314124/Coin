@@ -107,3 +107,58 @@ def test_get_account_created_once(state_db):
     a = get_account()
     assert a["initial_usdt"] == 10000.0 and a["cash_usdt"] == 10000.0 and a["started_at"]
     assert get_account()["started_at"] == a["started_at"]
+
+
+def _position_qty(position_id: int) -> float:
+    from dashboard.backend.db.connection import get_db
+    with get_db() as conn:
+        return conn.execute(
+            "SELECT SUM(CASE side WHEN 'buy' THEN qty ELSE -qty END) FROM learning_fills WHERE position_id=?",
+            (position_id,)).fetchone()[0]
+
+
+# 화면은 보유 수량을 소수 8자리로 반올림해 보여 준다 — 그 값을 그대로 매도해도 전량 청산돼야 한다 (R18)
+@pytest.mark.parametrize("amount,price", [
+    (100.0, 64457.67), (250.0, 3456.78), (1000.0, 187.43), (37.5, 0.5234), (500.0, 0.00001234), (777.77, 98765.43),
+])
+def test_sell_displayed_qty_closes_position(state_db, amount, price):
+    from dashboard.backend.services.learning_account import holdings, open_positions, place_order
+    buy = place_order("BTCUSDT", "buy", price, R, {}, usdt_amount=amount)
+    held = holdings({}, None)["positions"][0]["qty"]
+    r = place_order("BTCUSDT", "sell", price, R, {}, qty=round(held, 8))
+    assert open_positions() == []
+    assert r["qty"] == held and _position_qty(buy["position_id"]) == 0.0
+
+
+def test_sell_held_minus_tiny_closes(state_db):
+    from dashboard.backend.services.learning_account import holdings, open_positions, place_order
+    place_order("BTCUSDT", "buy", 64457.67, R, {}, usdt_amount=100.0)
+    held = holdings({}, None)["positions"][0]["qty"]
+    r = place_order("BTCUSDT", "sell", 64457.67, R, {}, qty=held - 1e-12)
+    assert open_positions() == [] and r["qty"] == held
+
+
+def test_partial_sell_beyond_tolerance_keeps_position(state_db):
+    from dashboard.backend.services.learning_account import holdings, open_positions, place_order
+    from dashboard.backend.services.learning_settings import LearningError
+    place_order("BTCUSDT", "buy", 100.0, R, {}, usdt_amount=100.0)
+    held = holdings({}, None)["positions"][0]["qty"]
+    with pytest.raises(LearningError):
+        place_order("BTCUSDT", "sell", 100.0, R, {}, qty=held + 1e-7)
+    place_order("BTCUSDT", "sell", 100.0, R, {}, qty=held - 1e-7)
+    assert len(open_positions()) == 1
+
+
+def test_buy_displayed_cash_rounded_up_succeeds(state_db):
+    from dashboard.backend.services.learning_account import get_account, place_order
+    from dashboard.backend.services.learning_settings import LearningError
+    place_order("BTCUSDT", "buy", 100.0, R, {}, usdt_amount=100.004)
+    cash = get_account()["cash_usdt"]
+    shown = round(cash, 2)
+    assert shown > cash  # 9899.996 → 9900.00 으로 올림 표시
+    r = place_order("ETHUSDT", "buy", 100.0, R, {}, usdt_amount=shown)
+    assert r["cash_usdt"] == 0.0 and get_account()["cash_usdt"] == 0.0
+    assert r["fee_usdt"] == pytest.approx(cash * 0.001)
+    for amount in (0.005, 0.004):  # 현금 0이면 허용오차 안이어도 거부 (수량 0 체결 방지)
+        with pytest.raises(LearningError):
+            place_order("ETHUSDT", "buy", 100.0, R, {}, usdt_amount=amount)

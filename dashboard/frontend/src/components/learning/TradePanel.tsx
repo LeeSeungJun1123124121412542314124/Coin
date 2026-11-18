@@ -121,6 +121,7 @@ function OrderForm({ symbol, interval, context, held, onFilled }: OrderFormProps
   const withHour = interval === '4h'
   const canBuy = phase !== '' && !busy && Number(buyAmount) > 0
   const canSell = phase !== '' && !busy && Number(sellQty) > 0
+  const canFill = !busy && held > 0
 
   const submit = async (side: 'buy' | 'sell') => {
     if (phase === '') return
@@ -137,7 +138,7 @@ function OrderForm({ symbol, interval, context, held, onFilled }: OrderFormProps
       const r = await postOrder(body)
       setResult({
         ok: true,
-        text: `${side === 'buy' ? '매수' : '매도'} 체결 — 수량 ${fmtQty(r.qty)} · 가격 ${fmtPrice(r.price)} · 수수료 ${r.fee_usdt.toFixed(2)} USDT · 남은 현금 ${r.cash_usdt.toFixed(2)} USDT`,
+        text: `${side === 'buy' ? '매수' : '매도'} 체결 — 수량 ${fmtQty(r.qty)} · 가격 ${fmtPrice(r.price)} · 수수료 ${r.fee_usdt.toFixed(2)} USDT · 남은 현금 ${formatUsdtKrw(r.cash_usdt, null)}`,
       })
       setBuyAmount('')
       setSellQty('')
@@ -208,6 +209,8 @@ function OrderForm({ symbol, interval, context, held, onFilled }: OrderFormProps
           <div style={{ display: 'flex', gap: 6 }}>
             <input style={{ ...inputStyle, width: 140 }} aria-label="매도 수량" type="number" min="0" step="any" value={sellQty}
               onChange={e => setSellQty(e.target.value)} />
+            {/* 표시값은 소수 8자리 반올림이라 원본 보유 수량을 그대로 넣는다 */}
+            <button style={buttonStyle(canFill)} disabled={!canFill} onClick={() => setSellQty(String(held))}>전량</button>
             <button style={buttonStyle(canSell)} disabled={!canSell} onClick={() => submit('sell')}>매도</button>
           </div>
         </div>
