@@ -41,6 +41,14 @@ def test_hit_rate_excludes_unclear_counts_partial_separately(state_db):
     assert hit_rate(14) == {"n": 3, "hit_rate": pytest.approx(1 / 3), "partial_ratio": pytest.approx(1 / 3)}
 
 
+def test_hit_rate_counts_confirmed_not_suggested(state_db):
+    # suggested와 confirmed가 어긋난 행 + (None, hit)은 제외 대상
+    seed_reviews([("hit", "miss"), ("hit", "miss"), ("miss", "partial"), ("partial", "hit"),
+                  ("partial", "miss"), (None, "hit")])
+    # 확정값 기준: n=5, hit 1, partial 1 (suggested 기준이면 hit 2, partial 2로 달라진다)
+    assert hit_rate(14) == {"n": 5, "hit_rate": pytest.approx(0.2), "partial_ratio": pytest.approx(0.2)}
+
+
 def test_hit_rate_n0_is_none(state_db):
     assert hit_rate(14) == {"n": 0, "hit_rate": None, "partial_ratio": None}
 

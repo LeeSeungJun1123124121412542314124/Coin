@@ -57,10 +57,6 @@ def dca_baseline(start: date, until: date, closes: dict[date, float], initial: f
     return out
 
 
-def _ms(d: date) -> int:
-    return int(datetime(d.year, d.month, d.day, tzinfo=timezone.utc).timestamp() * 1000)
-
-
 def account_equity_series(start: date, until: date) -> list[dict]:
     """날짜별 계좌 자산 = 그날까지 체결 반영 현금 + 종목별 보유수량 × 1d 종가(없으면 마지막 체결가)."""
     initial = learning_account.get_account()["initial_usdt"]
