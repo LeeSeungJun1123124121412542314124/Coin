@@ -8,9 +8,10 @@ from fastapi import APIRouter, BackgroundTasks, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from dashboard.backend.collectors import binance_spot
+from dashboard.backend.collectors import binance_spot, exchange_rate
 from dashboard.backend.db.connection import get_db
-from dashboard.backend.services import learning_indicators, learning_symbols
+from dashboard.backend.services import learning_account, learning_indicators, learning_symbols
+from dashboard.backend.services.learning_snapshot import build_snapshot
 from dashboard.backend.services.learning_settings import LearningError, get_settings, update_settings
 
 router = APIRouter()
@@ -125,12 +126,8 @@ async def get_chart(
     }
 
 
-@router.get("/learning/order-context")
-async def get_order_context(symbol: str, interval: Literal["1d", "4h"] = "1d"):
+def _order_context(symbol: str, interval: str) -> dict:
     """주문 근거 미리 채우기용 — 일목 상태, 최근 5봉 안의 와이코프 후보, 현재 박스."""
-    symbol = symbol.strip().upper()
-    if symbol not in {s["symbol"] for s in learning_symbols.list_symbols()}:
-        return _not_tracked(symbol)
     candles = _load_candles(symbol, interval, 500 + _EXTRA_BARS)
     if not candles:
         return {"ichimoku_state": dict(_STATE_NONE), "wyckoff_recent": [], "current_box": None}
@@ -143,3 +140,60 @@ async def get_order_context(symbol: str, interval: Literal["1d", "4h"] = "1d"):
         "wyckoff_recent": [c for c in wyckoff["candidates"] if c["time"] >= since],
         "current_box": wyckoff["current_box"],
     }
+
+
+@router.get("/learning/order-context")
+async def get_order_context(symbol: str, interval: Literal["1d", "4h"] = "1d"):
+    """주문 근거 미리 채우기용 — 일목 상태, 최근 5봉 안의 와이코프 후보, 현재 박스."""
+    symbol = symbol.strip().upper()
+    if symbol not in {s["symbol"] for s in learning_symbols.list_symbols()}:
+        return _not_tracked(symbol)
+    return _order_context(symbol, interval)
+
+
+class OrderRequest(BaseModel):
+    """모의 주문 요청 — 매수는 usdt_amount, 매도는 qty만 허용."""
+    symbol: str = Field(..., min_length=1)
+    side: str
+    usdt_amount: float | None = None
+    qty: float | None = None
+    rationale: dict
+    interval: Literal["1d", "4h"] = "1d"
+
+
+@router.get("/learning/account")
+async def get_learning_account():
+    symbols = [p["symbol"] for p in learning_account.open_positions()]
+    prices = {}
+    for sym in symbols:
+        price = await binance_spot.fetch_spot_price(sym)
+        if price is not None:
+            prices[sym] = price
+    usd_krw = await exchange_rate.fetch_usd_krw()
+    return {**learning_account.get_account(), **learning_account.holdings(prices, usd_krw)}
+
+
+@router.post("/learning/orders", status_code=201)
+async def post_order(req: OrderRequest):
+    symbol = req.symbol.strip().upper()
+    if symbol not in {s["symbol"] for s in learning_symbols.list_symbols()}:
+        return _bad_request(LearningError("추적 중인 종목만 주문할 수 있습니다"))
+    if req.side not in ("buy", "sell"):
+        return _bad_request(LearningError(f"주문 방향이 올바르지 않습니다: {req.side}"))
+    if req.side == "buy" and (req.qty is not None or req.usdt_amount is None):
+        return _bad_request(LearningError("매수는 usdt_amount만 지정해야 합니다"))
+    if req.side == "sell" and (req.usdt_amount is not None or req.qty is None):
+        return _bad_request(LearningError("매도는 qty만 지정해야 합니다"))
+    try:
+        rationale = learning_account.validate_rationale(req.rationale)
+    except LearningError as e:
+        return _bad_request(e)
+    price = await binance_spot.fetch_spot_price(symbol)
+    if price is None:
+        return JSONResponse(status_code=503, content={"detail": "현재가를 가져오지 못했습니다. 잠시 후 다시 시도하세요"})
+    try:
+        return learning_account.place_order(
+            symbol, req.side, price, rationale, build_snapshot(symbol),
+            usdt_amount=req.usdt_amount, qty=req.qty, detected=_order_context(symbol, req.interval))
+    except LearningError as e:
+        return _bad_request(e)
