@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks
+from typing import Literal
+
+from fastapi import APIRouter, BackgroundTasks, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from dashboard.backend.collectors import binance_spot
-from dashboard.backend.services import learning_symbols
+from dashboard.backend.db.connection import get_db
+from dashboard.backend.services import learning_indicators, learning_symbols
 from dashboard.backend.services.learning_settings import LearningError, get_settings, update_settings
 
 router = APIRouter()
@@ -61,3 +64,82 @@ async def put_learning_settings(patch: dict):
         return update_settings(patch)
     except LearningError as e:
         return _bad_request(e)
+
+
+_EXTRA_BARS = 52  # 일목 선행스팬B(52봉) 계산용 추가 봉
+_STATE_NONE = {"cloud_position": None, "tk_cross": None, "chikou": None, "future_cloud": None}
+
+
+def _not_tracked(symbol: str) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": f"추적 중이지 않은 종목입니다: {symbol}"})
+
+
+def _load_candles(symbol: str, interval: str, count: int) -> list[dict]:
+    """최신 count봉을 시간 오름차순으로 읽는다."""
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT open_time, open, high, low, close, volume FROM learning_candles"
+            " WHERE symbol=? AND interval=? ORDER BY open_time DESC LIMIT ?",
+            (symbol, interval, count),
+        ).fetchall()
+    return [dict(r) for r in reversed(rows)]
+
+
+@router.get("/learning/chart")
+async def get_chart(
+    symbol: str,
+    interval: Literal["1d", "4h"] = "1d",
+    limit: int = Query(500, ge=1, le=2000),
+):
+    """차트용 캔들·일목·와이코프·지그재그·피보나치. 지표는 limit+52봉으로 계산 후 잘라 반환."""
+    symbol = symbol.strip().upper()
+    if symbol not in {s["symbol"] for s in learning_symbols.list_symbols()}:
+        return _not_tracked(symbol)
+    settings = get_settings()
+    candles = _load_candles(symbol, interval, limit + _EXTRA_BARS)
+    if not candles:
+        return {"candles": [], "ichimoku": [],
+                "wyckoff": {"volume_spikes": [], "candidates": [], "current_box": None},
+                "pivots": [], "fib": [], "state": dict(_STATE_NONE), "settings": settings}
+    wy, el = settings["wyckoff"], settings["elliott"]
+    ich = learning_indicators.ichimoku(candles, binance_spot.INTERVAL_MS[interval])
+    state = learning_indicators.ichimoku_state(candles, ich)
+    wyckoff = learning_indicators.wyckoff_candidates(candles, wy["n"], wy["width_pct"], wy["vol_mult"])
+    pivots = learning_indicators.zigzag(candles, el["threshold_1d" if interval == "1d" else "threshold_4h"])
+    fib = learning_indicators.fib_levels(pivots, el["levels"])
+
+    shown = candles[-limit:]
+    t0 = shown[0]["open_time"]
+    return {
+        "candles": shown,
+        "ichimoku": [r for r in ich if r["time"] >= t0],
+        "wyckoff": {
+            "volume_spikes": [t for t in wyckoff["volume_spikes"] if t >= t0],
+            "candidates": [c for c in wyckoff["candidates"] if c["time"] >= t0],
+            "current_box": wyckoff["current_box"],
+        },
+        "pivots": [p for p in pivots if p["time"] >= t0],
+        "fib": fib,
+        "state": state,
+        "settings": settings,
+    }
+
+
+@router.get("/learning/order-context")
+async def get_order_context(symbol: str, interval: Literal["1d", "4h"] = "1d"):
+    """주문 근거 미리 채우기용 — 일목 상태, 최근 5봉 안의 와이코프 후보, 현재 박스."""
+    symbol = symbol.strip().upper()
+    if symbol not in {s["symbol"] for s in learning_symbols.list_symbols()}:
+        return _not_tracked(symbol)
+    candles = _load_candles(symbol, interval, 500 + _EXTRA_BARS)
+    if not candles:
+        return {"ichimoku_state": dict(_STATE_NONE), "wyckoff_recent": [], "current_box": None}
+    wy = get_settings()["wyckoff"]
+    ich = learning_indicators.ichimoku(candles, binance_spot.INTERVAL_MS[interval])
+    wyckoff = learning_indicators.wyckoff_candidates(candles, wy["n"], wy["width_pct"], wy["vol_mult"])
+    since = candles[-5:][0]["open_time"]
+    return {
+        "ichimoku_state": learning_indicators.ichimoku_state(candles, ich),
+        "wyckoff_recent": [c for c in wyckoff["candidates"] if c["time"] >= since],
+        "current_box": wyckoff["current_box"],
+    }
