@@ -60,3 +60,9 @@ def test_vol_mult_recalculation():
 def test_not_enough_bars():
     r = wyckoff_candidates(_box(n=30))
     assert r == {"volume_spikes": [], "candidates": [], "current_box": None}
+
+
+def test_both_sides_breakout_yields_both_candidates():
+    r = wyckoff_candidates(_with_bar(_box(), 115, 95, 105, 100.0))
+    assert len(r["candidates"]) == 2
+    assert {c["type"] for c in r["candidates"]} == {"spring", "upthrust"}

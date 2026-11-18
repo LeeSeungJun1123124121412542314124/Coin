@@ -118,8 +118,12 @@ def wyckoff_candidates(
         box = _wyckoff_box(candles, i, n, width_pct)
         if box is None or not box["low"] <= c["close"] <= box["high"]:
             continue
-        kind = "spring" if c["low"] < box["low"] else "upthrust" if c["high"] > box["high"] else None
-        if kind:
+        kinds = []
+        if c["low"] < box["low"]:
+            kinds.append("spring")
+        if c["high"] > box["high"]:
+            kinds.append("upthrust")
+        for kind in kinds:
             cands.append({"time": c["open_time"], "type": kind, "strong": spike,
                           "box_high": box["high"], "box_low": box["low"]})
     current = _wyckoff_box(candles, len(candles) - 1, n, width_pct) if len(candles) > n else None
