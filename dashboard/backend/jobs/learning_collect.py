@@ -141,17 +141,30 @@ def _source_runners(is_retry: bool) -> dict:
     }
 
 
+async def _guarded(name: str, fn, is_retry: bool) -> None:
+    """러너 밖(list_symbols 등)에서 발생한 예외도 failed 기록 + 알림으로 처리."""
+    try:
+        await fn()
+    except Exception as e:
+        await _fail(name, _reason(e), is_retry)
+
+
+async def _run_all(runners: dict, is_retry: bool) -> None:
+    results = await asyncio.gather(
+        *(_guarded(name, fn, is_retry) for name, fn in runners.items()), return_exceptions=True
+    )
+    for name, res in zip(runners, results):
+        if isinstance(res, Exception):  # 기록·알림 자체가 실패한 경우만 여기 도달
+            logger.error("학습 수집 실패 기록 오류 (%s): %s", name, type(res).__name__)
+
+
 async def collect_learning_daily() -> None:
     """1d 캔들과 온체인·거시 소스 전부를 서로 독립적으로 수집."""
-    runners = _source_runners(False)
-    results = await asyncio.gather(*(fn() for fn in runners.values()), return_exceptions=True)
-    for name, res in zip(runners, results):
-        if isinstance(res, Exception):
-            logger.error("학습 수집 예기치 않은 오류 (%s): %s", name, type(res).__name__)
+    await _run_all(_source_runners(False), False)
 
 
 async def collect_learning_4h() -> None:
-    await _collect_candles("4h")
+    await _guarded(SPOT_SOURCE, lambda: _collect_candles("4h"), False)
 
 
 def _stale_sources() -> list[str]:
@@ -176,5 +189,5 @@ def _stale_sources() -> list[str]:
 
 async def retry_learning_daily() -> None:
     runners = _source_runners(True)
-    targets = [s for s in _stale_sources() if s in runners]
-    await asyncio.gather(*(runners[s]() for s in targets), return_exceptions=True)
+    targets = {s: runners[s] for s in _stale_sources() if s in runners}
+    await _run_all(targets, True)

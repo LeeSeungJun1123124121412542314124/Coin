@@ -271,3 +271,36 @@ async def test_retry_coinmetrics_when_mvrv_missing(state_db, sent, monkeypatch) 
     _stub_all(monkeypatch, fetch_coinmetrics_btc=cm)
     await jobs.retry_learning_daily()  # mvrv 없음
     assert seen == ["coinmetrics"]
+
+
+def _boom_list_symbols():
+    raise RuntimeError("db error https://secret.example?key=SECRET-KEY-1")
+
+
+@pytest.mark.asyncio
+async def test_list_symbols_failure_recorded_and_alerted_daily(state_db, sent, monkeypatch) -> None:
+    monkeypatch.setattr(jobs, "list_symbols", _boom_list_symbols)
+    _stub_all(monkeypatch)
+    await jobs.collect_learning_daily()
+    for src in ("binance-futures", "binance-spot"):
+        assert _runs(src)[-1] == {"status": "failed", "reason": "RuntimeError", "is_retry": 0}
+        assert (f"learning:{src}", "RuntimeError") in sent
+    assert all("SECRET" not in e for _, e in sent)
+
+
+@pytest.mark.asyncio
+async def test_list_symbols_failure_recorded_and_alerted_4h(state_db, sent, monkeypatch) -> None:
+    monkeypatch.setattr(jobs, "list_symbols", _boom_list_symbols)
+    await jobs.collect_learning_4h()
+    assert _runs("binance-spot")[-1] == {"status": "failed", "reason": "RuntimeError", "is_retry": 0}
+    assert sent == [("learning:binance-spot", "RuntimeError")]
+
+
+@pytest.mark.asyncio
+async def test_retry_runner_unexpected_error_recorded_and_alerted(state_db, sent, monkeypatch) -> None:
+    jobs._record_run("binance-futures", "failed", "x")
+    monkeypatch.setattr(jobs, "list_symbols", _boom_list_symbols)
+    _stub_all(monkeypatch)
+    await jobs.retry_learning_daily()
+    assert _runs("binance-futures")[-1] == {"status": "failed", "reason": "RuntimeError", "is_retry": 1}
+    assert ("learning:binance-futures", "RuntimeError") in sent
