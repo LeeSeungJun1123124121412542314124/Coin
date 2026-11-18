@@ -192,7 +192,7 @@ async def test_daily_candles_incremental_and_backfill_pending(state_db, sent, mo
     await jobs.collect_learning_daily()
     # 백필 미완 종목은 5개 시간봉을 상장일부터 다시 백필(종목당 한 번), 완료 종목은 증분 수집
     assert calls == [
-        ("NEWUSDT", "1d", 0), ("NEWUSDT", "4h", 0), ("NEWUSDT", "1h", 0),
+        ("NEWUSDT", "1d", 0), ("NEWUSDT", "1h", 0), ("NEWUSDT", "4h", 0),
         ("NEWUSDT", "1w", 0), ("NEWUSDT", "1M", 0),
         ("SOLUSDT", "1d", 1001), ("SOLUSDT", "1w", 1001), ("SOLUSDT", "1M", 1001),
     ]

@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from dashboard.backend.collectors import binance_spot
 from dashboard.backend.db.connection import get_db
+from dashboard.backend.services.learning_indicators import INTERVALS
 from dashboard.backend.services.learning_settings import LearningError, get_settings
 
 logger = logging.getLogger(__name__)
@@ -92,13 +93,10 @@ async def backfill_symbol(symbol: str) -> dict:
         daily = await binance_spot.fetch_klines(symbol, "1d", 0)
         if not daily:
             raise RuntimeError("1d 캔들이 비어 있습니다.")
-        others = {
-            interval: await binance_spot.fetch_klines(symbol, interval, 0)
-            for interval in ("4h", "1h", "1w", "1M")
-        }
         binance_spot.save_candles(symbol, "1d", daily)
-        for interval, bars in others.items():
-            binance_spot.save_candles(symbol, interval, bars)
+        # 시간봉마다 받는 즉시 저장 — 중간 실패 시 앞서 받은 것은 남고 다음 실행이 upsert로 다시 채운다
+        for interval in (iv for iv in INTERVALS if iv != "1d"):
+            binance_spot.save_candles(symbol, interval, await binance_spot.fetch_klines(symbol, interval, 0))
         listed_at = datetime.fromtimestamp(daily[0]["open_time"] / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
         _set_status(symbol, "done", listed_at)
         return {"symbol": symbol, "status": "done", "listed_at": listed_at}

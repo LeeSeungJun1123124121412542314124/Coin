@@ -132,6 +132,24 @@ async def test_backfill_failure_sets_failed(state_db, monkeypatch):
     assert res["status"] == "failed" and list_symbols()[0]["backfill_status"] == "failed"
 
 
+@pytest.mark.asyncio
+async def test_backfill_mid_interval_failure_keeps_saved(state_db, mock_binance, monkeypatch):
+    ok_klines = binance_spot.fetch_klines
+
+    async def flaky(symbol, interval, start_ms, end_ms=None, now_ms=None):
+        if interval == "4h":
+            raise RuntimeError("네트워크 오류")
+        return await ok_klines(symbol, interval, start_ms, end_ms, now_ms)
+
+    monkeypatch.setattr(binance_spot, "fetch_klines", flaky)
+    add_symbol("BTCUSDT")
+    res = await backfill_symbol("BTCUSDT")
+    assert res["status"] == "failed" and list_symbols()[0]["backfill_status"] == "failed"
+    assert _count("learning_candles", interval="1d") == 3000
+    assert _count("learning_candles", interval="1h") == 18000
+    assert _count("learning_candles", interval="4h") == 0
+
+
 def test_remove_with_open_position_rejected(state_db):
     add_symbol("ETHUSDT")
     with state_db_conn() as conn:
