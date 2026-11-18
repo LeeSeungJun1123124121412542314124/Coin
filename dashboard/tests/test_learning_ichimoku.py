@@ -19,3 +19,9 @@ def test_ichimoku_linear():
 def test_state_above_cloud_golden():
     st = ichimoku_state(C, ichimoku(C, DAY))
     assert st == {"cloud_position": "above", "tk_cross": "golden", "chikou": "above", "future_cloud": "bullish"}
+
+
+def test_state_insufficient_data_returns_none():
+    c = C[:20]
+    st = ichimoku_state(c, ichimoku(c, DAY))
+    assert st == {"cloud_position": None, "tk_cross": None, "chikou": None, "future_cloud": None}

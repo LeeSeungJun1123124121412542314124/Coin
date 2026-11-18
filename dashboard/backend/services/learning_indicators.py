@@ -54,7 +54,7 @@ def ichimoku_state(candles: list[dict], ich: list[dict]) -> dict:
     close = candles[-1]["close"]
     sa, sb = row["senkou_a"], row["senkou_b"]
     if sa is None or sb is None:
-        cloud_position = "none"
+        cloud_position = None
     elif close > max(sa, sb):
         cloud_position = "above"
     elif close < min(sa, sb):
@@ -63,13 +63,21 @@ def ichimoku_state(candles: list[dict], ich: list[dict]) -> dict:
         cloud_position = "inside"
 
     t, k = row["tenkan"], row["kijun"]
-    if t is None or k is None or t == k:
+    if t is None or k is None:
+        tk_cross = None
+    elif t == k:
         tk_cross = "none"
     else:
         tk_cross = "golden" if t > k else "dead"
 
-    chikou = "above" if n > shift and close > candles[n - 1 - shift]["close"] else "below"
+    if n > shift:
+        chikou = "above" if close > candles[n - 1 - shift]["close"] else "below"
+    else:
+        chikou = None
 
     fa, fb = ich[-1]["senkou_a"], ich[-1]["senkou_b"]
-    future_cloud = "bullish" if fa is not None and fb is not None and fa > fb else "bearish"
+    if fa is None or fb is None:
+        future_cloud = None
+    else:
+        future_cloud = "bullish" if fa > fb else "bearish"
     return {"cloud_position": cloud_position, "tk_cross": tk_cross, "chikou": chikou, "future_cloud": future_cloud}
