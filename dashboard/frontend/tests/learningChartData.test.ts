@@ -67,9 +67,9 @@ assert.equal(formatUsdtKrw(10, null), '10.00 USDT')
 assert.equal(PHASE_LABELS.accumulation, '매집')
 assert.equal(PHASE_LABELS.unclear, '불명확')
 
-console.log('learningChartData tests passed')
-
 // 시간 단위: 토글 순서·라벨·분봉 여부
 assert.deepEqual(INTERVALS, ['1h', '4h', '1d', '1w', '1M'])
 assert.deepEqual(INTERVALS.map(i => INTERVAL_LABELS[i]), ['1시간봉', '4시간봉', '일봉', '주봉', '월봉'])
 assert.deepEqual(INTERVALS.map(isIntraday), [true, true, false, false, false])
+
+console.log('learningChartData tests passed')
