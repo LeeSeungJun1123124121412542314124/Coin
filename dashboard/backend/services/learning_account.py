@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from datetime import datetime, timezone
 
 from dashboard.backend.db.connection import get_db
@@ -98,8 +99,8 @@ def place_order(symbol: str, side: str, price: float, rationale: dict, snapshot:
         pos = conn.execute(
             "SELECT id FROM learning_positions WHERE symbol=? AND status='open'", (symbol,)).fetchone()
         if side == "buy":
-            if usdt_amount is None or usdt_amount <= 0:
-                raise LearningError("매수 금액(usdt_amount)은 0보다 커야 합니다")
+            if usdt_amount is None or not math.isfinite(usdt_amount) or usdt_amount <= 0:
+                raise LearningError("매수 금액(usdt_amount)은 0보다 큰 유한한 숫자여야 합니다")
             if usdt_amount > cash:
                 if usdt_amount - cash >= FULL_CASH_TOL or cash <= 0:
                     raise LearningError("보유 현금이 부족합니다")
@@ -121,8 +122,8 @@ def place_order(symbol: str, side: str, price: float, rationale: dict, snapshot:
                 raise LearningError("열린 포지션이 없어 매도할 수 없습니다")
             position_id = pos["id"]
             held = _held_qty(conn, position_id)
-            if qty is None or qty <= 0:
-                raise LearningError("매도 수량(qty)은 0보다 커야 합니다")
+            if qty is None or not math.isfinite(qty) or qty <= 0:
+                raise LearningError("매도 수량(qty)은 0보다 큰 유한한 숫자여야 합니다")
             if abs(qty - held) < FULL_QTY_TOL:
                 qty = held  # 표시 반올림 차이 — 보유 전량으로 체결해 청산
             if qty > held + QTY_EPS:

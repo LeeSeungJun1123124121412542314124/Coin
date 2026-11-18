@@ -133,3 +133,28 @@ def test_account_endpoint(client):
     assert a["positions"][0]["symbol"] == "BTCUSDT"
     assert a["equity_usdt"] == pytest.approx(9000.0 + 999.0)
     assert a["equity_krw"] == pytest.approx(a["equity_usdt"] * 1400.0)
+
+
+@pytest.mark.parametrize("literal", ["NaN", "Infinity", "-Infinity"])
+def test_non_finite_order_values_400(client, literal):
+    # 표준 JSON 밖 리터럴도 파이썬 json 파서는 받아들이므로 서버에서 막아야 한다
+    rationale = json.dumps(GOOD)
+    buy = f'{{"symbol":"BTCUSDT","side":"buy","usdt_amount":{literal},"rationale":{rationale}}}'
+    r = client.post("/api/learning/orders", content=buy, headers={"content-type": "application/json"})
+    assert r.status_code == 400 and r.json()["detail"]
+    assert _buy(client, GOOD).status_code == 201
+    sell = f'{{"symbol":"BTCUSDT","side":"sell","qty":{literal},"rationale":{rationale}}}'
+    r = client.post("/api/learning/orders", content=sell, headers={"content-type": "application/json"})
+    assert r.status_code == 400 and r.json()["detail"]
+
+
+def test_account_includes_usd_krw(client, monkeypatch):
+    from dashboard.backend.collectors import exchange_rate
+    assert client.get("/api/learning/account").json()["usd_krw"] == 1400.0
+
+    async def none():
+        return None
+
+    monkeypatch.setattr(exchange_rate, "fetch_usd_krw", none)
+    a = client.get("/api/learning/account").json()
+    assert a["usd_krw"] is None and a["equity_krw"] is None

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 
 from dashboard.backend.db.connection import get_db
 
@@ -31,7 +32,7 @@ def _merge(base: dict, patch: dict) -> dict:
 
 
 def _is_num(v) -> bool:
-    return isinstance(v, (int, float)) and not isinstance(v, bool)
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
 
 
 def _check_range(name: str, v, lo: float, hi: float) -> None:

@@ -109,6 +109,7 @@ export interface AccountResponse {
   positions: AccountPosition[]
   equity_usdt: number | null
   equity_krw: number | null
+  usd_krw: number | null
 }
 
 export interface OrderRationale {

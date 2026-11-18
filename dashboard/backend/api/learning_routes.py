@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Literal
 
+import httpx
 from fastapi import APIRouter, BackgroundTasks, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -38,7 +39,11 @@ async def get_symbols():
 async def post_symbol(request: SymbolAddRequest, background_tasks: BackgroundTasks):
     """바이낸스 USDT 현물 존재 확인 → 추가 → 백그라운드 백필."""
     symbol = request.symbol.strip().upper()
-    if await binance_spot.fetch_symbol_info(symbol) is None:
+    try:
+        info = await binance_spot.fetch_symbol_info(symbol)
+    except httpx.HTTPError:  # 451·429·5xx·네트워크 오류 — 없는 종목(400)과 구분
+        return JSONResponse(status_code=503, content={"detail": "바이낸스 조회에 실패했습니다. 잠시 후 다시 시도하세요"})
+    if info is None:
         return _bad_request(LearningError(f"바이낸스 USDT 현물에 없는 종목입니다: {symbol}"))
     try:
         added = learning_symbols.add_symbol(symbol)
@@ -74,6 +79,10 @@ _EXTRA_BARS = 52  # 일목 선행스팬B(52봉) 계산용 추가 봉
 _STATE_NONE = {"cloud_position": None, "tk_cross": None, "chikou": None, "future_cloud": None}
 
 
+def _is_tracked(symbol: str) -> bool:
+    return symbol in {s["symbol"] for s in learning_symbols.list_symbols()}
+
+
 def _not_tracked(symbol: str) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": f"추적 중이지 않은 종목입니다: {symbol}"})
 
@@ -97,7 +106,7 @@ async def get_chart(
 ):
     """차트용 캔들·일목·와이코프·지그재그·피보나치. 지표는 limit+52봉으로 계산 후 잘라 반환."""
     symbol = symbol.strip().upper()
-    if symbol not in {s["symbol"] for s in learning_symbols.list_symbols()}:
+    if not _is_tracked(symbol):
         return _not_tracked(symbol)
     settings = get_settings()
     candles = _load_candles(symbol, interval, limit + _EXTRA_BARS)
@@ -149,7 +158,7 @@ def _order_context(symbol: str, interval: str) -> dict:
 async def get_order_context(symbol: str, interval: Literal["1d", "4h"] = "1d"):
     """주문 근거 미리 채우기용 — 일목 상태, 최근 5봉 안의 와이코프 후보, 현재 박스."""
     symbol = symbol.strip().upper()
-    if symbol not in {s["symbol"] for s in learning_symbols.list_symbols()}:
+    if not _is_tracked(symbol):
         return _not_tracked(symbol)
     return _order_context(symbol, interval)
 
@@ -173,13 +182,13 @@ async def get_learning_account():
         if price is not None:
             prices[sym] = price
     usd_krw = await exchange_rate.fetch_usd_krw()
-    return {**learning_account.get_account(), **learning_account.holdings(prices, usd_krw)}
+    return {**learning_account.get_account(), **learning_account.holdings(prices, usd_krw), "usd_krw": usd_krw}
 
 
 @router.post("/learning/orders", status_code=201)
 async def post_order(req: OrderRequest):
     symbol = req.symbol.strip().upper()
-    if symbol not in {s["symbol"] for s in learning_symbols.list_symbols()}:
+    if not _is_tracked(symbol):
         return _bad_request(LearningError("추적 중인 종목만 주문할 수 있습니다"))
     if req.side not in ("buy", "sell"):
         return _bad_request(LearningError(f"주문 방향이 올바르지 않습니다: {req.side}"))

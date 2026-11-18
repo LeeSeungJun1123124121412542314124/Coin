@@ -162,3 +162,16 @@ def test_buy_displayed_cash_rounded_up_succeeds(state_db):
     for amount in (0.005, 0.004):  # 현금 0이면 허용오차 안이어도 거부 (수량 0 체결 방지)
         with pytest.raises(LearningError):
             place_order("ETHUSDT", "buy", 100.0, R, {}, usdt_amount=amount)
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+def test_non_finite_amount_or_qty_rejected(state_db, bad):
+    from dashboard.backend.services.learning_account import get_account, holdings, place_order
+    from dashboard.backend.services.learning_settings import LearningError
+    with pytest.raises(LearningError):
+        place_order("BTCUSDT", "buy", 100.0, R, {}, usdt_amount=bad)
+    place_order("BTCUSDT", "buy", 100.0, R, {}, usdt_amount=1000.0)
+    with pytest.raises(LearningError):
+        place_order("BTCUSDT", "sell", 100.0, R, {}, qty=bad)
+    assert get_account()["cash_usdt"] == pytest.approx(9000.0)
+    assert holdings({}, None)["positions"][0]["qty"] == pytest.approx(9.99)

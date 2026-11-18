@@ -107,6 +107,8 @@ def test_jobs_scheduled() -> None:
     assert str(scheduler.get_job("learning_daily").trigger) == "cron[hour='0', minute='10']"
     assert str(scheduler.get_job("learning_daily_retry").trigger) == "cron[hour='4', minute='0']"
     assert str(scheduler.get_job("learning_4h").trigger) == "cron[hour='0,4,8,12,16,20', minute='5']"
+    for job_id in ("learning_daily", "learning_daily_retry", "learning_4h"):
+        assert str(scheduler.get_job(job_id).trigger.timezone) == "UTC"
 
 
 def test_nupl_realized() -> None:

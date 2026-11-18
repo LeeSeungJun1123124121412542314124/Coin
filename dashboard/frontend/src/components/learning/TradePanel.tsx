@@ -53,8 +53,8 @@ export function TradePanel({ symbol, interval }: TradePanelProps) {
 }
 
 function AccountCard({ account }: { account: AccountResponse }) {
-  // 계좌 응답에는 환율이 따로 없어 평가액 원화/USDT 비율로 환산 (평가 불가면 원화 생략)
-  const rate = account.equity_krw !== null && account.equity_usdt ? account.equity_krw / account.equity_usdt : null
+  // 환율 조회 실패(null)면 원화 생략
+  const rate = account.usd_krw
   return (
     <Card>
       <h3 style={titleStyle}>모의 계좌</h3>

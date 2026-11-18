@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -226,3 +227,42 @@ def test_settings_endpoints(client):
     assert r.status_code == 400 and "detail" in r.json()
     r = client.put("/api/learning/settings", json={"wyckoff": {"n": 40}})
     assert r.status_code == 200 and r.json()["wyckoff"]["n"] == 40
+
+
+@pytest.mark.parametrize("patch", [
+    {"elliott": {"levels": [0.5, float("inf")]}},
+    {"elliott": {"levels": [0.5, float("nan")]}},
+    {"wyckoff": {"width_pct": float("inf")}},
+    {"wyckoff": {"vol_mult": float("nan")}},
+    {"elliott": {"threshold_1d": float("-inf")}},
+])
+def test_settings_reject_non_finite(state_db, patch):
+    with pytest.raises(LearningError):
+        update_settings(patch)
+    assert get_settings()["elliott"]["levels"] == [0.382, 0.5, 0.618, 1.0, 1.618]
+
+
+def test_settings_endpoint_rejects_infinity_literal(client):
+    r = client.put("/api/learning/settings", content='{"elliott": {"levels": [0.5, Infinity]}}',
+                   headers={"content-type": "application/json"})
+    assert r.status_code == 400
+    assert client.get("/api/learning/settings").status_code == 200
+
+
+def _binance_error(kind: str) -> Exception:
+    req = httpx.Request("GET", "https://api.binance.com/api/v3/exchangeInfo")
+    if kind == "network":
+        return httpx.ConnectError("연결 실패", request=req)
+    return httpx.HTTPStatusError("x", request=req, response=httpx.Response(int(kind), request=req))
+
+
+@pytest.mark.parametrize("kind", ["451", "429", "502", "network"])
+def test_add_symbol_binance_error_503(client, monkeypatch, kind):
+    async def boom(symbol):
+        raise _binance_error(kind)
+
+    monkeypatch.setattr(binance_spot, "fetch_symbol_info", boom)
+    r = client.post("/api/learning/symbols", json={"symbol": "BTCUSDT"})
+    assert r.status_code == 503
+    assert r.json() == {"detail": "바이낸스 조회에 실패했습니다. 잠시 후 다시 시도하세요"}
+    assert client.get("/api/learning/symbols").json() == []
