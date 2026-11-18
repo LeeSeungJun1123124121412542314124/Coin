@@ -7,6 +7,7 @@ import json
 import math
 
 from dashboard.backend.db.connection import get_db
+from dashboard.backend.services.learning_indicators import INTERVALS
 
 
 class LearningError(ValueError):
@@ -48,7 +49,7 @@ def _validate(s: dict) -> None:
         raise LearningError("wyckoff.n은(는) 정수여야 합니다.")
     _check_range("wyckoff.width_pct", w["width_pct"], 1, 100)
     _check_range("wyckoff.vol_mult", w["vol_mult"], 1, 10)
-    for iv in ("1h", "4h", "1d", "1w", "1M"):
+    for iv in INTERVALS:
         _check_range(f"elliott.threshold_{iv}", e[f"threshold_{iv}"], 1, 50)
     lv = e["levels"]
     if not isinstance(lv, list) or not 1 <= len(lv) <= 10 or not all(_is_num(x) and x > 0 for x in lv):
