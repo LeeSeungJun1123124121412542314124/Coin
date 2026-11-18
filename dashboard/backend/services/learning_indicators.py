@@ -128,3 +128,55 @@ def wyckoff_candidates(
                           "box_high": box["high"], "box_low": box["low"]})
     current = _wyckoff_box(candles, len(candles) - 1, n, width_pct) if len(candles) > n else None
     return {"volume_spikes": spikes, "candidates": cands, "current_box": current}
+
+
+def zigzag(candles: list[dict], threshold_pct: float) -> list[dict]:
+    """고가·저가 기준 지그재그 확정 피벗 [{"time","price","kind"}] (고/저 교대).
+
+    반대 방향으로 threshold_pct% 이상 되돌려야 직전 극값을 확정한다.
+    마지막 미확정 극값은 내보내지 않으며, 파동 번호는 붙이지 않는다(사용자가 지정).
+    """
+    if len(candles) < 2:
+        return []
+    th = threshold_pct / 100
+    pivots: list[dict] = []
+
+    def confirm(idx: int, kind: str) -> None:
+        c = candles[idx]
+        pivots.append({"time": c["open_time"], "price": c["high"] if kind == "high" else c["low"], "kind": kind})
+
+    direction = None
+    hi_i = lo_i = ext = 0  # 방향 미정 상태에선 최고가 봉/최저가 봉을 따로 추적
+    for i, c in enumerate(candles):
+        if direction is None:
+            if c["high"] >= candles[hi_i]["high"]:
+                hi_i = i
+            if c["low"] <= candles[lo_i]["low"]:
+                lo_i = i
+            if c["high"] >= candles[lo_i]["low"] * (1 + th) and lo_i != i:
+                confirm(lo_i, "low")
+                direction, ext = "up", i
+            elif c["low"] <= candles[hi_i]["high"] * (1 - th) and hi_i != i:
+                confirm(hi_i, "high")
+                direction, ext = "down", i
+        elif direction == "up":
+            if c["high"] >= candles[ext]["high"]:
+                ext = i
+            if c["low"] <= candles[ext]["high"] * (1 - th):
+                confirm(ext, "high")
+                direction, ext = "down", i
+        else:
+            if c["low"] <= candles[ext]["low"]:
+                ext = i
+            if c["high"] >= candles[ext]["low"] * (1 + th):
+                confirm(ext, "low")
+                direction, ext = "up", i
+    return pivots
+
+
+def fib_levels(pivots: list[dict], levels: list[float]) -> list[dict]:
+    """마지막 두 피벗 A(이전)·B(최근)로 B + (A-B)*level 가격을 계산. 피벗 2개 미만이면 []."""
+    if len(pivots) < 2:
+        return []
+    a, b = pivots[-2]["price"], pivots[-1]["price"]
+    return [{"level": lv, "price": b + (a - b) * lv} for lv in levels]
