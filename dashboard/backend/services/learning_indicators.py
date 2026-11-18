@@ -162,12 +162,14 @@ def zigzag(candles: list[dict], threshold_pct: float) -> list[dict]:
         elif direction == "up":
             if c["high"] >= candles[ext]["high"]:
                 ext = i
+                continue  # 같은 봉 안의 고저 순서는 알 수 없으므로 되돌림 확정은 다음 봉부터
             if c["low"] <= candles[ext]["high"] * (1 - th):
                 confirm(ext, "high")
                 direction, ext = "down", i
         else:
             if c["low"] <= candles[ext]["low"]:
                 ext = i
+                continue  # 같은 봉 안의 고저 순서는 알 수 없으므로 되돌림 확정은 다음 봉부터
             if c["high"] >= candles[ext]["low"] * (1 + th):
                 confirm(ext, "low")
                 direction, ext = "up", i

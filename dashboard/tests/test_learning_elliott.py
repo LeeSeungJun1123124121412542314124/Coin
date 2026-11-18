@@ -48,3 +48,26 @@ def test_fib_levels():
     assert [o["level"] for o in out] == [0.382, 0.5, 0.618, 1.0, 1.618]
     assert all("wave" not in o for o in out)
     assert li.fib_levels(pivots[:1], [0.5]) == []
+
+
+def test_zigzag_outside_bar_no_duplicate_time():
+    """외곽봉(고저 폭이 임계 초과)이 같은 봉에서 피벗을 두 번 확정하지 않는다."""
+    rows = [  # (high, low)
+        (100, 100), (120, 120),
+        (130, 100),  # 상승 구간 외곽봉
+        (105, 105), (120, 120), (125, 100),  # 하락 구간 직전/상승 외곽봉
+        (110, 110),
+        (125, 100),  # 하락 구간 외곽봉
+        (115, 115),
+    ]
+    candles = [
+        {"open_time": i * 1000, "open": h, "high": h, "low": lo, "close": lo, "volume": 1.0}
+        for i, (h, lo) in enumerate(rows)
+    ]
+    pivots = li.zigzag(candles, 10)
+    times = [p["time"] for p in pivots]
+    assert len(pivots) >= 4
+    assert all(a < b for a, b in zip(times, times[1:]))
+    by_time = {c["open_time"]: c for c in candles}
+    for p in pivots:
+        assert p["price"] == by_time[p["time"]]["high" if p["kind"] == "high" else "low"]
