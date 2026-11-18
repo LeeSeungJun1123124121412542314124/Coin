@@ -81,3 +81,46 @@ def ichimoku_state(candles: list[dict], ich: list[dict]) -> dict:
     else:
         future_cloud = "bullish" if fa > fb else "bearish"
     return {"cloud_position": cloud_position, "tk_cross": tk_cross, "chikou": chikou, "future_cloud": future_cloud}
+
+
+def _wyckoff_box(candles: list[dict], i: int, n: int, width_pct: float) -> dict | None:
+    """i번 봉 직전 n봉 박스. 폭이 width_pct 이하일 때만 박스 반환."""
+    box = candles[i - n : i]
+    hi = max(c["high"] for c in box)
+    lo = min(c["low"] for c in box)
+    avg = sum(c["close"] for c in box) / n
+    if (hi - lo) / avg * 100 > width_pct:
+        return None
+    return {"high": hi, "low": lo, "start": box[0]["open_time"], "end": box[-1]["open_time"]}
+
+
+def wyckoff_candidates(
+    candles: list[dict],
+    n: int = 30,
+    width_pct: float = 15.0,
+    vol_mult: float = 2.0,
+    vol_lookback: int = 20,
+) -> dict:
+    """와이코프 박스권 이탈 후 복귀 봉(스프링/업스러스트) 후보와 거래량 급증 봉.
+
+    박스는 직전 n봉. 박스 안으로 종가가 복귀한 이탈 봉만 후보이며,
+    거래량 급증(vol_lookback 평균의 vol_mult배 이상)이면 strong.
+    """
+    spikes: list[int] = []
+    cands: list[dict] = []
+    for i in range(n, len(candles)):
+        c = candles[i]
+        spike = i >= vol_lookback and c["volume"] >= vol_mult * (
+            sum(x["volume"] for x in candles[i - vol_lookback : i]) / vol_lookback
+        )
+        if spike:
+            spikes.append(c["open_time"])
+        box = _wyckoff_box(candles, i, n, width_pct)
+        if box is None or not box["low"] <= c["close"] <= box["high"]:
+            continue
+        kind = "spring" if c["low"] < box["low"] else "upthrust" if c["high"] > box["high"] else None
+        if kind:
+            cands.append({"time": c["open_time"], "type": kind, "strong": spike,
+                          "box_high": box["high"], "box_low": box["low"]})
+    current = _wyckoff_box(candles, len(candles) - 1, n, width_pct) if len(candles) > n else None
+    return {"volume_spikes": spikes, "candidates": cands, "current_box": current}
