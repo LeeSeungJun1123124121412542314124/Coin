@@ -158,3 +158,24 @@ def test_account_includes_usd_krw(client, monkeypatch):
     monkeypatch.setattr(exchange_rate, "fetch_usd_krw", none)
     a = client.get("/api/learning/account").json()
     assert a["usd_krw"] is None and a["equity_krw"] is None
+
+
+def test_order_uses_requested_interval_context(client, monkeypatch):
+    from dashboard.backend.api import learning_routes
+    from dashboard.backend.db.connection import get_db
+    month = 30 * 86_400_000
+    with get_db() as conn:
+        conn.executemany(
+            "INSERT INTO learning_candles(symbol, interval, open_time, open, high, low, close, volume)"
+            " VALUES ('BTCUSDT', '1M', ?, 100, 110, 90, 100, 10)",
+            [(1_600_000_000_000 + i * month,) for i in range(10)])
+    calls = []
+    orig = learning_routes._order_context
+
+    def spy(symbol, interval):
+        calls.append(interval)
+        return orig(symbol, interval)
+
+    monkeypatch.setattr(learning_routes, "_order_context", spy)
+    assert _buy(client, GOOD, interval="1M").status_code == 201
+    assert calls == ["1M"]

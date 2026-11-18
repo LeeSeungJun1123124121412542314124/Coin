@@ -15,7 +15,8 @@ class LearningError(ValueError):
 
 DEFAULTS = {
     "wyckoff": {"n": 30, "width_pct": 15.0, "vol_mult": 2.0},
-    "elliott": {"threshold_1d": 10.0, "threshold_4h": 5.0, "levels": [0.382, 0.5, 0.618, 1.0, 1.618]},
+    "elliott": {"threshold_1h": 3.0, "threshold_4h": 5.0, "threshold_1d": 10.0,
+                "threshold_1w": 20.0, "threshold_1M": 30.0, "levels": [0.382, 0.5, 0.618, 1.0, 1.618]},
     "dca": {"symbol": "BTCUSDT"},
 }
 
@@ -47,8 +48,8 @@ def _validate(s: dict) -> None:
         raise LearningError("wyckoff.n은(는) 정수여야 합니다.")
     _check_range("wyckoff.width_pct", w["width_pct"], 1, 100)
     _check_range("wyckoff.vol_mult", w["vol_mult"], 1, 10)
-    _check_range("elliott.threshold_1d", e["threshold_1d"], 1, 50)
-    _check_range("elliott.threshold_4h", e["threshold_4h"], 1, 50)
+    for iv in ("1h", "4h", "1d", "1w", "1M"):
+        _check_range(f"elliott.threshold_{iv}", e[f"threshold_{iv}"], 1, 50)
     lv = e["levels"]
     if not isinstance(lv, list) or not 1 <= len(lv) <= 10 or not all(_is_num(x) and x > 0 for x in lv):
         raise LearningError("elliott.levels는 양수 1~10개의 목록이어야 합니다.")

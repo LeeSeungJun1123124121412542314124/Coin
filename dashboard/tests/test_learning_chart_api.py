@@ -86,7 +86,7 @@ def test_chart_untracked_404_and_bad_interval_422(client):
     r = client.get("/api/learning/chart", params={"symbol": "ETHUSDT", "interval": "1d"})
     assert r.status_code == 404 and "detail" in r.json()
     _track()
-    assert client.get("/api/learning/chart", params={"symbol": "BTCUSDT", "interval": "1h"}).status_code == 422
+    assert client.get("/api/learning/chart", params={"symbol": "BTCUSDT", "interval": "15m"}).status_code == 422
 
 
 def test_chart_empty_candles_returns_empty_structure(client):
@@ -143,4 +143,50 @@ def test_order_context_empty_and_untracked(client):
     b = client.get("/api/learning/order-context", params={"symbol": "BTCUSDT"}).json()
     assert b == {"ichimoku_state": {k: None for k in _STATE_KEYS}, "wyckoff_recent": [], "current_box": None}
     assert client.get("/api/learning/order-context",
-                      params={"symbol": "BTCUSDT", "interval": "1h"}).status_code == 422
+                      params={"symbol": "BTCUSDT", "interval": "15m"}).status_code == 422
+
+
+def _flat_candles(n, interval="1d"):
+    step = {"1h": 3_600_000, "4h": 14_400_000, "1d": _DAY, "1w": 7 * _DAY, "1M": 30 * _DAY}[interval]
+    return [{"open_time": _T0 + i * step, "open": 100.0, "high": 105.0 + i % 3,
+             "low": 95.0, "close": 100.0 + i % 2, "volume": 10.0} for i in range(n)]
+
+
+@pytest.mark.parametrize("interval", ["1h", "4h", "1d", "1w", "1M"])
+def test_chart_accepts_all_intervals(client, interval):
+    _track()
+    _insert(_flat_candles(60, interval), interval=interval)
+    r = client.get("/api/learning/chart", params={"symbol": "BTCUSDT", "interval": interval, "limit": 60})
+    assert r.status_code == 200
+    assert len(r.json()["candles"]) == 60
+
+
+def test_chart_rejects_unknown_interval(client):
+    _track()
+    assert client.get("/api/learning/chart", params={"symbol": "BTCUSDT", "interval": "15m"}).status_code == 422
+
+
+def test_stored_settings_get_new_threshold_defaults(client):
+    import json
+
+    from dashboard.backend.db.connection import get_db
+    old = {"threshold_1d": 12, "threshold_4h": 6, "levels": [0.5]}
+    with get_db() as conn:
+        conn.execute("INSERT INTO learning_settings(key, value) VALUES (?, ?)",
+                     ("elliott", json.dumps(old)))
+    el = client.get("/api/learning/settings").json()["elliott"]
+    assert (el["threshold_1h"], el["threshold_1w"], el["threshold_1M"]) == (3.0, 20.0, 30.0)
+    assert (el["threshold_1d"], el["threshold_4h"]) == (12, 6)
+
+
+def test_threshold_out_of_range_rejected(client):
+    r = client.put("/api/learning/settings", json={"elliott": {"threshold_1M": 51}})
+    assert r.status_code == 400
+
+
+def test_short_monthly_history_returns_200(client):
+    _track()
+    _insert(_flat_candles(10, "1M"), interval="1M")
+    r = client.get("/api/learning/chart", params={"symbol": "BTCUSDT", "interval": "1M"})
+    assert r.status_code == 200
+    assert all(v is None for v in r.json()["state"].values())

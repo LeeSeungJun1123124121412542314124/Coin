@@ -20,6 +20,9 @@ from dashboard.backend.services.learning_settings import LearningError, get_sett
 
 router = APIRouter()
 
+# Binance kline 간격 (대소문자 구분: 1m이 아니라 1M이 월봉)
+Interval = Literal["1h", "4h", "1d", "1w", "1M"]
+
 
 class SymbolAddRequest(BaseModel):
     """추적 종목 추가 요청 바디."""
@@ -101,7 +104,7 @@ def _load_candles(symbol: str, interval: str, count: int) -> list[dict]:
 @router.get("/learning/chart")
 async def get_chart(
     symbol: str,
-    interval: Literal["1d", "4h"] = "1d",
+    interval: Interval = "1d",
     limit: int = Query(500, ge=1, le=2000),
 ):
     """차트용 캔들·일목·와이코프·지그재그·피보나치. 지표는 limit+52봉으로 계산 후 잘라 반환."""
@@ -118,7 +121,7 @@ async def get_chart(
     ich = learning_indicators.ichimoku(candles, interval)
     state = learning_indicators.ichimoku_state(candles, ich)
     wyckoff = learning_indicators.wyckoff_candidates(candles, wy["n"], wy["width_pct"], wy["vol_mult"])
-    pivots = learning_indicators.zigzag(candles, el["threshold_1d" if interval == "1d" else "threshold_4h"])
+    pivots = learning_indicators.zigzag(candles, el[f"threshold_{interval}"])
     fib = learning_indicators.fib_levels(pivots, el["levels"])
 
     shown = candles[-limit:]
@@ -155,7 +158,7 @@ def _order_context(symbol: str, interval: str) -> dict:
 
 
 @router.get("/learning/order-context")
-async def get_order_context(symbol: str, interval: Literal["1d", "4h"] = "1d"):
+async def get_order_context(symbol: str, interval: Interval = "1d"):
     """주문 근거 미리 채우기용 — 일목 상태, 최근 5봉 안의 와이코프 후보, 현재 박스."""
     symbol = symbol.strip().upper()
     if not _is_tracked(symbol):
@@ -170,7 +173,7 @@ class OrderRequest(BaseModel):
     usdt_amount: float | None = None
     qty: float | None = None
     rationale: dict
-    interval: Literal["1d", "4h"] = "1d"
+    interval: Interval = "1d"
 
 
 @router.get("/learning/account")
