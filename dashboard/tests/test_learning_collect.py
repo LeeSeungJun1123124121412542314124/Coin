@@ -188,10 +188,9 @@ async def test_daily_candles_incremental_and_backfill_pending(state_db, sent, mo
     monkeypatch.setattr(binance_spot, "fetch_klines", fake_klines)
     _stub_all(monkeypatch)
     await jobs.collect_learning_daily()
-    step = binance_spot.INTERVAL_MS["1d"]
     # 캔들이 없는(백필 미완) 종목은 상장일부터 다시 백필, 나머지는 증분 수집
-    assert calls == [("NEWUSDT", "1d", 0), ("NEWUSDT", "4h", 0), ("SOLUSDT", "1d", 1000 + step)]
-    assert binance_spot.last_open_time("SOLUSDT", "1d") == 1000 + step
+    assert calls == [("NEWUSDT", "1d", 0), ("NEWUSDT", "4h", 0), ("SOLUSDT", "1d", 1001)]
+    assert binance_spot.last_open_time("SOLUSDT", "1d") == 1001
     assert binance_spot.last_open_time("NEWUSDT", "4h") == 0
     from dashboard.backend.services.learning_symbols import list_symbols
     assert {s["symbol"]: s["backfill_status"] for s in list_symbols()}["NEWUSDT"] == "done"

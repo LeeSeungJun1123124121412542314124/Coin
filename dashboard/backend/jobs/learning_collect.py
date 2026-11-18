@@ -121,7 +121,7 @@ async def _collect_candles(interval: str, is_retry: bool = False) -> None:
                 errors.append(f"{sym}: 백필 실패")
             continue
         try:
-            bars = await binance_spot.fetch_klines(sym, interval, last + binance_spot.INTERVAL_MS[interval])
+            bars = await binance_spot.fetch_klines(sym, interval, last + 1)
             binance_spot.save_candles(sym, interval, bars)
         except Exception as e:
             errors.append(f"{sym}: {_reason(e)}")

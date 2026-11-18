@@ -12,7 +12,6 @@ from dashboard.backend.db.connection import get_db
 logger = logging.getLogger(__name__)
 
 BASE = "https://api.binance.com"
-INTERVAL_MS = {"1d": 86_400_000, "4h": 14_400_000}
 _PAGE_LIMIT = 1000
 
 # 모듈 레벨 httpx 클라이언트 — TCP/TLS 연결 재사용
@@ -50,7 +49,6 @@ async def fetch_klines(
     now_ms: int | None = None,
 ) -> list[dict]:
     """start_ms부터 마감된 봉만 1000개씩 페이지네이션으로 수집 (open_time 오름차순)."""
-    step = INTERVAL_MS[interval]
     if now_ms is None:
         now_ms = int(time.time() * 1000)
 
@@ -65,11 +63,10 @@ async def fetch_klines(
         rows = resp.json()
 
         for row in rows:
-            open_time = int(row[0])
-            if open_time + step - 1 >= now_ms:  # 아직 마감 전인 봉 제외
+            if int(row[6]) >= now_ms:  # closeTime 기준 — 아직 마감 전인 봉 제외 (월봉 등 가변 길이 대응)
                 continue
             bars.append({
-                "open_time": open_time,
+                "open_time": int(row[0]),
                 "open": float(row[1]),
                 "high": float(row[2]),
                 "low": float(row[3]),
@@ -79,7 +76,7 @@ async def fetch_klines(
 
         if len(rows) < _PAGE_LIMIT:
             break
-        cursor = int(rows[-1][0]) + step
+        cursor = int(rows[-1][6]) + 1  # 마지막 행 closeTime 다음 ms부터
     return bars
 
 

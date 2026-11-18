@@ -2,6 +2,22 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
+INTERVALS: tuple[str, ...] = ("1h", "4h", "1d", "1w", "1M")
+_FIXED_MS = {"1h": 3_600_000, "4h": 14_400_000, "1d": 86_400_000, "1w": 604_800_000}
+
+
+def next_open_time(t_ms: int, interval: str) -> int:
+    """t_ms 봉의 다음 봉 open_time(ms). 1M은 다음 달 1일 00:00 UTC."""
+    if interval in _FIXED_MS:
+        return t_ms + _FIXED_MS[interval]
+    if interval == "1M":
+        d = datetime.fromtimestamp(t_ms / 1000, tz=timezone.utc)
+        y, m = divmod(d.year * 12 + d.month, 12)  # d.month는 1부터라 그대로 다음 달 인덱스(0부터)가 된다
+        return int(datetime(y, m + 1, 1, tzinfo=timezone.utc).timestamp() * 1000)
+    raise ValueError(f"지원하지 않는 interval: {interval}")
+
 
 def _mid(candles: list[dict], i: int, period: int) -> float | None:
     """i번 봉까지 period개 봉의 (최고가+최저가)/2. 봉이 부족하면 None."""
@@ -13,7 +29,7 @@ def _mid(candles: list[dict], i: int, period: int) -> float | None:
 
 def ichimoku(
     candles: list[dict],
-    interval_ms: int,
+    interval: str,
     tenkan: int = 9,
     kijun: int = 26,
     senkou_b: int = 52,
@@ -26,11 +42,12 @@ def ichimoku(
     n = len(candles)
     if n == 0:
         return []
-    last = candles[-1]["open_time"]
+    times = [c["open_time"] for c in candles]
+    for _ in range(shift):
+        times.append(next_open_time(times[-1], interval))
     rows = [
-        {"time": candles[i]["open_time"] if i < n else last + (i - n + 1) * interval_ms,
-         "tenkan": None, "kijun": None, "senkou_a": None, "senkou_b": None, "chikou": None}
-        for i in range(n + shift)
+        {"time": t, "tenkan": None, "kijun": None, "senkou_a": None, "senkou_b": None, "chikou": None}
+        for t in times
     ]
     for i in range(n):
         t = _mid(candles, i, tenkan)

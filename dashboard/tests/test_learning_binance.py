@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import httpx
 import pytest
 
 from dashboard.backend.collectors import binance_spot
 from dashboard.backend.collectors.binance_spot import (
-    INTERVAL_MS,
     fetch_klines,
     fetch_spot_price,
     fetch_symbol_info,
@@ -15,7 +16,7 @@ from dashboard.backend.collectors.binance_spot import (
     save_candles,
 )
 
-H4 = INTERVAL_MS["4h"]
+H4 = 14_400_000
 TOTAL = 2500
 NOW = TOTAL * H4 - 1  # 마지막(2499번째) 봉의 close_time == NOW-... → 미마감 처리
 
@@ -54,8 +55,34 @@ async def test_klines_paginate_and_drop_open_bar(monkeypatch):
     _use_transport(monkeypatch, handler)
     bars = await fetch_klines("BTCUSDT", "4h", start_ms=0, now_ms=NOW)
     assert len(bars) == 2499 and len(calls) == 3
-    assert all(b["open_time"] + INTERVAL_MS["4h"] <= NOW for b in bars)
+    assert all(b["open_time"] + H4 <= NOW for b in bars)
     assert isinstance(bars[0]["close"], float)
+
+
+def _month_ms(i: int) -> int:
+    """2000-01 기준 i개월 뒤 1일 00:00 UTC(ms)."""
+    y, m = divmod(2000 * 12 + i, 12)
+    return int(datetime(y, m + 1, 1, tzinfo=timezone.utc).timestamp() * 1000)
+
+
+@pytest.mark.asyncio
+async def test_monthly_open_bar_dropped_and_cursor_uses_close_time(monkeypatch):
+    starts = []
+    page1 = [[_month_ms(i), "1", "2", "0.5", "1.5", "10", _month_ms(i + 1) - 1] for i in range(1000)]
+    now = _month_ms(1002) - 500  # 1001번째 봉(마지막)은 아직 마감 전
+    page2 = [
+        [_month_ms(1000), "1", "2", "0.5", "1.5", "10", _month_ms(1001) - 1],
+        [_month_ms(1001), "1", "2", "0.5", "1.5", "10", _month_ms(1002) - 1],
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        starts.append(int(request.url.params["startTime"]))
+        return httpx.Response(200, json=page1 if len(starts) == 1 else page2)
+
+    _use_transport(monkeypatch, handler)
+    bars = await fetch_klines("BTCUSDT", "1M", start_ms=_month_ms(0), now_ms=now)
+    assert starts[1] == page1[-1][6] + 1
+    assert len(bars) == 1001 and bars[-1]["open_time"] == _month_ms(1000)
 
 
 @pytest.mark.asyncio

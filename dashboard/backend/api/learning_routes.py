@@ -115,7 +115,7 @@ async def get_chart(
                 "wyckoff": {"volume_spikes": [], "candidates": [], "current_box": None},
                 "pivots": [], "fib": [], "state": dict(_STATE_NONE), "settings": settings}
     wy, el = settings["wyckoff"], settings["elliott"]
-    ich = learning_indicators.ichimoku(candles, binance_spot.INTERVAL_MS[interval])
+    ich = learning_indicators.ichimoku(candles, interval)
     state = learning_indicators.ichimoku_state(candles, ich)
     wyckoff = learning_indicators.wyckoff_candidates(candles, wy["n"], wy["width_pct"], wy["vol_mult"])
     pivots = learning_indicators.zigzag(candles, el["threshold_1d" if interval == "1d" else "threshold_4h"])
@@ -144,7 +144,7 @@ def _order_context(symbol: str, interval: str) -> dict:
     if not candles:
         return {"ichimoku_state": dict(_STATE_NONE), "wyckoff_recent": [], "current_box": None}
     wy = get_settings()["wyckoff"]
-    ich = learning_indicators.ichimoku(candles, binance_spot.INTERVAL_MS[interval])
+    ich = learning_indicators.ichimoku(candles, interval)
     wyckoff = learning_indicators.wyckoff_candidates(candles, wy["n"], wy["width_pct"], wy["vol_mult"])
     since = candles[-5:][0]["open_time"]
     return {
