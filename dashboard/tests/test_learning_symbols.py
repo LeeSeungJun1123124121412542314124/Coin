@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi import FastAPI
@@ -103,8 +103,8 @@ def test_post_runs_backfill_in_background(client):
 
 
 def test_delete_symbol(client):
-    client.post("/api/learning/symbols", json={"symbol": "BTCUSDT"})
-    assert client.delete("/api/learning/symbols/btcusdt").status_code == 200
+    client.post("/api/learning/symbols", json={"symbol": "ETHUSDT"})
+    assert client.delete("/api/learning/symbols/ethusdt").status_code == 200
     assert client.get("/api/learning/symbols").json() == []
 
 
@@ -129,16 +129,72 @@ async def test_backfill_failure_sets_failed(state_db, monkeypatch):
 
 
 def test_remove_with_open_position_rejected(state_db):
-    add_symbol("BTCUSDT")
+    add_symbol("ETHUSDT")
     with state_db_conn() as conn:
         conn.execute(
-            "INSERT INTO learning_positions(symbol, status) VALUES ('BTCUSDT','open')")
+            "INSERT INTO learning_positions(symbol, status) VALUES ('ETHUSDT','open')")
     with pytest.raises(LearningError):
-        remove_symbol("BTCUSDT")
+        remove_symbol("ETHUSDT")
     with state_db_conn() as conn:
         conn.execute("UPDATE learning_positions SET status='closed'")
-    remove_symbol("BTCUSDT")
+    remove_symbol("ETHUSDT")
     assert list_symbols() == []
+
+
+def _closed_position(symbol: str, opened: datetime) -> None:
+    with state_db_conn() as conn:
+        conn.execute(
+            "INSERT INTO learning_positions(symbol, opened_at, status, closed_at) VALUES (?,?,'closed',?)",
+            (symbol, opened.isoformat(), opened.isoformat()))
+
+
+def test_remove_blocked_until_28d_review_close_collected(state_db):
+    # 28일 복기 기준일 종가는 첫 진입 UTC 날짜 + 29일에 수집 — 그날까지는 청산된 포지션이라도 해제 거부 (R17)
+    today = datetime.now(timezone.utc).date()
+    add_symbol("ETHUSDT")
+    noon = datetime(today.year, today.month, today.day, 12, tzinfo=timezone.utc)
+    _closed_position("ETHUSDT", noon - timedelta(days=40))
+    _closed_position("ETHUSDT", noon - timedelta(days=29))
+    with pytest.raises(LearningError) as e:
+        remove_symbol("ETHUSDT")
+    assert (today + timedelta(days=1)).isoformat() in str(e.value)
+    with state_db_conn() as conn:
+        conn.execute("UPDATE learning_positions SET opened_at=?", ((noon - timedelta(days=30)).isoformat(),))
+    remove_symbol("ETHUSDT")
+    assert list_symbols() == []
+
+
+def test_remove_uses_utc_date_of_first_entry(state_db):
+    # 현지 20:00 -05:00 은 UTC로 다음 날 01:00 — 해제 가능일은 UTC 날짜 + 30일
+    today = datetime.now(timezone.utc).date()
+    add_symbol("ETHUSDT")
+    local = (today - timedelta(days=29)).isoformat() + "T20:00:00-05:00"
+    with state_db_conn() as conn:
+        conn.execute("INSERT INTO learning_positions(symbol, opened_at, status) VALUES ('ETHUSDT', ?, 'closed')",
+                     (local,))
+    with pytest.raises(LearningError) as e:
+        remove_symbol("ETHUSDT")
+    assert (today + timedelta(days=2)).isoformat() in str(e.value)
+
+
+def test_remove_dca_symbol_rejected(state_db):
+    add_symbol("BTCUSDT")  # 기본 dca.symbol
+    with pytest.raises(LearningError) as e:
+        remove_symbol("BTCUSDT")
+    assert "성과 탭에서 DCA 기준 종목을 바꾼 뒤 해제하세요" in str(e.value)
+    add_symbol("ETHUSDT")
+    update_settings({"dca": {"symbol": "ETHUSDT"}})
+    remove_symbol("BTCUSDT")
+    with pytest.raises(LearningError):
+        remove_symbol("ETHUSDT")
+    assert [s["symbol"] for s in list_symbols()] == ["ETHUSDT"]
+
+
+def test_delete_dca_symbol_returns_400(client):
+    client.post("/api/learning/symbols", json={"symbol": "BTCUSDT"})
+    r = client.delete("/api/learning/symbols/BTCUSDT")
+    assert r.status_code == 400 and "DCA" in r.json()["detail"]
+    assert [s["symbol"] for s in client.get("/api/learning/symbols").json()] == ["BTCUSDT"]
 
 
 def test_settings_defaults_and_merge(state_db):

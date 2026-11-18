@@ -153,6 +153,7 @@ async def test_fred_empty_is_failure(state_db, sent, monkeypatch) -> None:
 @pytest.mark.asyncio
 async def test_futures_skipped_when_no_futures(state_db, sent, monkeypatch) -> None:
     _add_symbol("ABCUSDT")
+    monkeypatch.setattr(binance_spot, "fetch_klines", _ok([]))  # 캔들 없는 종목 재백필이 네트워크로 가지 않도록
     _stub_all(monkeypatch)
     await jobs.collect_learning_daily()
     last = _runs("binance-futures")[-1]
@@ -163,6 +164,7 @@ async def test_futures_skipped_when_no_futures(state_db, sent, monkeypatch) -> N
 @pytest.mark.asyncio
 async def test_futures_failure_alerts_with_symbol_prefix(state_db, sent, monkeypatch) -> None:
     _add_symbol("SOLUSDT")
+    monkeypatch.setattr(binance_spot, "fetch_klines", _ok([]))  # 캔들 없는 종목 재백필이 네트워크로 가지 않도록
     _stub_all(monkeypatch, fetch_binance_futures=_raiser(_http_error(418)))
     await jobs.collect_learning_daily()
     assert _runs("binance-futures")[-1]["reason"] == "SOLUSDT: HTTPStatusError: HTTP 418"
@@ -170,7 +172,7 @@ async def test_futures_failure_alerts_with_symbol_prefix(state_db, sent, monkeyp
 
 
 @pytest.mark.asyncio
-async def test_daily_candles_incremental_and_skip_unbackfilled(state_db, sent, monkeypatch) -> None:
+async def test_daily_candles_incremental_and_backfill_pending(state_db, sent, monkeypatch) -> None:
     _add_symbol("SOLUSDT")
     _add_symbol("NEWUSDT", "pending")
     binance_spot.save_candles("SOLUSDT", "1d", [
@@ -185,9 +187,22 @@ async def test_daily_candles_incremental_and_skip_unbackfilled(state_db, sent, m
     _stub_all(monkeypatch)
     await jobs.collect_learning_daily()
     step = binance_spot.INTERVAL_MS["1d"]
-    assert calls == [("SOLUSDT", "1d", 1000 + step)]
+    # 캔들이 없는(백필 미완) 종목은 상장일부터 다시 백필, 나머지는 증분 수집
+    assert calls == [("NEWUSDT", "1d", 0), ("NEWUSDT", "4h", 0), ("SOLUSDT", "1d", 1000 + step)]
     assert binance_spot.last_open_time("SOLUSDT", "1d") == 1000 + step
+    assert binance_spot.last_open_time("NEWUSDT", "4h") == 0
+    from dashboard.backend.services.learning_symbols import list_symbols
+    assert {s["symbol"]: s["backfill_status"] for s in list_symbols()}["NEWUSDT"] == "done"
     assert _runs("binance-spot")[-1]["status"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_4h_backfill_failure_recorded_and_alerted(state_db, sent, monkeypatch) -> None:
+    _add_symbol("NEWUSDT", "failed")
+    monkeypatch.setattr(binance_spot, "fetch_klines", _raiser(_http_error(451)))
+    await jobs.collect_learning_4h()
+    assert _runs("binance-spot")[-1] == {"status": "failed", "reason": "NEWUSDT: 백필 실패", "is_retry": 0}
+    assert ("learning:binance-spot", "NEWUSDT: 백필 실패") in sent
 
 
 def _seed_bg_runs(n: int, status: str = "ok", minutes_ago: int = 5) -> None:

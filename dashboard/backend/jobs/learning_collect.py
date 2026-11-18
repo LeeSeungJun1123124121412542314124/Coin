@@ -11,7 +11,7 @@ import httpx
 from dashboard.backend.collectors import binance_spot
 from dashboard.backend.collectors import learning_onchain as onchain
 from dashboard.backend.db.connection import get_db
-from dashboard.backend.services.learning_symbols import list_symbols
+from dashboard.backend.services.learning_symbols import backfill_symbol, list_symbols
 from dashboard.backend.utils.alerting import notify_job_failure
 
 logger = logging.getLogger(__name__)
@@ -110,12 +110,15 @@ async def _collect_futures(is_retry: bool) -> None:
 
 
 async def _collect_candles(interval: str, is_retry: bool = False) -> None:
-    """마지막 저장 봉 이후 캔들 증분 수집. 백필 전(None) 종목은 건너뜀."""
+    """마지막 저장 봉 이후 캔들 증분 수집. 캔들이 없는(백필 미완·실패) 종목은 상장일부터 다시 백필."""
     errors: list[str] = []
     for item in list_symbols():
         sym = item["symbol"]
         last = binance_spot.last_open_time(sym, interval)
         if last is None:
+            # backfill_symbol은 예외를 던지지 않고 failed 상태로 돌려준다 — 실패도 이 실행의 오류로 기록
+            if (await backfill_symbol(sym))["status"] != "done":
+                errors.append(f"{sym}: 백필 실패")
             continue
         try:
             bars = await binance_spot.fetch_klines(sym, interval, last + binance_spot.INTERVAL_MS[interval])

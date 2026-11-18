@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from dashboard.backend.collectors import binance_spot
 from dashboard.backend.db.connection import get_db
-from dashboard.backend.services.learning_settings import LearningError
+from dashboard.backend.services.learning_settings import LearningError, get_settings
 
 logger = logging.getLogger(__name__)
 
 MAX_SYMBOLS = 5
+# 28일 복기 기준일 봉의 종가는 다음 날(첫 진입 UTC 날짜 + 29일)에 수집된다 — 그 이후부터 해제 허용 (R17)
+_REVIEW_HOLD_DAYS = 29
 
 
 def list_symbols() -> list[dict]:
@@ -46,14 +48,27 @@ def add_symbol(symbol: str) -> dict:
 
 
 def remove_symbol(symbol: str) -> None:
-    """종목 제거. 열린 포지션이 있으면 LearningError."""
+    """종목 제거. 열린 포지션·복기 종가 미수집 포지션이 있거나 DCA 기준 종목이면 LearningError."""
     symbol = symbol.strip().upper()
+    dca_symbol = get_settings()["dca"]["symbol"]  # get_db 잠금은 재진입 불가 — 블록 밖에서 읽는다
     with get_db() as conn:
         open_cnt = conn.execute(
             "SELECT COUNT(*) FROM learning_positions WHERE symbol=? AND status='open'", (symbol,)
         ).fetchone()[0]
         if open_cnt:
             raise LearningError(f"열린 포지션이 있는 종목은 제거할 수 없습니다: {symbol}")
+        # SQLite date()는 ISO 시각의 오프셋을 UTC로 환산해 날짜를 돌려준다
+        last_entry = conn.execute(
+            "SELECT MAX(date(opened_at)) FROM learning_positions WHERE symbol=?", (symbol,)
+        ).fetchone()[0]
+        if last_entry is not None:
+            hold_until = date.fromisoformat(last_entry) + timedelta(days=_REVIEW_HOLD_DAYS)
+            if hold_until >= datetime.now(timezone.utc).date():
+                allowed = (hold_until + timedelta(days=1)).isoformat()
+                raise LearningError(
+                    f"28일 복기 기준일 종가 수집 전이라 해제할 수 없습니다: {symbol}. {allowed} (UTC)부터 해제할 수 있습니다")
+        if dca_symbol == symbol:
+            raise LearningError(f"DCA 기준 종목입니다: {symbol}. 성과 탭에서 DCA 기준 종목을 바꾼 뒤 해제하세요")
         conn.execute("DELETE FROM learning_symbols WHERE symbol=?", (symbol,))
 
 
