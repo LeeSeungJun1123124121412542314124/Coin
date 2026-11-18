@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from dashboard.backend.collectors import binance_spot, exchange_rate
 from dashboard.backend.db.connection import get_db
-from dashboard.backend.services import learning_account, learning_indicators, learning_symbols
+from dashboard.backend.services import learning_account, learning_indicators, learning_review, learning_symbols
 from dashboard.backend.services.learning_snapshot import build_snapshot
 from dashboard.backend.services.learning_settings import LearningError, get_settings, update_settings
 
@@ -195,5 +195,37 @@ async def post_order(req: OrderRequest):
         return learning_account.place_order(
             symbol, req.side, price, rationale, build_snapshot(symbol),
             usdt_amount=req.usdt_amount, qty=req.qty, detected=_order_context(symbol, req.interval))
+    except LearningError as e:
+        return _bad_request(e)
+
+
+@router.get("/learning/journal")
+async def get_learning_journal(limit: int = Query(50, ge=1, le=200)):
+    return learning_review.journal(limit)
+
+
+def _no_position(position_id: int) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": f"포지션을 찾을 수 없습니다: {position_id}"})
+
+
+@router.get("/learning/reviews/{position_id}")
+async def get_learning_reviews(position_id: int):
+    if not learning_review.position_exists(position_id):
+        return _no_position(position_id)
+    return {str(h): learning_review.review_position(position_id, h) for h in learning_review.HORIZONS}
+
+
+class ReviewConfirmRequest(BaseModel):
+    """복기 판정 확정 요청 바디."""
+    verdict: str
+    reason: str
+
+
+@router.post("/learning/reviews/{position_id}/{horizon_days}/confirm")
+async def post_review_confirm(position_id: int, horizon_days: int, req: ReviewConfirmRequest):
+    if not learning_review.position_exists(position_id):
+        return _no_position(position_id)
+    try:
+        return learning_review.confirm_review(position_id, horizon_days, req.verdict, req.reason)
     except LearningError as e:
         return _bad_request(e)
