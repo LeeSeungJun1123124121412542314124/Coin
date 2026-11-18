@@ -178,9 +178,10 @@ async def collect_learning_4h() -> None:
 
 
 async def collect_learning_1h() -> None:
-    """1h 캔들 — 알림·재시도 없이 별도 소스명으로만 기록(일봉 실패 이력을 가리지 않는다)."""
+    """1h 캔들 — 알림·재시도 없이 별도 소스명으로만 기록(일봉 실패 이력을 가리지 않는다).
+    1w·1M도 함께 받아 배포 직후 기존 종목의 주봉·월봉이 다음 일봉 수집까지 비는 것을 막는다."""
     try:
-        await _collect_candles(("1h",), source=SPOT_1H_SOURCE, alert=False)
+        await _collect_candles(("1h", "1w", "1M"), source=SPOT_1H_SOURCE, alert=False)
     except Exception as e:
         _record_run(SPOT_1H_SOURCE, "failed", _reason(e))
 

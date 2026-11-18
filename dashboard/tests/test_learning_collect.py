@@ -246,6 +246,24 @@ async def test_missing_interval_filled_without_full_backfill(state_db, sent, mon
 
 
 @pytest.mark.asyncio
+async def test_1h_job_fills_missing_weekly_monthly(state_db, sent, monkeypatch) -> None:
+    _add_symbol("SOLUSDT")
+    binance_spot.save_candles("SOLUSDT", "1h", _bar(1000))
+    calls = []
+
+    async def fake_klines(symbol, interval, start_ms, end_ms=None, now_ms=None):
+        calls.append((symbol, interval, start_ms))
+        return _bar(start_ms)
+
+    monkeypatch.setattr(binance_spot, "fetch_klines", fake_klines)
+    await jobs.collect_learning_1h()
+    assert calls == [("SOLUSDT", "1h", 1001), ("SOLUSDT", "1w", 0), ("SOLUSDT", "1M", 0)]
+    assert binance_spot.last_open_time("SOLUSDT", "1w") == 0
+    assert _runs("binance-spot-1h")[-1]["status"] == "ok"
+    assert sent == []
+
+
+@pytest.mark.asyncio
 async def test_1h_failure_recorded_without_alert(state_db, sent, monkeypatch) -> None:
     _add_symbol("SOLUSDT")
     binance_spot.save_candles("SOLUSDT", "1h", _bar(1000))
