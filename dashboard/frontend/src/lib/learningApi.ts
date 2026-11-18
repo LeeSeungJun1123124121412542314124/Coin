@@ -2,7 +2,7 @@ import { apiFetch } from './api.ts'
 
 // ── 응답 타입 (백엔드 learning_* 서비스 기준, 시각은 epoch ms) ──
 
-export type Interval = '1d' | '4h'
+export type Interval = '1h' | '4h' | '1d' | '1w' | '1M'
 export type Phase = 'accumulation' | 'markup' | 'distribution' | 'markdown' | 'unclear'
 
 export interface LearningSymbol {
@@ -14,7 +14,10 @@ export interface LearningSymbol {
 
 export interface LearningSettings {
   wyckoff: { n: number; width_pct: number; vol_mult: number }
-  elliott: { threshold_1d: number; threshold_4h: number; levels: number[] }
+  elliott: {
+    threshold_1h: number; threshold_4h: number; threshold_1d: number
+    threshold_1w: number; threshold_1M: number; levels: number[]
+  }
   dca: { symbol: string }
 }
 

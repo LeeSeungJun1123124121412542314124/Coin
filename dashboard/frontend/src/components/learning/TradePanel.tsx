@@ -7,7 +7,7 @@ import { SkeletonCard } from '../shared/Skeleton'
 import { PHASE_LABELS, formatUsdtKrw } from './learningChartData.ts'
 import {
   DIM, ICHIMOKU_FIELDS, INTERVAL_LABELS, MUTED, UNDECIDABLE, buttonStyle, errorStyle, errorText, fmtBarTime, fmtPrice,
-  fmtQty, inputStyle, noteStyle, pnlColor, tdStyle, thStyle, titleStyle, useLoader,
+  fmtQty, inputStyle, isIntraday, noteStyle, pnlColor, tdStyle, thStyle, titleStyle, useLoader,
 } from './learningShared.ts'
 
 const PHASES = Object.keys(PHASE_LABELS) as Phase[]
@@ -118,7 +118,7 @@ function OrderForm({ symbol, interval, context, held, onFilled }: OrderFormProps
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null)
 
-  const withHour = interval === '4h'
+  const withHour = isIntraday(interval)
   const canBuy = phase !== '' && !busy && Number(buyAmount) > 0
   const canSell = phase !== '' && !busy && Number(sellQty) > 0
   const canFill = !busy && held > 0

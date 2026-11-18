@@ -43,7 +43,16 @@ export function errorText(e: unknown): string {
 
 // ── 표기 ──
 
-export const INTERVAL_LABELS: Record<Interval, string> = { '1d': '일봉', '4h': '4시간봉' }
+export const INTERVALS: Interval[] = ['1h', '4h', '1d', '1w', '1M']
+
+export const INTERVAL_LABELS: Record<Interval, string> = {
+  '1h': '1시간봉', '4h': '4시간봉', '1d': '일봉', '1w': '주봉', '1M': '월봉',
+}
+
+// 시각(시:분) 표시가 필요한 분봉 단위
+export function isIntraday(i: Interval): boolean {
+  return i === '1h' || i === '4h'
+}
 
 export const VERDICT_LABELS: Record<Verdict, string> = { hit: '적중', partial: '부분 적중', miss: '빗나감' }
 

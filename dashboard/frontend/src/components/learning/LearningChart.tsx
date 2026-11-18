@@ -7,8 +7,8 @@ import { Card } from '../shared/Card'
 import { toCandleSeries, toCloudBands, toLineSeries, toPivotLine, toWyckoffMarkers } from './learningChartData.ts'
 import { IchimokuCloud } from './ichimokuCloud.ts'
 import {
-  DIM, ICHIMOKU_FIELDS, INTERVAL_LABELS, MUTED, UNDECIDABLE, buttonStyle, errorStyle, errorText, fmtBarTime, fmtPrice,
-  inputStyle, noteStyle, toggleStyle, useLoader,
+  DIM, ICHIMOKU_FIELDS, INTERVALS, INTERVAL_LABELS, MUTED, UNDECIDABLE, buttonStyle, errorStyle, errorText, fmtBarTime, fmtPrice,
+  inputStyle, isIntraday, noteStyle, toggleStyle, useLoader,
 } from './learningShared.ts'
 
 const COLORS = {
@@ -141,7 +141,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready }: Lea
     const last = data.candles.at(-1)?.close ?? 1
     const precision = last < 0.001 ? 8 : last < 1 ? 6 : last < 100 ? 4 : 2
     p.candle.applyOptions({ priceFormat: { type: 'price', precision, minMove: 10 ** -precision } })
-    p.chart.applyOptions({ timeScale: { timeVisible: interval === '4h' } })
+    p.chart.applyOptions({ timeScale: { timeVisible: isIntraday(interval) } })
     p.chart.timeScale().fitContent()
   }, [data, interval])
 
@@ -160,7 +160,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready }: Lea
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <span style={{ color: '#e2e8f0', fontWeight: 700 }}>{symbol}</span>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {(['1d', '4h'] as const).map(i => (
+          {INTERVALS.map(i => (
             <button key={i} style={toggleStyle(interval === i)} onClick={() => onIntervalChange(i)}>
               {INTERVAL_LABELS[i]}
             </button>
@@ -203,7 +203,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready }: Lea
         <span>마커: ▲ 스프링 · ▼ 업스러스트</span>
       </div>
 
-      {data && <StateSummary data={data} withHour={interval === '4h'} />}
+      {data && <StateSummary data={data} withHour={isIntraday(interval)} />}
     </Card>
   )
 }
@@ -245,8 +245,11 @@ function SettingsForm({ settings, onSaved, onClose }: {
     n: String(settings.wyckoff.n),
     width_pct: String(settings.wyckoff.width_pct),
     vol_mult: String(settings.wyckoff.vol_mult),
-    threshold_1d: String(settings.elliott.threshold_1d),
+    threshold_1h: String(settings.elliott.threshold_1h),
     threshold_4h: String(settings.elliott.threshold_4h),
+    threshold_1d: String(settings.elliott.threshold_1d),
+    threshold_1w: String(settings.elliott.threshold_1w),
+    threshold_1M: String(settings.elliott.threshold_1M),
     levels: settings.elliott.levels.join(', '),
   })
   const [busy, setBusy] = useState(false)
@@ -256,8 +259,11 @@ function SettingsForm({ settings, onSaved, onClose }: {
     ['n', '와이코프 박스 봉 수 (n)'],
     ['width_pct', '박스 폭 상한 (%)'],
     ['vol_mult', '거래량 급증 배수'],
-    ['threshold_1d', '지그재그 임계값 일봉 (%)'],
+    ['threshold_1h', '지그재그 임계값 1시간봉 (%)'],
     ['threshold_4h', '지그재그 임계값 4시간봉 (%)'],
+    ['threshold_1d', '지그재그 임계값 일봉 (%)'],
+    ['threshold_1w', '지그재그 임계값 주봉 (%)'],
+    ['threshold_1M', '지그재그 임계값 월봉 (%)'],
     ['levels', '피보나치 레벨 (쉼표 구분)'],
   ]
 
@@ -268,8 +274,11 @@ function SettingsForm({ settings, onSaved, onClose }: {
       await putSettings({
         wyckoff: { n: Number(form.n), width_pct: Number(form.width_pct), vol_mult: Number(form.vol_mult) },
         elliott: {
-          threshold_1d: Number(form.threshold_1d),
+          threshold_1h: Number(form.threshold_1h),
           threshold_4h: Number(form.threshold_4h),
+          threshold_1d: Number(form.threshold_1d),
+          threshold_1w: Number(form.threshold_1w),
+          threshold_1M: Number(form.threshold_1M),
           levels: form.levels.split(',').map(s => s.trim()).filter(Boolean).map(Number),
         },
       })
