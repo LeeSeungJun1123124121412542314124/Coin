@@ -137,9 +137,9 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready }: Lea
       axisLabelVisible: true, title: `피보 ${f.level}`,
     }))
 
-    // 저가 종목도 가격이 뭉개지지 않게 소수 자릿수 조정
+    // 저가 종목도 가격이 뭉개지지 않게 소수 자릿수 조정 (0.001 미만은 8자리·minMove 1e-8)
     const last = data.candles.at(-1)?.close ?? 1
-    const precision = last < 1 ? 6 : last < 100 ? 4 : 2
+    const precision = last < 0.001 ? 8 : last < 1 ? 6 : last < 100 ? 4 : 2
     p.candle.applyOptions({ priceFormat: { type: 'price', precision, minMove: 10 ** -precision } })
     p.chart.applyOptions({ timeScale: { timeVisible: interval === '4h' } })
     p.chart.timeScale().fitContent()

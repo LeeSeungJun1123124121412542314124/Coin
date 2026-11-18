@@ -43,7 +43,7 @@ function JournalCard({ entry }: { entry: JournalEntry }) {
               <th style={{ ...thStyle, textAlign: 'left' }}>방향</th>
               <th style={thStyle}>수량</th>
               <th style={thStyle}>가격</th>
-              <th style={thStyle}>금액 (USDT)</th>
+              <th style={thStyle}>금액 (USDT · 매수=수수료 포함, 매도=수수료 전)</th>
               <th style={thStyle}>수수료</th>
               <th style={{ ...thStyle, textAlign: 'left' }}>근거</th>
             </tr>

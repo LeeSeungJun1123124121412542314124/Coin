@@ -8,7 +8,6 @@ import { PHASE_LABELS } from './learningChartData.ts'
 // effect 본문에서는 setState 하지 않고 Promise 콜백에서만 갱신한다 (react-hooks/set-state-in-effect).
 interface LoadState<T> {
   load: () => Promise<T>
-  nonce: number
   data: T | null
   error: string | null
 }
@@ -21,8 +20,8 @@ export function useLoader<T>(load: (() => Promise<T>) | null) {
     if (!load) return
     let cancelled = false
     load().then(
-      data => { if (!cancelled) setState({ load, nonce, data, error: null }) },
-      (e: unknown) => { if (!cancelled) setState({ load, nonce, data: null, error: errorText(e) }) },
+      data => { if (!cancelled) setState({ load, data, error: null }) },
+      (e: unknown) => { if (!cancelled) setState({ load, data: null, error: errorText(e) }) },
     )
     return () => { cancelled = true }
   }, [load, nonce])
@@ -33,7 +32,6 @@ export function useLoader<T>(load: (() => Promise<T>) | null) {
   return {
     data: same ? state.data : null,
     error: same ? state.error : null,
-    loading: load !== null && (!same || state.nonce !== nonce),
     reload,
   }
 }
@@ -76,7 +74,6 @@ const qtyFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 8 })
 
 export const fmtPrice = (v: number | null) => (v === null ? '—' : priceFormat.format(v))
 export const fmtQty = (v: number) => qtyFormat.format(v)
-export const fmtUsdt = (v: number | null) => (v === null ? '—' : `${v.toFixed(2)} USDT`)
 export const fmtRatio = (v: number | null) => (v === null ? '—' : `${(v * 100).toFixed(1)}%`)
 export const fmtSignedPct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
 export const pnlColor = (v: number | null) => (v === null || v === 0 ? '#94a3b8' : v > 0 ? '#4ade80' : '#f87171')

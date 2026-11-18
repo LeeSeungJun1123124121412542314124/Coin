@@ -68,7 +68,7 @@ function HorizonReview({ positionId, horizon, review, onConfirmed }: {
     return (
       <div style={box}>
         <b style={{ color: '#e2e8f0' }}>{horizon}일 복기</b>
-        <div style={{ color: MUTED, marginTop: 4 }}>대기 중 — 기준일 {review.due} (기준일 일봉 종가가 생기면 열립니다)</div>
+        <div style={{ color: MUTED, marginTop: 4 }}>대기 중 — 기준일 {review.due} (UTC, 그날 일봉 종가가 생기면 열립니다)</div>
       </div>
     )
   }
