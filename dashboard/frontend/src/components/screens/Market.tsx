@@ -324,7 +324,7 @@ export function Market() {
                   return [`${n >= 0 ? '+' : ''}${n}%`, name as string]
                 }}
               />
-              <ReferenceLine y={0} stroke={C.border} strokeDasharray="3 3" />
+              <ReferenceLine y={0} stroke={C.borderStrong} strokeDasharray="3 3" />
               <Legend wrapperStyle={{ fontSize: '0.75rem', color: C.text2 }} />
               <Bar dataKey="vix" fill={softBg(C.neutralSeries, 0.85)} name="VIX" barSize={8} />
               <Bar dataKey="btc" fill={softBg(C.accent, 0.85)} name="BTC" barSize={8} />

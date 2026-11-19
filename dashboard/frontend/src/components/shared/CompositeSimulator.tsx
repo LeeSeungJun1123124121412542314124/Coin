@@ -600,14 +600,14 @@ export function CompositeSimulator() {
                 <LineChart data={result.equity_curve} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
                   <XAxis
                     dataKey="timestamp"
-                    tick={{ fill: 'var(--text-3)', fontSize: 10 }}
+                    tick={{ fill: C.text3, fontSize: 10 }}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(v: string) => v.slice(5, 10)}  // MM-DD 형식
                     interval="preserveStartEnd"
                   />
                   <YAxis
-                    tick={{ fill: 'var(--text-3)', fontSize: 10 }}
+                    tick={{ fill: C.text3, fontSize: 10 }}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}

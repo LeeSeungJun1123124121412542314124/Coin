@@ -8,7 +8,7 @@ import {
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
-import { C, changeColor, softBg } from '../../lib/theme'
+import { C, softBg } from '../../lib/theme'
 
 interface LiquiditySummary {
   tga: { current_b: number | null; '7d_change_b': number | null; direction: string }
@@ -155,7 +155,7 @@ export function Liquidity() {
           </div>
           {summary.soma['7d_change_b'] != null && (
             <div style={{
-              color: changeColor(summary.soma['7d_change_b']),
+              color: (summary.soma['7d_change_b'] ?? 0) < 0 ? 'var(--warn)' : 'var(--ok)',
               fontSize: '0.78rem', marginTop: 4,
             }}>
               {(summary.soma['7d_change_b'] ?? 0) < 0 ? '▼ QT' : '▲ QE'} {Math.abs(summary.soma['7d_change_b'] ?? 0).toFixed(1)}B/주
@@ -202,7 +202,7 @@ export function Liquidity() {
                 }}
               />
               <Legend wrapperStyle={{ fontSize: '0.75rem', color: C.text2 }} />
-              <ReferenceLine yAxisId="yoy" y={0} stroke={C.border} />
+              <ReferenceLine yAxisId="yoy" y={0} stroke={C.borderStrong} />
               <Line yAxisId="yoy" type="monotone" dataKey="yoy_pct" stroke={C.ok} dot={false} strokeWidth={2} name="TGA YoY" />
               <Line yAxisId="btc" type="monotone" dataKey="btc" stroke={C.accent} dot={false} strokeWidth={2} name="BTC" />
             </ComposedChart>
