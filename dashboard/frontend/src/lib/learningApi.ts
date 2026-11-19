@@ -19,6 +19,13 @@ export interface LearningSettings {
     threshold_1w: number; threshold_1M: number; levels: number[]
   }
   dca: { symbol: string }
+  indicators: {
+    ma: { enabled: boolean; type: 'sma' | 'ema'; periods: number[] }
+    bb: { enabled: boolean; period: number; stddev: number }
+    volume: { enabled: boolean }
+    rsi: { enabled: boolean; period: number }
+    macd: { enabled: boolean; fast: number; slow: number; signal: number }
+  }
 }
 
 export interface Candle {
@@ -81,6 +88,14 @@ export interface FibLevel {
   price: number
 }
 
+// 켜진 지표만 존재 (거래량은 캔들의 volume 사용)
+export interface IndicatorsResponse {
+  ma?: { period: number; points: { time: number; value: number }[] }[]
+  bb?: { time: number; upper: number; mid: number; lower: number }[]
+  rsi?: { time: number; value: number }[]
+  macd?: { time: number; macd: number; signal: number; hist: number }[]
+}
+
 export interface ChartResponse {
   candles: Candle[]
   ichimoku: IchimokuRow[]
@@ -89,6 +104,7 @@ export interface ChartResponse {
   fib: FibLevel[]
   state: IchimokuState
   settings: LearningSettings
+  indicators?: IndicatorsResponse
 }
 
 export interface OrderContext {

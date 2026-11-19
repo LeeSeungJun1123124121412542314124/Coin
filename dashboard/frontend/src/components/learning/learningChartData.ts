@@ -14,7 +14,7 @@ const SPRING_COLOR = '#22c55e'
 const UPTHRUST_COLOR = '#ef4444'
 
 // 백엔드 epoch ms -> lightweight-charts 초 단위 시각
-const toSec = (ms: number) => Math.floor(ms / 1000) as UTCTimestamp
+export const toSec = (ms: number) => Math.floor(ms / 1000) as UTCTimestamp
 
 export function toCandleSeries(candles: Candle[]) {
   return candles.map(c => ({ time: toSec(c.open_time), open: c.open, high: c.high, low: c.low, close: c.close }))

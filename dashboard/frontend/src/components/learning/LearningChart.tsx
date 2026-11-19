@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { CandlestickSeries, CrosshairMode, LineSeries, LineStyle, PriceScaleMode, createChart, createSeriesMarkers } from 'lightweight-charts'
-import type { IChartApi, IPriceLine, ISeriesApi, ISeriesMarkersPluginApi, LineWidth, Time } from 'lightweight-charts'
+import { CandlestickSeries, CrosshairMode, HistogramSeries, LineSeries, LineStyle, PriceScaleMode, createChart, createSeriesMarkers } from 'lightweight-charts'
+import type { IChartApi, IPriceLine, ISeriesApi, ISeriesMarkersPluginApi, LineWidth, SeriesType, Time } from 'lightweight-charts'
 import { getChart, putSettings } from '../../lib/learningApi.ts'
 import type { ChartResponse, Interval, LearningSettings } from '../../lib/learningApi.ts'
 import { C, changeArrow, changeColor, softBg } from '../../lib/theme.ts'
 import { Card } from '../shared/Card'
-import { toCandleSeries, toCloudBands, toLineSeries, toPivotLine, toWyckoffMarkers } from './learningChartData.ts'
+import { toCandleSeries, toCloudBands, toLineSeries, toPivotLine, toSec, toWyckoffMarkers } from './learningChartData.ts'
+import { chartHeight, maColor, paneLayout } from './indicatorPanes.ts'
 import { IchimokuCloud } from './ichimokuCloud.ts'
 import {
   DIM, ICHIMOKU_FIELDS, INTERVALS, INTERVAL_LABELS, MUTED, UNDECIDABLE, buttonStyle, errorStyle, errorText, fmtBarTime, fmtPrice,
@@ -40,6 +41,18 @@ const LEGEND: [string, string][] = [
 type IndicatorKey = 'ichimoku' | 'zigzag' | 'fib'
 const INDICATORS: [IndicatorKey, string][] = [['ichimoku', '일목균형표'], ['zigzag', '지그재그'], ['fib', '피보나치']]
 
+// 보조 지표 칩 — 서버 설정의 enabled를 바꾼다 (겹침: 이동평균·볼린저 / 아래 칸: 거래량·RSI·MACD)
+type SettingKey = 'ma' | 'bb' | 'volume' | 'rsi' | 'macd'
+const SETTING_CHIPS: [SettingKey, string][] = [['ma', '이동평균'], ['bb', '볼린저'], ['volume', '거래량'], ['rsi', 'RSI'], ['macd', 'MACD']]
+
+const BASE_HEIGHT = 460
+const PANE_HEIGHT = 110
+
+const lineOptions = (color: string, lineWidth: LineWidth, lineStyle: LineStyle = LineStyle.Solid) => ({
+  color, lineWidth, lineStyle,
+  priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+})
+
 interface ChartParts {
   chart: IChartApi
   candle: ISeriesApi<'Candlestick'>
@@ -67,13 +80,21 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
   const containerRef = useRef<HTMLDivElement>(null)
   const partsRef = useRef<ChartParts | null>(null)
   const fibLinesRef = useRef<IPriceLine[]>([])
+  // 보조 지표 시리즈 — 데이터가 바뀔 때마다 지우고 다시 만든다
+  const indSeriesRef = useRef<ISeriesApi<SeriesType>[]>([])
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [logScale, setLogScale] = useState(false)
+  // 칩 낙관적 상태 — 저장 성공 후 재조회될 때까지 서버 값보다 우선, 실패하면 지워서 되돌린다
+  const [pendingEnabled, setPendingEnabled] = useState<Partial<Record<SettingKey, boolean>>>({})
+  const [chipError, setChipError] = useState<string | null>(null)
   const [shown, setShown] = useState<Record<IndicatorKey, boolean>>({ ichimoku: true, zigzag: true, fib: true })
 
   const load = useMemo(() => (ready ? () => getChart(symbol, interval) : null), [ready, symbol, interval])
   const chart = useLoader(load)
   const data = chart.data
+  const paneCount = data
+    ? paneLayout({ volume: data.settings.indicators.volume.enabled, rsi: !!data.indicators?.rsi, macd: !!data.indicators?.macd }).length
+    : 0
 
   // 차트 인스턴스 생성·정리 (마운트 시 1회, KrStockChart 패턴)
   useEffect(() => {
@@ -87,13 +108,10 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
       rightPriceScale: { borderColor: C.line },
       timeScale: { borderColor: C.line },
       width: el.clientWidth,
-      height: el.clientHeight || 460,
+      height: el.clientHeight || BASE_HEIGHT,
     })
     const addLine = (color: string, lineWidth: LineWidth, lineStyle: LineStyle = LineStyle.Solid) =>
-      c.addSeries(LineSeries, {
-        color, lineWidth, lineStyle,
-        priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
-      })
+      c.addSeries(LineSeries, lineOptions(color, lineWidth, lineStyle))
     const candle = c.addSeries(CandlestickSeries, {
       upColor: COLORS.up, downColor: COLORS.down,
       borderUpColor: COLORS.up, borderDownColor: COLORS.down,
@@ -125,6 +143,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
       c.remove()
       partsRef.current = null
       fibLinesRef.current = []
+      indSeriesRef.current = []
     }
   }, [])
 
@@ -149,6 +168,72 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
     p.chart.timeScale().fitContent()
   }, [data, interval])
 
+  // 보조 지표 반영 — 기존 시리즈와 빈 아래 칸을 지우고, 응답에 있는 지표만 다시 그린다
+  useEffect(() => {
+    const p = partsRef.current
+    if (!p) return
+    for (const s of indSeriesRef.current) p.chart.removeSeries(s)
+    indSeriesRef.current = []
+    // 번호가 밀리지 않게 높은 칸부터 빈 pane 제거 (본 칸 0번은 유지)
+    for (let i = p.chart.panes().length - 1; i >= 1; i--) {
+      if (p.chart.panes()[i].getSeries().length === 0) p.chart.removePane(i)
+    }
+    if (!data) return
+
+    const ind = data.indicators ?? {}
+    const addLineAt = (pane: number, color: string, style: LineStyle = LineStyle.Solid) => {
+      const s = p.chart.addSeries(LineSeries, lineOptions(color, 1, style), pane)
+      indSeriesRef.current.push(s)
+      return s
+    }
+    const addHistAt = (pane: number, options: { priceFormat?: { type: 'volume' } } = {}) => {
+      const s = p.chart.addSeries(HistogramSeries, { priceLineVisible: false, lastValueVisible: false, ...options }, pane)
+      indSeriesRef.current.push(s)
+      return s
+    }
+
+    // 본 칸 겹침 — 이동평균(기간별 색), 볼린저(상·하단 text2, 중단 text3 점선)
+    ind.ma?.forEach((m, i) => {
+      addLineAt(0, maColor(i)).setData(m.points.map(pt => ({ time: toSec(pt.time), value: pt.value })))
+    })
+    if (ind.bb) {
+      const bb = ind.bb
+      const band = (key: 'upper' | 'mid' | 'lower', color: string, style: LineStyle) =>
+        addLineAt(0, color, style).setData(bb.map(pt => ({ time: toSec(pt.time), value: pt[key] })))
+      band('upper', C.text2, LineStyle.Solid)
+      band('mid', C.text3, LineStyle.Dashed)
+      band('lower', C.text2, LineStyle.Solid)
+    }
+
+    // 아래 칸 — 켜진 순서(거래량 → RSI → MACD)대로 pane 1, 2, 3
+    const layout = paneLayout({ volume: data.settings.indicators.volume.enabled, rsi: !!ind.rsi, macd: !!ind.macd })
+    for (const { key, index } of layout) {
+      if (key === 'volume') {
+        addHistAt(index, { priceFormat: { type: 'volume' } }).setData(
+          data.candles.map(c => ({
+            time: toSec(c.open_time), value: c.volume,
+            color: softBg(c.close >= c.open ? C.up : C.down, 0.5),
+          })),
+        )
+      } else if (key === 'rsi' && ind.rsi) {
+        const line = addLineAt(index, C.violet)
+        line.setData(ind.rsi.map(pt => ({ time: toSec(pt.time), value: pt.value })))
+        for (const [price, color] of [[70, C.warn], [30, C.ok]] as const) {
+          line.createPriceLine({ price, color, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false, title: '' })
+        }
+      } else if (key === 'macd' && ind.macd) {
+        addHistAt(index).setData(
+          ind.macd.map(pt => ({ time: toSec(pt.time), value: pt.hist, color: softBg(pt.hist >= 0 ? C.up : C.down, 0.5) })),
+        )
+        addLineAt(index, C.info).setData(ind.macd.map(pt => ({ time: toSec(pt.time), value: pt.macd })))
+        addLineAt(index, C.warn).setData(ind.macd.map(pt => ({ time: toSec(pt.time), value: pt.signal })))
+      }
+    }
+
+    // 본 칸 높이는 그대로 — stretch 비율을 픽셀 높이(본 칸 460·아래 칸 110)로 맞춘다
+    p.chart.panes().forEach((pane, i) => pane.setStretchFactor(i === 0 ? BASE_HEIGHT : PANE_HEIGHT))
+  }, [data])
+
   // 지표 표시 토글 반영 — 구름은 빈 데이터로 지우고, 피보나치는 가격선을 지우고 다시 만든다 (줌 위치는 건드리지 않음)
   useEffect(() => {
     const p = partsRef.current
@@ -171,6 +256,23 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
       mode: logScale ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
     })
   }, [logScale])
+
+  const isOn = (key: SettingKey) => pendingEnabled[key] ?? data?.settings.indicators[key].enabled ?? false
+
+  // 칩 — 낙관적으로 바꾸고 저장, 성공하면 차트 재조회, 실패하면 되돌리고 메시지 표시
+  const toggleSetting = async (key: SettingKey) => {
+    if (!data) return
+    const enabled = !isOn(key)
+    setChipError(null)
+    setPendingEnabled(s => ({ ...s, [key]: enabled }))
+    try {
+      await putSettings({ indicators: { [key]: { ...data.settings.indicators[key], enabled } } })
+      chart.reload()
+    } catch (e) {
+      setPendingEnabled(s => { const n = { ...s }; delete n[key]; return n })
+      setChipError(errorText(e))
+    }
+  }
 
   const overlay = !ready
     ? '백필 중입니다. 완료되면 차트를 불러옵니다.'
@@ -199,6 +301,12 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
               {label}
             </button>
           ))}
+          {SETTING_CHIPS.map(([key, label]) => (
+            <button key={key} style={toggleStyle(isOn(key))} aria-pressed={isOn(key)} disabled={!data}
+              onClick={() => toggleSetting(key)}>
+              {label}
+            </button>
+          ))}
         </div>
         <div style={segGroupStyle} role="group" aria-label="가격축">
           {([['선형', false], ['로그', true]] as const).map(([label, log]) => (
@@ -210,6 +318,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
         <button style={toggleStyle(settingsOpen)} disabled={!data} onClick={() => setSettingsOpen(o => !o)}>
           지표 설정
         </button>
+        {chipError && <span style={errorStyle}>{chipError}</span>}
       </div>
 
       {settingsOpen && data && (
@@ -222,7 +331,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
         <Card style={{ flex: '3 1 520px', minWidth: 0 }}>
-          <div style={{ position: 'relative', height: 460 }}>
+          <div style={{ position: 'relative', height: chartHeight(BASE_HEIGHT, paneCount, PANE_HEIGHT) }}>
             {overlay && (
               <div style={{
                 position: 'absolute', inset: 0, zIndex: 5, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -313,6 +422,14 @@ function SettingsForm({ settings, onSaved, onClose }: {
     threshold_1w: String(settings.elliott.threshold_1w),
     threshold_1M: String(settings.elliott.threshold_1M),
     levels: settings.elliott.levels.join(', '),
+    ma_type: settings.indicators.ma.type as string,
+    ma_periods: settings.indicators.ma.periods.join(', '),
+    bb_period: String(settings.indicators.bb.period),
+    bb_stddev: String(settings.indicators.bb.stddev),
+    rsi_period: String(settings.indicators.rsi.period),
+    macd_fast: String(settings.indicators.macd.fast),
+    macd_slow: String(settings.indicators.macd.slow),
+    macd_signal: String(settings.indicators.macd.signal),
   })
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
@@ -327,6 +444,16 @@ function SettingsForm({ settings, onSaved, onClose }: {
     ['threshold_1w', '지그재그 임계값 주봉 (%)'],
     ['threshold_1M', '지그재그 임계값 월봉 (%)'],
     ['levels', '피보나치 레벨 (쉼표 구분)'],
+  ]
+  // "보조 지표" 묶음 — 이동평균 종류는 select라 따로 둔다
+  const indFields: [keyof typeof form, string][] = [
+    ['ma_periods', '이동평균 기간 (쉼표 구분)'],
+    ['bb_period', '볼린저 기간'],
+    ['bb_stddev', '볼린저 표준편차'],
+    ['rsi_period', 'RSI 기간'],
+    ['macd_fast', 'MACD 빠른'],
+    ['macd_slow', 'MACD 느린'],
+    ['macd_signal', 'MACD 시그널'],
   ]
 
   const save = async () => {
@@ -343,6 +470,20 @@ function SettingsForm({ settings, onSaved, onClose }: {
           threshold_1M: Number(form.threshold_1M),
           levels: form.levels.split(',').map(s => s.trim()).filter(Boolean).map(Number),
         },
+        // enabled는 칩이 바꾸므로 기존 값을 그대로 보낸다
+        indicators: {
+          ma: {
+            ...settings.indicators.ma,
+            type: form.ma_type === 'ema' ? 'ema' : 'sma',
+            periods: form.ma_periods.split(',').map(s => s.trim()).filter(Boolean).map(Number),
+          },
+          bb: { ...settings.indicators.bb, period: Number(form.bb_period), stddev: Number(form.bb_stddev) },
+          rsi: { ...settings.indicators.rsi, period: Number(form.rsi_period) },
+          macd: {
+            ...settings.indicators.macd,
+            fast: Number(form.macd_fast), slow: Number(form.macd_slow), signal: Number(form.macd_signal),
+          },
+        },
       })
       setMessage({ ok: true, text: '저장했습니다. 차트를 다시 계산합니다.' })
       onSaved()
@@ -357,6 +498,26 @@ function SettingsForm({ settings, onSaved, onClose }: {
     <div style={{ background: 'var(--bg-inset)', border: '1px solid var(--border)', borderRadius: 12, padding: 14 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
         {fields.map(([key, label]) => (
+          <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem', color: MUTED }}>
+            {label}
+            <input
+              style={inputStyle}
+              value={form[key]}
+              onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+            />
+          </label>
+        ))}
+      </div>
+      <div style={{ margin: '14px 0 6px', fontSize: '0.78rem', fontWeight: 600, color: MUTED }}>보조 지표</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem', color: MUTED }}>
+          이동평균 종류
+          <select style={inputStyle} value={form.ma_type} onChange={e => setForm(f => ({ ...f, ma_type: e.target.value }))}>
+            <option value="sma">SMA (단순)</option>
+            <option value="ema">EMA (지수)</option>
+          </select>
+        </label>
+        {indFields.map(([key, label]) => (
           <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem', color: MUTED }}>
             {label}
             <input
