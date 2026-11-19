@@ -17,6 +17,7 @@ import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
 import { fmt } from '../../lib/format'
+import { C, changeColor, changeArrow, softBg } from '../../lib/theme'
 import { AssetTabs } from '../shared/AssetTabs'
 import { readAssetTab, replaceAssetTab, type AssetTab } from '../shared/assetTabUtils'
 
@@ -124,13 +125,13 @@ interface Us13fData {
 }
 
 function BtcBadge({ pos }: { pos: Position | null }) {
-  if (!pos) return <span style={{ color: '#64748b', fontSize: '0.75rem' }}>—</span>
-  const color = pos.side === 'long' ? '#4ade80' : '#f87171'
+  if (!pos) return <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>—</span>
+  const color = pos.side === 'long' ? 'var(--up)' : 'var(--down)'
   const label = pos.side === 'long' ? '롱' : '숏'
   return (
     <span style={{
       padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600,
-      background: pos.side === 'long' ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)',
+      background: softBg(pos.side === 'long' ? C.up : C.down, 0.14),
       color,
     }}>
       BTC {label}
@@ -141,45 +142,45 @@ function BtcBadge({ pos }: { pos: Position | null }) {
 
 function PositionList({ positions }: { positions: Position[] }) {
   if (!positions || positions.length === 0) {
-    return <span style={{ color: '#64748b', fontSize: '0.75rem' }}>포지션 없음</span>
+    return <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>포지션 없음</span>
   }
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
       {positions.slice(0, 5).map((p, i) => (
         <span key={i} style={{
           padding: '1px 7px', borderRadius: 5, fontSize: '0.7rem',
-          background: p.side === 'long' ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)',
-          color: p.side === 'long' ? '#4ade80' : '#f87171',
+          background: softBg(p.side === 'long' ? C.up : C.down, 0.12),
+          color: p.side === 'long' ? 'var(--up)' : 'var(--down)',
         }}>
           {p.coin} {p.side === 'long' ? '↑' : '↓'}
         </span>
       ))}
       {positions.length > 5 && (
-        <span style={{ color: '#64748b', fontSize: '0.7rem' }}>+{positions.length - 5}</span>
+        <span style={{ color: 'var(--text-3)', fontSize: '0.7rem' }}>+{positions.length - 5}</span>
       )}
     </div>
   )
 }
 
 function ConsensusMeter({ data }: { data: Consensus }) {
-  const color = data.consensus === 'long' ? '#4ade80' : data.consensus === 'short' ? '#f87171' : '#94a3b8'
+  const color = data.consensus === 'long' ? 'var(--up)' : data.consensus === 'short' ? 'var(--down)' : 'var(--text-2)'
   const label = data.consensus === 'long' ? '롱 우세' : data.consensus === 'short' ? '숏 우세' : '중립'
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, alignItems: 'center' }}>
-        <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>고래 BTC 방향 합의</div>
+        <div style={{ color: 'var(--text-2)', fontSize: '0.75rem' }}>고래 BTC 방향 합의</div>
         <div style={{ color, fontWeight: 700, fontSize: '0.9rem' }}>{label}</div>
       </div>
       <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', marginBottom: 6 }}>
-        <div style={{ width: `${data.long_pct}%`, background: '#4ade80' }} />
-        <div style={{ width: `${data.short_pct}%`, background: '#f87171' }} />
-        <div style={{ flex: 1, background: '#334155' }} />
+        <div style={{ width: `${data.long_pct}%`, background: 'var(--up)' }} />
+        <div style={{ width: `${data.short_pct}%`, background: 'var(--down)' }} />
+        <div style={{ flex: 1, background: 'var(--neutral-series)' }} />
       </div>
       <div style={{ display: 'flex', gap: 16, fontSize: '0.72rem' }}>
-        <span style={{ color: '#4ade80' }}>롱 {data.long_count}명 ({data.long_pct}%)</span>
-        <span style={{ color: '#f87171' }}>숏 {data.short_count}명 ({data.short_pct}%)</span>
-        <span style={{ color: '#64748b' }}>중립 {data.neutral_count}명</span>
+        <span style={{ color: 'var(--up)' }}>롱 {data.long_count}명 ({data.long_pct}%)</span>
+        <span style={{ color: 'var(--down)' }}>숏 {data.short_count}명 ({data.short_pct}%)</span>
+        <span style={{ color: 'var(--text-3)' }}>중립 {data.neutral_count}명</span>
       </div>
     </div>
   )
@@ -192,9 +193,9 @@ function formatEok(value: number | null | undefined) {
 
 function FlowChip({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div style={{ background: '#0f1117', border: '1px solid #1e293b', borderRadius: 8, padding: '10px 12px' }}>
-      <div style={{ color: '#64748b', fontSize: '0.72rem', marginBottom: 4 }}>{label}</div>
-      <div style={{ color, fontSize: '1rem', fontWeight: 700 }}>{formatEok(value)}</div>
+    <div style={{ background: 'var(--bg-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
+      <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginBottom: 4 }}>{label}</div>
+      <div style={{ color, fontFamily: 'var(--font-mono)', fontSize: '1rem', fontWeight: 700 }}>{changeArrow(value)} {formatEok(value)}</div>
     </div>
   )
 }
@@ -225,9 +226,9 @@ function KrInvestorFlowView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ color: '#94a3b8', fontSize: '0.78rem' }}>
+        <div style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>
           네이버 투자자별 순매수 · 단위 억원
-          {data.stale && <span style={{ color: '#f59e0b', marginLeft: 8 }}>데이터 확인 필요</span>}
+          {data.stale && <span style={{ color: 'var(--warn)', marginLeft: 8 }}>데이터 확인 필요</span>}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {(['KOSPI', 'KOSDAQ'] as const).map(item => {
@@ -238,9 +239,9 @@ function KrInvestorFlowView({
                 type="button"
                 onClick={() => onMarketChange(item)}
                 style={{
-                  border: `1px solid ${active ? '#38bdf8' : '#334155'}`,
-                  background: active ? 'rgba(56,189,248,0.12)' : '#0f172a',
-                  color: active ? '#e0f2fe' : '#94a3b8',
+                  border: `1px solid ${active ? 'var(--accent)' : 'var(--border-strong)'}`,
+                  background: active ? softBg(C.accent, 0.12) : 'var(--bg-inset)',
+                  color: active ? 'var(--text)' : 'var(--text-2)',
                   borderRadius: 8,
                   padding: '8px 12px',
                   fontSize: '0.78rem',
@@ -256,38 +257,38 @@ function KrInvestorFlowView({
       </div>
 
       <div className="grid-4" style={{ gap: 10 }}>
-        <FlowChip label="외국인 누적" value={foreignTotal} color={foreignTotal >= 0 ? '#4ade80' : '#f87171'} />
-        <FlowChip label="기관 누적" value={institutionTotal} color={institutionTotal >= 0 ? '#60a5fa' : '#f87171'} />
-        <FlowChip label="개인 누적" value={individualTotal} color={individualTotal >= 0 ? '#f59e0b' : '#94a3b8'} />
-        <FlowChip label="최근 개인" value={latest?.individual_net ?? 0} color={(latest?.individual_net ?? 0) >= 0 ? '#f59e0b' : '#94a3b8'} />
+        <FlowChip label="외국인 누적" value={foreignTotal} color={changeColor(foreignTotal)} />
+        <FlowChip label="기관 누적" value={institutionTotal} color={changeColor(institutionTotal)} />
+        <FlowChip label="개인 누적" value={individualTotal} color={changeColor(individualTotal)} />
+        <FlowChip label="최근 개인" value={latest?.individual_net ?? 0} color={changeColor(latest?.individual_net ?? 0)} />
       </div>
 
       <Card>
-        <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>
+        <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 12 }}>
           {data.market} 외국인·기관 순매수와 개인 보조 추이
         </div>
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={260}>
             <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-              <CartesianGrid stroke="#1e293b" vertical={false} />
-              <XAxis dataKey="dateLabel" tick={{ fill: '#64748b', fontSize: 10 }} interval="preserveStartEnd" />
-              <YAxis yAxisId="flow" tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={v => `${v}`} width={48} />
-              <YAxis yAxisId="cum" orientation="right" tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={v => `${v}`} width={48} />
+              <CartesianGrid stroke={C.line} vertical={false} />
+              <XAxis dataKey="dateLabel" tick={{ fill: C.text3, fontSize: 10 }} interval="preserveStartEnd" />
+              <YAxis yAxisId="flow" tick={{ fill: C.text2, fontSize: 10 }} tickFormatter={v => `${v}`} width={48} />
+              <YAxis yAxisId="cum" orientation="right" tick={{ fill: C.text2, fontSize: 10 }} tickFormatter={v => `${v}`} width={48} />
               <Tooltip
-                contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
-                labelStyle={{ color: '#94a3b8' }}
+                contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8 }}
+                labelStyle={{ color: C.text2 }}
                 formatter={(value, name) => [formatEok(Number(value)), name as string]}
               />
-              <Legend wrapperStyle={{ fontSize: '0.75rem', color: '#94a3b8' }} />
-              <ReferenceLine yAxisId="flow" y={0} stroke="#475569" strokeDasharray="3 3" />
-              <Bar yAxisId="flow" dataKey="foreign_net" fill="rgba(74,222,128,0.72)" name="외국인" barSize={9} />
-              <Bar yAxisId="flow" dataKey="institution_net" fill="rgba(96,165,250,0.72)" name="기관" barSize={9} />
-              <Line yAxisId="flow" type="monotone" dataKey="individual_net" stroke="#94a3b8" strokeWidth={1.5} dot={false} name="개인" />
-              <Line yAxisId="cum" type="monotone" dataKey="cumulative_net" stroke="#f59e0b" strokeWidth={2} dot={false} name="외국인+기관 누적" />
+              <Legend wrapperStyle={{ fontSize: '0.75rem', color: C.text2 }} />
+              <ReferenceLine yAxisId="flow" y={0} stroke={C.text3} strokeDasharray="3 3" />
+              <Bar yAxisId="flow" dataKey="foreign_net" fill={softBg(C.accent, 0.72)} name="외국인" barSize={9} />
+              <Bar yAxisId="flow" dataKey="institution_net" fill={softBg(C.neutralSeries, 0.72)} name="기관" barSize={9} />
+              <Line yAxisId="flow" type="monotone" dataKey="individual_net" stroke={C.text2} strokeWidth={1.5} dot={false} name="개인" />
+              <Line yAxisId="cum" type="monotone" dataKey="cumulative_net" stroke={C.info} strokeWidth={2} dot={false} name="외국인+기관 누적" />
             </ComposedChart>
           </ResponsiveContainer>
         ) : (
-          <div style={{ color: '#64748b', textAlign: 'center', padding: '56px 0', fontSize: '0.85rem' }}>
+          <div style={{ color: 'var(--text-3)', textAlign: 'center', padding: '56px 0', fontSize: '0.85rem' }}>
             수급 데이터가 없습니다
           </div>
         )}
@@ -299,25 +300,25 @@ function KrInvestorFlowView({
 function UsInsiderView({ data }: { data: UsInsiderData }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ color: '#94a3b8', fontSize: '0.78rem' }}>
+      <div style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>
         SEC EDGAR Form 4 · 관심종목 내부자 장내 매매 · 최근 90일
       </div>
 
       <div className="grid-4" style={{ gap: 10 }}>
         {data.summaries.map(s => (
-          <div key={s.ticker} style={{ background: '#0f1117', border: '1px solid #1e293b', borderRadius: 8, padding: '10px 12px' }}>
-            <div style={{ color: '#64748b', fontSize: '0.72rem', marginBottom: 4 }}>
-              {s.name} <span style={{ color: '#475569' }}>({s.trade_count}건)</span>
+          <div key={s.ticker} style={{ background: 'var(--bg-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginBottom: 4 }}>
+              {s.name} <span style={{ color: 'var(--text-3)' }}>({s.trade_count}건)</span>
             </div>
-            <div style={{ color: s.net_value >= 0 ? '#4ade80' : '#f87171', fontSize: '1rem', fontWeight: 700 }}>
-              {s.net_value >= 0 ? '+' : ''}{fmt(s.net_value)}
+            <div style={{ color: changeColor(s.net_value), fontFamily: 'var(--font-mono)', fontSize: '1rem', fontWeight: 700 }}>
+              {changeArrow(s.net_value)} {s.net_value >= 0 ? '+' : ''}{fmt(s.net_value)}
             </div>
           </div>
         ))}
       </div>
 
       <Card>
-        <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>
+        <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 12 }}>
           내부자 거래 내역 (거래일 역순)
         </div>
         {data.trades.length > 0 ? (
@@ -326,8 +327,8 @@ function UsInsiderView({ data }: { data: UsInsiderData }) {
               display: 'grid',
               gridTemplateColumns: '80px 70px 1fr 70px 90px 90px',
               gap: 8, padding: '4px 8px',
-              color: '#64748b', fontSize: '0.7rem', marginBottom: 6,
-              borderBottom: '1px solid #1e293b',
+              color: 'var(--text-3)', fontSize: '0.7rem', marginBottom: 6,
+              borderBottom: '1px solid var(--line)',
               minWidth: 560,
             }}>
               <span>거래일</span>
@@ -345,30 +346,30 @@ function UsInsiderView({ data }: { data: UsInsiderData }) {
                     display: 'grid',
                     gridTemplateColumns: '80px 70px 1fr 70px 90px 90px',
                     gap: 8, padding: '8px 8px', borderRadius: 8,
-                    background: '#0f1117', alignItems: 'center',
+                    background: 'var(--bg-inset)', alignItems: 'center',
                     fontSize: '0.78rem',
                   }}
                 >
-                  <span style={{ color: '#94a3b8' }}>{t.transaction_date.slice(5)}</span>
-                  <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{t.ticker}</span>
+                  <span style={{ color: 'var(--text-2)' }}>{t.transaction_date.slice(5)}</span>
+                  <span style={{ color: 'var(--text)', fontWeight: 600 }}>{t.ticker}</span>
                   <div>
-                    <div style={{ color: '#e2e8f0' }}>{t.insider_name}</div>
+                    <div style={{ color: 'var(--text)' }}>{t.insider_name}</div>
                     {t.insider_title && (
-                      <div style={{ color: '#64748b', fontSize: '0.7rem' }}>{t.insider_title}</div>
+                      <div style={{ color: 'var(--text-3)', fontSize: '0.7rem' }}>{t.insider_title}</div>
                     )}
                   </div>
                   <span style={{
                     textAlign: 'center', fontWeight: 600,
-                    color: t.code === 'P' ? '#4ade80' : '#f87171',
+                    color: t.code === 'P' ? 'var(--up)' : 'var(--down)',
                   }}>
                     {t.code === 'P' ? '매수' : '매도'}
                   </span>
-                  <span style={{ color: '#cbd5e1', textAlign: 'right' }}>
+                  <span style={{ color: 'var(--text-2)', textAlign: 'right' }}>
                     {t.shares != null ? t.shares.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—'}
                   </span>
                   <span style={{
                     textAlign: 'right', fontWeight: 600,
-                    color: (t.value ?? 0) >= 0 ? '#4ade80' : '#f87171',
+                    color: changeColor(t.value ?? 0), fontFamily: 'var(--font-mono)',
                   }}>
                     {fmt(t.value)}
                   </span>
@@ -377,7 +378,7 @@ function UsInsiderView({ data }: { data: UsInsiderData }) {
             </div>
           </div>
         ) : (
-          <div style={{ color: '#64748b', textAlign: 'center', padding: '40px 0', fontSize: '0.85rem' }}>
+          <div style={{ color: 'var(--text-3)', textAlign: 'center', padding: '40px 0', fontSize: '0.85rem' }}>
             내부자 거래 없음 (최근 90일)
           </div>
         )}
@@ -389,50 +390,50 @@ function UsInsiderView({ data }: { data: UsInsiderData }) {
 function Us13fView({ data }: { data: Us13fData }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ color: '#94a3b8', fontSize: '0.78rem' }}>
+      <div style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>
         기관 보유 (13F) · 분기 · 45일 지연 · SEC EDGAR
       </div>
 
       <div className="grid-4" style={{ gap: 10 }}>
         {data.summaries.map(summary => (
-          <div key={summary.ticker} style={{ background: '#0f1117', border: '1px solid #1e293b', borderRadius: 8, padding: '10px 12px' }}>
-            <div style={{ color: '#64748b', fontSize: '0.72rem', marginBottom: 4 }}>
+          <div key={summary.ticker} style={{ background: 'var(--bg-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginBottom: 4 }}>
               {summary.ticker} · {summary.latest_quarter ?? '분기 없음'}
             </div>
-            <div style={{ color: '#e2e8f0', fontSize: '1rem', fontWeight: 700 }}>
+            <div style={{ color: 'var(--text)', fontSize: '1rem', fontWeight: 700 }}>
               {fmt(summary.latest_value)}
             </div>
-            <div style={{ color: summary.qoq_change == null ? '#64748b' : summary.qoq_change >= 0 ? '#4ade80' : '#f87171', fontSize: '0.7rem', marginTop: 3 }}>
-              QoQ {summary.qoq_change == null ? '—' : `${summary.qoq_change >= 0 ? '+' : ''}${summary.qoq_change.toFixed(1)}%`}
+            <div style={{ color: summary.qoq_change == null ? 'var(--text-3)' : changeColor(summary.qoq_change), fontFamily: 'var(--font-mono)', fontSize: '0.7rem', marginTop: 3 }}>
+              QoQ {summary.qoq_change == null ? '—' : `${changeArrow(summary.qoq_change)} ${summary.qoq_change >= 0 ? '+' : ''}${summary.qoq_change.toFixed(1)}%`}
             </div>
           </div>
         ))}
       </div>
 
       <Card>
-        <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>
+        <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 12 }}>
           기관별 보유 내역 (최신 4분기)
         </div>
         {data.holdings.length > 0 ? (
           <div className="table-scroll">
-            <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 70px 100px 110px', gap: 8, padding: '4px 8px', color: '#64748b', fontSize: '0.7rem', marginBottom: 6, borderBottom: '1px solid #1e293b', minWidth: 560 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 70px 100px 110px', gap: 8, padding: '4px 8px', color: 'var(--text-3)', fontSize: '0.7rem', marginBottom: 6, borderBottom: '1px solid var(--line)', minWidth: 560 }}>
               <span>분기</span><span>기관</span><span>종목</span>
               <span style={{ textAlign: 'right' }}>수량</span><span style={{ textAlign: 'right' }}>가치</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 560 }}>
               {data.holdings.map(holding => (
-                <div key={`${holding.accession_no}-${holding.seq}`} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 70px 100px 110px', gap: 8, padding: '8px', borderRadius: 8, background: '#0f1117', alignItems: 'center', fontSize: '0.78rem' }}>
-                  <span style={{ color: '#94a3b8' }}>{holding.quarter}</span>
-                  <span style={{ color: '#cbd5e1' }}>{holding.institution}</span>
-                  <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{holding.ticker}{holding.put_call === 'Call' ? ' Call' : ''}</span>
-                  <span style={{ color: '#cbd5e1', textAlign: 'right' }}>{holding.shares?.toLocaleString('en-US', { maximumFractionDigits: 0 }) ?? '—'}</span>
-                  <span style={{ color: '#e2e8f0', textAlign: 'right', fontWeight: 600 }}>{fmt(holding.value_usd)}</span>
+                <div key={`${holding.accession_no}-${holding.seq}`} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 70px 100px 110px', gap: 8, padding: '8px', borderRadius: 8, background: 'var(--bg-inset)', alignItems: 'center', fontSize: '0.78rem' }}>
+                  <span style={{ color: 'var(--text-2)' }}>{holding.quarter}</span>
+                  <span style={{ color: 'var(--text-2)' }}>{holding.institution}</span>
+                  <span style={{ color: 'var(--text)', fontWeight: 600 }}>{holding.ticker}{holding.put_call === 'Call' ? ' Call' : ''}</span>
+                  <span style={{ color: 'var(--text-2)', textAlign: 'right' }}>{holding.shares?.toLocaleString('en-US', { maximumFractionDigits: 0 }) ?? '—'}</span>
+                  <span style={{ color: 'var(--text)', textAlign: 'right', fontWeight: 600 }}>{fmt(holding.value_usd)}</span>
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          <div style={{ color: '#64748b', textAlign: 'center', padding: '40px 0', fontSize: '0.85rem' }}>
+          <div style={{ color: 'var(--text-3)', textAlign: 'center', padding: '40px 0', fontSize: '0.85rem' }}>
             기관 보유 데이터가 없습니다
           </div>
         )}
@@ -462,7 +463,7 @@ function CoinWhaleView({
       )}
 
       <Card>
-        <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>
+        <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 12 }}>
           Hyperliquid 고래 TOP {whales.length} (실시간)
         </div>
 
@@ -471,8 +472,8 @@ function CoinWhaleView({
             display: 'grid',
             gridTemplateColumns: '32px 1fr 90px 90px 80px 90px 1fr',
             gap: 8, padding: '4px 8px',
-            color: '#64748b', fontSize: '0.7rem', marginBottom: 6,
-            borderBottom: '1px solid #1e293b',
+            color: 'var(--text-3)', fontSize: '0.7rem', marginBottom: 6,
+            borderBottom: '1px solid var(--line)',
             minWidth: 580,
           }}>
             <span>#</span>
@@ -492,35 +493,35 @@ function CoinWhaleView({
                   display: 'grid',
                   gridTemplateColumns: '32px 1fr 90px 90px 80px 90px 1fr',
                   gap: 8, padding: '8px 8px', borderRadius: 8,
-                  background: '#0f1117', alignItems: 'center',
+                  background: 'var(--bg-inset)', alignItems: 'center',
                 }}
               >
-                <span style={{ color: w.rank <= 3 ? '#f59e0b' : '#64748b', fontSize: '0.8rem', fontWeight: 700 }}>
+                <span style={{ color: w.rank <= 3 ? 'var(--accent)' : 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 700 }}>
                   {w.rank}
                 </span>
 
                 <div>
                   {w.display_name ? (
-                    <div style={{ color: '#e2e8f0', fontSize: '0.82rem', fontWeight: 600 }}>{w.display_name}</div>
+                    <div style={{ color: 'var(--text)', fontSize: '0.82rem', fontWeight: 600 }}>{w.display_name}</div>
                   ) : null}
-                  <div style={{ color: '#64748b', fontSize: '0.7rem', fontFamily: 'monospace' }}>
+                  <div style={{ color: 'var(--text-3)', fontSize: '0.7rem', fontFamily: 'var(--font-mono)' }}>
                     {w.address.slice(0, 6)}…{w.address.slice(-4)}
                   </div>
                 </div>
 
-                <span style={{ color: '#e2e8f0', fontSize: '0.8rem', textAlign: 'right' }}>
+                <span style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', textAlign: 'right' }}>
                   {fmt(w.account_value)}
                 </span>
 
                 <span style={{
-                  color: (w.pnl_30d ?? 0) >= 0 ? '#4ade80' : '#f87171',
+                  color: changeColor(w.pnl_30d ?? 0), fontFamily: 'var(--font-mono)',
                   fontSize: '0.8rem', textAlign: 'right', fontWeight: 600,
                 }}>
                   {fmt(w.pnl_30d)}
                 </span>
 
                 <span style={{
-                  color: (w.roi_30d ?? 0) >= 0 ? '#4ade80' : '#f87171',
+                  color: changeColor(w.roi_30d ?? 0), fontFamily: 'var(--font-mono)',
                   fontSize: '0.78rem', textAlign: 'right',
                 }}>
                   {w.roi_30d != null ? `${(w.roi_30d * 100).toFixed(1)}%` : '—'}
@@ -538,7 +539,7 @@ function CoinWhaleView({
       </Card>
 
       {whales.length === 0 && (
-        <div style={{ color: '#64748b', textAlign: 'center', padding: 24 }}>
+        <div style={{ color: 'var(--text-3)', textAlign: 'center', padding: 24 }}>
           고래 데이터를 불러오지 못했습니다
         </div>
       )}

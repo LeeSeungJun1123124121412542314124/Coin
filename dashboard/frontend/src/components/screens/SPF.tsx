@@ -9,6 +9,7 @@ import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
 import { ScoreBar } from '../shared/ScoreBar'
+import { C, changeColor, changeArrow, softBg } from '../../lib/theme'
 
 interface SpfCurrent {
   date: string
@@ -83,11 +84,11 @@ const FLOW_LABELS: Record<string, string> = {
 }
 
 const FLOW_COLORS: Record<string, string> = {
-  long_entry: '#f97316',
-  short_entry: '#60a5fa',
-  long_exit: '#f87171',
-  short_exit: '#4ade80',
-  neutral: '#94a3b8',
+  long_entry: C.up,    // 롱 계열
+  short_entry: C.down, // 숏 계열
+  long_exit: C.up,
+  short_exit: C.down,
+  neutral: C.text2,
 }
 
 const HISTORY_HORIZONS = [
@@ -98,10 +99,10 @@ const HISTORY_HORIZONS = [
 ] as const
 
 const HORIZON_RESULT_META = {
-  'hit': { symbol: '✓', color: '#4ade80' },
-  'miss': { symbol: '✗', color: '#f87171' },
-  'neutral': { symbol: '–', color: '#64748b' },
-  pending: { symbol: '·', color: '#475569' },
+  'hit': { symbol: '✓', color: C.ok },
+  'miss': { symbol: '✗', color: C.warn },
+  'neutral': { symbol: '–', color: C.text2 },
+  pending: { symbol: '·', color: C.text3 },
 } as const
 
 function getHorizonResultMeta(result: string | null) {
@@ -127,8 +128,8 @@ export function SPF() {
     reasons = []
   }
 
-  const directionColor = today_prediction?.direction === '상승' ? '#4ade80'
-    : today_prediction?.direction === '하락' ? '#f87171' : '#94a3b8'
+  const directionColor = today_prediction?.direction === '상승' ? 'var(--up)'
+    : today_prediction?.direction === '하락' ? 'var(--down)' : 'var(--text-2)'
 
   // 히스토리 차트 데이터 (오래된 순)
   const chartData = [...(history || [])].reverse().slice(-30).map(r => ({
@@ -142,17 +143,17 @@ export function SPF() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <LastUpdated timestamp={lastUpdated} />
       {/* 역할 라벨 — 시뮬레이터(수익 검증)와 구분 */}
-      <div style={{ color: '#64748b', fontSize: '0.8rem', lineHeight: 1.5 }}>
-        🧭 <b style={{ color: '#94a3b8' }}>시장 방향 전망 · 선물 포지션 흐름</b> — 지금 어디로 향하나(복합 모델)와 시장이 어떤 상태인가(OI/FR 쏠림)를 봅니다.
-        <span style={{ color: '#475569' }}> 지표별 수익 검증은 시뮬레이터 탭에서.</span>
+      <div style={{ color: 'var(--text-3)', fontSize: '0.8rem', lineHeight: 1.5 }}>
+        🧭 <b style={{ color: 'var(--text-2)' }}>시장 방향 전망 · 선물 포지션 흐름</b> — 지금 어디로 향하나(복합 모델)와 시장이 어떤 상태인가(OI/FR 쏠림)를 봅니다.
+        <span style={{ color: 'var(--text-3)' }}> 지표별 수익 검증은 시뮬레이터 탭에서.</span>
       </div>
       {/* OI 급등 경고 배너 */}
       {current?.oi_surge_alert && (
         <div style={{
-          background: current.oi_surge_alert === 'CRITICAL' ? 'rgba(239,68,68,0.15)' : 'rgba(249,115,22,0.15)',
-          border: `1px solid ${current.oi_surge_alert === 'CRITICAL' ? '#ef4444' : '#f97316'}`,
+          background: softBg(current.oi_surge_alert === 'CRITICAL' ? C.danger : C.warn, 0.15),
+          border: `1px solid ${current.oi_surge_alert === 'CRITICAL' ? 'var(--danger)' : 'var(--warn)'}`,
           borderRadius: 8, padding: '10px 16px',
-          color: current.oi_surge_alert === 'CRITICAL' ? '#f87171' : '#fb923c',
+          color: current.oi_surge_alert === 'CRITICAL' ? 'var(--danger)' : 'var(--warn-text)',
           fontWeight: 600, fontSize: '0.9rem',
         }}>
           ⚠️ OI {current.oi_surge_alert === 'CRITICAL' ? '급등 경고' : '주의'} — 3일 {(current.oi_change_3d * 100).toFixed(1)}% 상승
@@ -163,19 +164,19 @@ export function SPF() {
       <div className="grid-3" style={{ gap: 12 }}>
         {/* 하락 위험 점수 */}
         <Card>
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>하락 위험 점수</div>
-          <ScoreBar label="하락 위험" score={current?.bearish_score ?? 0} color="#f87171" height={8} scoreFormat="plain" />
-          <ScoreBar label="반등 기대" score={current?.bullish_score ?? 0} color="#4ade80" height={8} scoreFormat="plain" />
+          <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 12 }}>하락 위험 점수</div>
+          <ScoreBar label="하락 위험" score={current?.bearish_score ?? 0} color="var(--warn)" height={8} scoreFormat="plain" />
+          <ScoreBar label="반등 기대" score={current?.bullish_score ?? 0} color="var(--ok)" height={8} scoreFormat="plain" />
           <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
             <span style={{
               padding: '3px 10px', borderRadius: 12, fontSize: '0.75rem', fontWeight: 600,
-              background: FLOW_COLORS[current?.flow ?? 'neutral'] + '33',
+              background: softBg(FLOW_COLORS[current?.flow ?? 'neutral'], 0.2),
               color: FLOW_COLORS[current?.flow ?? 'neutral'],
             }}>
               {FLOW_LABELS[current?.flow ?? 'neutral']}
             </span>
             {(current?.oi_consecutive_up ?? 0) > 0 && (
-              <span style={{ padding: '3px 10px', borderRadius: 12, fontSize: '0.75rem', background: '#334155', color: '#94a3b8' }}>
+              <span style={{ padding: '3px 10px', borderRadius: 12, fontSize: '0.75rem', background: 'var(--seg-active)', color: 'var(--text-2)' }}>
                 OI {current?.oi_consecutive_up}일 연속↑
               </span>
             )}
@@ -184,51 +185,51 @@ export function SPF() {
 
         {/* 복합 방향 전망 (7/14/30/60일 채점 — 옛 3일 예측 폐기) */}
         <Card>
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>중기 방향 전망</div>
+          <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 12 }}>중기 방향 전망</div>
           {today_prediction ? (
             <>
               <div style={{ fontSize: '1.5rem', fontWeight: 700, color: directionColor, marginBottom: 4 }}>
                 {today_prediction.direction === '상승' ? '↑' : today_prediction.direction === '하락' ? '↓' : '→'} {today_prediction.direction}
               </div>
-              <div style={{ color: '#94a3b8', fontSize: '0.8rem', marginBottom: 12 }}>
+              <div style={{ color: 'var(--text-2)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', marginBottom: 12 }}>
                 신뢰도 {today_prediction.confidence}%
               </div>
               {/* 확률 바 */}
               <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 8 }}>
-                <div style={{ width: `${today_prediction.up_prob}%`, background: '#4ade80' }} />
-                <div style={{ width: `${today_prediction.down_prob}%`, background: '#f87171' }} />
+                <div style={{ width: `${today_prediction.up_prob}%`, background: 'var(--up)' }} />
+                <div style={{ width: `${today_prediction.down_prob}%`, background: 'var(--down)' }} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#94a3b8' }}>
-                <span style={{ color: '#4ade80' }}>상승 {today_prediction.up_prob}%</span>
-                <span style={{ color: '#f87171' }}>하락 {today_prediction.down_prob}%</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-2)', fontFamily: 'var(--font-mono)' }}>
+                <span style={{ color: 'var(--up)' }}>상승 {today_prediction.up_prob}%</span>
+                <span style={{ color: 'var(--down)' }}>하락 {today_prediction.down_prob}%</span>
               </div>
             </>
           ) : (
-            <div style={{ color: '#64748b', fontSize: '0.85rem' }}>예측 데이터 없음</div>
+            <div style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>예측 데이터 없음</div>
           )}
         </Card>
 
         {/* 성적표 — 기간별 방향 적중률 (기대=백테스트, 실측=운영 누적) */}
         <Card>
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>방향 적중률 (기간별)</div>
+          <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 12 }}>방향 적중률 (기간별)</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {['7', '14', '30', '60'].map(h => {
               const s = predData?.stats?.[h]
               const rc = s?.realized != null
-                ? (s.realized >= 55 ? '#4ade80' : s.realized >= 45 ? '#fbbf24' : '#f87171')
-                : '#64748b'
+                ? (s.realized >= 55 ? 'var(--ok)' : s.realized >= 45 ? 'var(--warn)' : 'var(--danger)')
+                : 'var(--text-3)'
               return (
-                <div key={h} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #1e293b', paddingBottom: 6 }}>
-                  <span style={{ color: '#e2e8f0', fontSize: '0.85rem', fontWeight: 600 }}>{h}일</span>
-                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                <div key={h} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid var(--line)', paddingBottom: 6 }}>
+                  <span style={{ color: 'var(--text)', fontSize: '0.85rem', fontWeight: 600 }}>{h}일</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-2)', fontFamily: 'var(--font-mono)' }}>
                     기대 {s ? s.expected : '–'}% · <span style={{ color: rc }}>실측 {s?.realized != null ? `${s.realized}%` : '–'}</span>
-                    {s && s.n > 0 ? <span style={{ color: '#475569' }}> (n={s.n})</span> : null}
+                    {s && s.n > 0 ? <span style={{ color: 'var(--text-3)' }}> (n={s.n})</span> : null}
                   </span>
                 </div>
               )
             })}
           </div>
-          <div style={{ color: '#475569', fontSize: '0.68rem', marginTop: 8 }}>
+          <div style={{ color: 'var(--text-3)', fontSize: '0.68rem', marginTop: 8 }}>
             기대=2018~2026 백테스트, 실측=운영 누적(방향 커밋만, 중립 제외)
           </div>
         </Card>
@@ -237,10 +238,10 @@ export function SPF() {
       {/* 예측 근거 */}
       {reasons.length > 0 && (
         <Card>
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 10 }}>예측 근거</div>
+          <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 10 }}>예측 근거</div>
           <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
             {reasons.map((r, i) => (
-              <li key={i} style={{ color: '#cbd5e1', fontSize: '0.85rem' }}>{r}</li>
+              <li key={i} style={{ color: 'var(--text-2)', fontSize: '0.85rem' }}>{r}</li>
             ))}
           </ul>
         </Card>
@@ -250,8 +251,8 @@ export function SPF() {
       <div className="grid-2" style={{ gap: 12 }}>
         <Card>
           {/* 예측 시계가 아니라 최근 포지션 관측 창(3일/7일 룩백) */}
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 10 }}>
-            OI 지표 <span style={{ color: '#475569', fontSize: '0.68rem' }}>· 최근 포지션 흐름</span>
+          <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 10 }}>
+            OI 지표 <span style={{ color: 'var(--text-3)', fontSize: '0.68rem' }}>· 최근 포지션 흐름</span>
           </div>
           {/* Bybit OI는 BTC 개수 → USD 환산(oi × BTC가격) 후 10억 단위 표시 */}
           <StatRow label="현재 OI" value={current?.oi && current?.price ? `$${(current.oi * current.price / 1e9).toFixed(2)}B` : '—'} />
@@ -264,8 +265,8 @@ export function SPF() {
           <StatRow label="연속 상승" value={`${current?.oi_consecutive_up ?? 0}일`} />
         </Card>
         <Card>
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 10 }}>
-            FR 지표 <span style={{ color: '#475569', fontSize: '0.68rem' }}>· 최근 펀딩 쏠림</span>
+          <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 10 }}>
+            FR 지표 <span style={{ color: 'var(--text-3)', fontSize: '0.68rem' }}>· 최근 펀딩 쏠림</span>
           </div>
           <StatRow
             label="현재 FR"
@@ -281,18 +282,18 @@ export function SPF() {
       {/* 점수 히스토리 차트 */}
       {chartData.length > 0 && (
         <Card>
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>하락위험/반등 점수 추이 (30일)</div>
+          <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 12 }}>하락위험/반등 점수 추이 (30일)</div>
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={chartData}>
-              <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 10 }} />
-              <YAxis domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} />
+              <XAxis dataKey="date" tick={{ fill: C.text3, fontSize: 10 }} />
+              <YAxis domain={[0, 100]} tick={{ fill: C.text3, fontSize: 10 }} />
               <Tooltip
-                contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
-                labelStyle={{ color: '#94a3b8' }}
+                contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8 }}
+                labelStyle={{ color: C.text2 }}
               />
-              <ReferenceLine y={70} stroke="#f87171" strokeDasharray="3 3" />
-              <Line type="monotone" dataKey="bearish" stroke="#f87171" dot={false} strokeWidth={2} name="하락위험" />
-              <Line type="monotone" dataKey="bullish" stroke="#4ade80" dot={false} strokeWidth={2} name="반등기대" />
+              <ReferenceLine y={70} stroke={C.text3} strokeDasharray="3 3" />
+              <Line type="monotone" dataKey="bearish" stroke={C.warn} dot={false} strokeWidth={2} name="하락위험" />
+              <Line type="monotone" dataKey="bullish" stroke={C.ok} dot={false} strokeWidth={2} name="반등기대" />
             </LineChart>
           </ResponsiveContainer>
         </Card>
@@ -301,15 +302,15 @@ export function SPF() {
       {/* 유사 패턴 TOP5 */}
       {similar_patterns.length > 0 && (
         <Card>
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 10 }}>유사 패턴 TOP {similar_patterns.length}</div>
+          <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 10 }}>유사 패턴 TOP {similar_patterns.length}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {similar_patterns.map((p, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: '#0f1117', borderRadius: 8 }}>
-                <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>{p.date}</span>
-                <span style={{ color: '#60a5fa', fontSize: '0.8rem' }}>{p.similarity}%</span>
-                <span style={{ color: FLOW_COLORS[p.flow] || '#94a3b8', fontSize: '0.8rem' }}>{FLOW_LABELS[p.flow] || p.flow}</span>
-                <span style={{ color: p.change_3d_pct > 0 ? '#4ade80' : '#f87171', fontWeight: 600, fontSize: '0.8rem' }}>
-                  {p.change_3d_pct > 0 ? '+' : ''}{p.change_3d_pct}%
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'var(--bg-inset)', borderRadius: 8 }}>
+                <span style={{ color: 'var(--text-2)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{p.date}</span>
+                <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{p.similarity}%</span>
+                <span style={{ color: FLOW_COLORS[p.flow] || C.text2, fontSize: '0.8rem' }}>{FLOW_LABELS[p.flow] || p.flow}</span>
+                <span style={{ color: changeColor(p.change_3d_pct), fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '0.8rem' }}>
+                  {changeArrow(p.change_3d_pct)} {p.change_3d_pct > 0 ? '+' : ''}{p.change_3d_pct}%
                 </span>
               </div>
             ))}
@@ -321,15 +322,15 @@ export function SPF() {
       {predData && predData.predictions.length > 0 && (
         <Card>
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', marginBottom: 10 }}>
-            <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>최근 예측 기록</span>
-            <span style={{ color: '#475569', fontSize: '0.68rem' }}>판정: 7/14/30/60일</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '0.75rem' }}>최근 예측 기록</span>
+            <span style={{ color: 'var(--text-3)', fontSize: '0.68rem' }}>판정: 7/14/30/60일</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {predData.predictions.slice(0, 10).map((p, i) => (
-              <div key={i} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 8px', padding: '5px 8px', background: '#0f1117', borderRadius: 6 }}>
-                <span style={{ color: '#64748b', fontSize: '0.78rem', width: 80 }}>{p.date}</span>
-                <span style={{ color: p.direction === '상승' ? '#4ade80' : p.direction === '하락' ? '#f87171' : '#94a3b8', fontSize: '0.8rem', width: 50 }}>{p.direction}</span>
-                <span style={{ color: '#64748b', fontSize: '0.78rem', width: 60 }}>신뢰 {p.confidence}%</span>
+              <div key={i} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 8px', padding: '5px 8px', background: 'var(--bg-inset)', borderRadius: 6 }}>
+                <span style={{ color: 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', width: 80 }}>{p.date}</span>
+                <span style={{ color: p.direction === '상승' ? 'var(--up)' : p.direction === '하락' ? 'var(--down)' : 'var(--text-2)', fontSize: '0.8rem', width: 50 }}>{p.direction}</span>
+                <span style={{ color: 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', width: 60 }}>신뢰 {p.confidence}%</span>
                 <span style={{ display: 'inline-flex', gap: 4, flexShrink: 0 }}>
                   {HISTORY_HORIZONS.map(({ label, field }) => {
                     const meta = getHorizonResultMeta(p[field])
@@ -341,7 +342,7 @@ export function SPF() {
                         alignItems: 'center',
                         borderRadius: 6,
                         padding: '2px 3px',
-                        background: `${meta.color}22`,
+                        background: softBg(meta.color, 0.13),
                         color: meta.color,
                         lineHeight: 1.1,
                       }}>
