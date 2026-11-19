@@ -197,7 +197,10 @@ const fmtUsdt = (v: number) => v.toLocaleString('en-US', { maximumFractionDigits
 // BTC 시장 국면 — 학습 탭 일봉 차트(BTCUSDT)에서 요약. 404·오류·빈 응답은 안내 문구
 function BtcPhaseCard() {
   const { data, loading } = useApi<ChartResponse>('/api/learning/chart?symbol=BTCUSDT&interval=1d&limit=90', 300_000)
-  if (loading && !data) return <SkeletonCard height={260} />
+  // 한 번이라도 응답(성공·실패)을 받았으면 폴링 재요청 중에는 Skeleton을 다시 띄우지 않는다
+  const [settled, setSettled] = useState(false)
+  if (!loading && !settled) setSettled(true)
+  if (loading && !data && !settled) return <SkeletonCard height={260} />
 
   const phase = summarizeBtcPhase(data)
 
