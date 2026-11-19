@@ -13,10 +13,11 @@ export const LEVEL_LABEL: Record<string, string> = {
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 const DAY_MS = 24 * 60 * 60 * 1000
 
-// 타임존 표기가 없는 timestamp는 UTC(백엔드 저장 형식)로 해석
+// 타임존 표기가 없는 timestamp는 UTC로 해석 (SQLite datetime('now')의 "YYYY-MM-DD HH:MM:SS" 공백 형식 포함)
 function parseTs(ts: string): number {
-  const hasZone = /(Z|[+-]\d{2}:?\d{2})$/i.test(ts)
-  return new Date(hasZone ? ts : `${ts}Z`).getTime()
+  const iso = ts.trim().replace(' ', 'T')
+  const hasZone = /(Z|[+-]\d{2}:?\d{2})$/i.test(iso)
+  return new Date(hasZone ? iso : `${iso}Z`).getTime()
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0')

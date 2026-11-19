@@ -22,7 +22,7 @@ assert.deepEqual(groups.map((g) => [g.label, g.date, g.items.length]), [
   ['11-16', '11-16', 1],
 ])
 
-// 타임존 표기 없는 timestamp는 UTC로 취급 (백엔드 저장 형식)
+// 타임존 표기 없는 timestamp는 UTC로 취급
 const naive = groupAlertsByDay([mk('2026-11-18T14:59:00.000000'), mk('2026-11-18T15:00:00.000000')], now)
 assert.deepEqual(naive.map((g) => g.label), ['오늘', '어제'])
 
@@ -58,3 +58,8 @@ assert.equal(formatKst('2026-11-18T15:30:00'), '11-19 00:30')
 assert.equal(formatKst('2026-11-18T14:59:00.000000'), '11-18 23:59')
 assert.equal(formatKst('2026-11-18T15:30:00Z'), '11-19 00:30')
 assert.equal(formatKst('2026-11-19T00:30:00+09:00'), '11-19 00:30')
+
+// 공백 구분 형식(SQLite datetime('now') 저장 형식)도 UTC로 해석
+assert.equal(formatKst('2026-11-18 15:30:00'), '11-19 00:30')
+const spaced = groupAlertsByDay([mk('2026-11-18 15:30:00'), mk('2026-11-19 00:10:00')], now)
+assert.deepEqual(spaced.map((g) => [g.label, g.items.length]), [['오늘', 2]])
