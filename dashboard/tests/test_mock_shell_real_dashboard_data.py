@@ -12,7 +12,8 @@ DASHBOARD_TSX = Path("dashboard/frontend/src/components/screens/Dashboard.tsx")
 def test_mock_shell_removes_account_and_top_ticker_data():
     source = APP_TSX.read_text(encoding="utf-8")
 
-    assert "mock-top-ticker" in source
+    # 상단 티커는 리디자인에서 제거됨 — 셸에 티커 클래스가 남아있지 않아야 한다
+    assert "mock-top-ticker" not in source
     assert "mock-ticker-strip" not in source
     assert "TICKERS" not in source
     assert "기본 계정" not in source
@@ -101,9 +102,10 @@ def test_dashboard_order_matches_requested_sections():
     source = DASHBOARD_TSX.read_text(encoding="utf-8")
 
     ordered = [
+        "mock-coin-price-section",
+        "dash-top",
         "mock-market-overview",
         "mock-news-section",
-        "mock-coin-price-section",
         "mock-us-stock-section",
         "mock-kr-stock-section",
         "mock-altcoin-season-section",

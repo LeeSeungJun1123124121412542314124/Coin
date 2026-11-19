@@ -53,10 +53,11 @@ def test_recent_prediction_history_badges_wrap_as_group_on_mobile():
 def test_recent_prediction_history_status_mapping_is_complete():
     source = _source()
 
-    assert "'hit': { symbol: '✓', color: '#4ade80'" in source
-    assert "'miss': { symbol: '✗', color: '#f87171'" in source
-    assert "'neutral': { symbol: '–', color: '#64748b'" in source
-    assert "pending: { symbol: '·', color: '#475569'" in source
+    # 색상은 리디자인에서 hex 리터럴에서 theme 토큰(C.*)으로 이동함
+    assert "'hit': { symbol: '✓', color: C.ok" in source
+    assert "'miss': { symbol: '✗', color: C.warn" in source
+    assert "'neutral': { symbol: '–', color: C.text2" in source
+    assert "pending: { symbol: '·', color: C.text3" in source
 
 
 def test_recent_prediction_history_unknown_status_falls_back_to_pending():

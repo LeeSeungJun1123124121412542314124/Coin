@@ -42,7 +42,7 @@ def test_dashboard_css_has_mobile_mockup_stack():
     assert "@media (max-width: 760px)" in source
     assert ".mock-content-grid" in source
     assert "grid-template-columns: 1fr" in source
-    assert ".mock-bottom-nav" in source
+    assert ".shell-bottom" in source
     assert ".mock-spf-hero" in source
 
 
