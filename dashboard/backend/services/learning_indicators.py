@@ -199,3 +199,89 @@ def fib_levels(pivots: list[dict], levels: list[float]) -> list[dict]:
         return []
     a, b = pivots[-2]["price"], pivots[-1]["price"]
     return [{"level": lv, "price": b + (a - b) * lv} for lv in levels]
+
+
+def sma(values: list[float], n: int) -> list[float | None]:
+    """단순 이동평균. 앞 n-1개는 None."""
+    out: list[float | None] = [None] * len(values)
+    for i in range(n - 1, len(values)):
+        out[i] = sum(values[i - n + 1 : i + 1]) / n
+    return out
+
+
+def ema(values: list[float], n: int) -> list[float | None]:
+    """지수 이동평균(α=2/(n+1)). 첫 값은 첫 n개의 SMA, 앞 n-1개는 None."""
+    out: list[float | None] = [None] * len(values)
+    if len(values) < n:
+        return out
+    prev = sum(values[:n]) / n
+    out[n - 1] = prev
+    alpha = 2 / (n + 1)
+    for i in range(n, len(values)):
+        prev = (values[i] - prev) * alpha + prev
+        out[i] = prev
+    return out
+
+
+def bollinger(values: list[float], n: int, k: float) -> list[dict | None]:
+    """볼린저밴드 = n봉 SMA ± k × 모표준편차."""
+    out: list[dict | None] = [None] * len(values)
+    for i in range(n - 1, len(values)):
+        win = values[i - n + 1 : i + 1]
+        mid = sum(win) / n
+        sd = (sum((x - mid) ** 2 for x in win) / n) ** 0.5
+        out[i] = {"upper": mid + k * sd, "mid": mid, "lower": mid - k * sd}
+    return out
+
+
+def _rsi_value(avg_gain: float, avg_loss: float) -> float:
+    if avg_loss == 0:
+        return 50.0 if avg_gain == 0 else 100.0
+    return 100 - 100 / (1 + avg_gain / avg_loss)
+
+
+def rsi(values: list[float], n: int) -> list[float | None]:
+    """RSI(와일더 평활). 첫 값은 n개 변화량의 평균 상승·하락, 앞 n개는 None."""
+    out: list[float | None] = [None] * len(values)
+    if len(values) <= n:
+        return out
+    diffs = [values[i] - values[i - 1] for i in range(1, len(values))]
+    avg_gain = sum(max(d, 0) for d in diffs[:n]) / n
+    avg_loss = sum(max(-d, 0) for d in diffs[:n]) / n
+    out[n] = _rsi_value(avg_gain, avg_loss)
+    for i in range(n + 1, len(values)):
+        d = diffs[i - 1]
+        avg_gain = (avg_gain * (n - 1) + max(d, 0)) / n
+        avg_loss = (avg_loss * (n - 1) + max(-d, 0)) / n
+        out[i] = _rsi_value(avg_gain, avg_loss)
+    return out
+
+
+def macd(values: list[float], fast: int, slow: int, signal: int) -> list[dict | None]:
+    """MACD = EMA(fast) − EMA(slow), 시그널 = MACD의 EMA, 히스토그램 = MACD − 시그널."""
+    out: list[dict | None] = [None] * len(values)
+    ef, es = ema(values, fast), ema(values, slow)
+    line = [f - s if f is not None and s is not None else None for f, s in zip(ef, es)]
+    start = next((i for i, v in enumerate(line) if v is not None), None)
+    if start is None:
+        return out
+    sig = ema(line[start:], signal)
+    for j, sv in enumerate(sig):
+        if sv is not None:
+            m = line[start + j]
+            out[start + j] = {"macd": m, "signal": sv, "hist": m - sv}
+    return out
+
+
+def indicator_warmup(cfg: dict) -> int:
+    """켜진 보조 지표 계산에 필요한 앞쪽 추가 봉 수. 최소 52, 상한 1500."""
+    need = [52]
+    if cfg["ma"]["enabled"]:
+        need.append(max(cfg["ma"]["periods"]))
+    if cfg["bb"]["enabled"]:
+        need.append(cfg["bb"]["period"])
+    if cfg["rsi"]["enabled"]:
+        need.append(cfg["rsi"]["period"] * 3)
+    if cfg["macd"]["enabled"]:
+        need.append((cfg["macd"]["slow"] + cfg["macd"]["signal"]) * 3)
+    return min(max(need), 1500)

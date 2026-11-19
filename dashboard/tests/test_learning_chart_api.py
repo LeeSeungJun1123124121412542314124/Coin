@@ -66,7 +66,7 @@ def test_chart_returns_all_keys(client):
     r = client.get("/api/learning/chart", params={"symbol": "btcusdt", "interval": "1d", "limit": 100})
     assert r.status_code == 200
     body = r.json()
-    assert set(body) == {"candles", "ichimoku", "wyckoff", "pivots", "fib", "state", "settings"}
+    assert set(body) == {"candles", "ichimoku", "wyckoff", "pivots", "fib", "state", "settings", "indicators"}
     assert 0 < len(body["candles"]) <= 100
     assert set(body["state"]) == _STATE_KEYS
 
@@ -190,3 +190,44 @@ def test_short_monthly_history_returns_200(client):
     r = client.get("/api/learning/chart", params={"symbol": "BTCUSDT", "interval": "1M"})
     assert r.status_code == 200
     assert all(v is None for v in r.json()["state"].values())
+
+
+def _trend(n):
+    return [{"open_time": _T0 + i * _DAY, "open": 100.0 + i, "high": 101.0 + i, "low": 99.0 + i,
+             "close": 100.0 + i + (i % 3), "volume": 10.0} for i in range(n)]
+
+
+def test_chart_indicators_empty_when_all_off(client):
+    _track()
+    _insert(_trend(60))
+    body = client.get("/api/learning/chart", params={"symbol": "BTCUSDT", "limit": 30}).json()
+    assert body["indicators"] == {}
+
+
+def test_chart_indicators_only_enabled_and_visible(client):
+    _track()
+    _insert(_trend(200))
+    client.put("/api/learning/settings", json={"indicators": {
+        "ma": {"enabled": True, "periods": [5, 120]}, "rsi": {"enabled": True},
+        "macd": {"enabled": True}, "bb": {"enabled": True}}})
+    body = client.get("/api/learning/chart", params={"symbol": "BTCUSDT", "limit": 30}).json()
+    ind = body["indicators"]
+    assert set(ind) == {"ma", "bb", "rsi", "macd"}
+    t0 = body["candles"][0]["open_time"]
+    assert [m["period"] for m in ind["ma"]] == [5, 120]
+    # 120봉 이평은 워밍업 덕에 보이는 30봉 전체가 채워진다
+    assert len(ind["ma"][1]["points"]) == 30
+    assert all(p["time"] >= t0 for p in ind["ma"][1]["points"])
+    for key in ("bb", "rsi", "macd"):
+        assert ind[key] and all(p["time"] >= t0 for p in ind[key])
+    assert set(ind["bb"][0]) == {"time", "upper", "mid", "lower"}
+    assert set(ind["macd"][0]) == {"time", "macd", "signal", "hist"}
+    assert set(ind["rsi"][0]) == {"time", "value"}
+
+
+def test_chart_indicators_short_history_no_error(client):
+    _track()
+    _insert(_trend(10))
+    client.put("/api/learning/settings", json={"indicators": {"macd": {"enabled": True}}})
+    body = client.get("/api/learning/chart", params={"symbol": "BTCUSDT", "limit": 30}).json()
+    assert body["indicators"] == {"macd": []}

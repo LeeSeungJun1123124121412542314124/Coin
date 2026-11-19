@@ -19,6 +19,13 @@ DEFAULTS = {
     "elliott": {"threshold_1h": 3.0, "threshold_4h": 5.0, "threshold_1d": 10.0,
                 "threshold_1w": 20.0, "threshold_1M": 30.0, "levels": [0.382, 0.5, 0.618, 1.0, 1.618]},
     "dca": {"symbol": "BTCUSDT"},
+    "indicators": {
+        "ma": {"enabled": False, "type": "sma", "periods": [5, 20, 60, 120]},
+        "bb": {"enabled": False, "period": 20, "stddev": 2.0},
+        "volume": {"enabled": False},
+        "rsi": {"enabled": False, "period": 14},
+        "macd": {"enabled": False, "fast": 12, "slow": 26, "signal": 9},
+    },
 }
 
 
@@ -42,6 +49,35 @@ def _check_range(name: str, v, lo: float, hi: float) -> None:
         raise LearningError(f"{name}은(는) {lo}~{hi} 범위의 숫자여야 합니다.")
 
 
+def _check_int(name: str, v, lo: int, hi: int) -> None:
+    """lo~hi 범위의 정수(bool 제외)인지 검사."""
+    if isinstance(v, bool) or not isinstance(v, int) or not lo <= v <= hi:
+        raise LearningError(f"{name}은(는) {lo}~{hi} 범위의 정수여야 합니다.")
+
+
+def _validate_indicators(ind: dict) -> None:
+    for key in ("ma", "bb", "volume", "rsi", "macd"):
+        if not isinstance(ind[key]["enabled"], bool):
+            raise LearningError(f"indicators.{key}.enabled은(는) 참/거짓이어야 합니다.")
+    ma = ind["ma"]
+    if ma["type"] not in ("sma", "ema"):
+        raise LearningError("indicators.ma.type은(는) sma 또는 ema여야 합니다.")
+    ps = ma["periods"]
+    if not isinstance(ps, list) or not 1 <= len(ps) <= 6:
+        raise LearningError("indicators.ma.periods는 1~6개의 목록이어야 합니다.")
+    for p in ps:
+        _check_int("indicators.ma.periods", p, 2, 400)
+    _check_int("indicators.bb.period", ind["bb"]["period"], 5, 200)
+    _check_range("indicators.bb.stddev", ind["bb"]["stddev"], 0.5, 4)
+    _check_int("indicators.rsi.period", ind["rsi"]["period"], 2, 100)
+    m = ind["macd"]
+    _check_int("indicators.macd.fast", m["fast"], 2, 200)
+    _check_int("indicators.macd.slow", m["slow"], 3, 400)
+    _check_int("indicators.macd.signal", m["signal"], 2, 100)
+    if m["fast"] >= m["slow"]:
+        raise LearningError("indicators.macd.fast는 slow보다 작아야 합니다.")
+
+
 def _validate(s: dict) -> None:
     w, e, d = s["wyckoff"], s["elliott"], s["dca"]
     _check_range("wyckoff.n", w["n"], 5, 200)
@@ -56,6 +92,7 @@ def _validate(s: dict) -> None:
         raise LearningError("elliott.levels는 양수 1~10개의 목록이어야 합니다.")
     if not isinstance(d["symbol"], str) or not d["symbol"]:
         raise LearningError("dca.symbol은 비어 있지 않은 문자열이어야 합니다.")
+    _validate_indicators(s["indicators"])
 
 
 def get_settings() -> dict:

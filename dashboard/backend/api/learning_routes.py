@@ -101,6 +101,34 @@ def _load_candles(symbol: str, interval: str, count: int) -> list[dict]:
     return [dict(r) for r in reversed(rows)]
 
 
+def _chart_indicators(candles: list[dict], cfg: dict, t0: int) -> dict:
+    """켜진 보조 지표만 전체 봉으로 계산한 뒤 보이는 봉(t0 이후)의 정의된 점만 남긴다."""
+    times = [c["open_time"] for c in candles]
+    closes = [c["close"] for c in candles]
+
+    def pick(series: list, make) -> list:
+        return [make(t, v) for t, v in zip(times, series) if v is not None and t >= t0]
+
+    out: dict = {}
+    if cfg["ma"]["enabled"]:
+        fn = learning_indicators.ema if cfg["ma"]["type"] == "ema" else learning_indicators.sma
+        out["ma"] = [
+            {"period": p, "points": pick(fn(closes, p), lambda t, v: {"time": t, "value": v})}
+            for p in cfg["ma"]["periods"]
+        ]
+    if cfg["bb"]["enabled"]:
+        bb = learning_indicators.bollinger(closes, cfg["bb"]["period"], cfg["bb"]["stddev"])
+        out["bb"] = pick(bb, lambda t, v: {"time": t, **v})
+    if cfg["rsi"]["enabled"]:
+        out["rsi"] = pick(learning_indicators.rsi(closes, cfg["rsi"]["period"]),
+                          lambda t, v: {"time": t, "value": v})
+    if cfg["macd"]["enabled"]:
+        m = cfg["macd"]
+        out["macd"] = pick(learning_indicators.macd(closes, m["fast"], m["slow"], m["signal"]),
+                           lambda t, v: {"time": t, **v})
+    return out
+
+
 @router.get("/learning/chart")
 async def get_chart(
     symbol: str,
@@ -112,9 +140,11 @@ async def get_chart(
     if not _is_tracked(symbol):
         return _not_tracked(symbol)
     settings = get_settings()
-    candles = _load_candles(symbol, interval, limit + _EXTRA_BARS)
+    ind_cfg = settings["indicators"]
+    candles = _load_candles(
+        symbol, interval, limit + max(_EXTRA_BARS, learning_indicators.indicator_warmup(ind_cfg)))
     if not candles:
-        return {"candles": [], "ichimoku": [],
+        return {"candles": [], "ichimoku": [], "indicators": {},
                 "wyckoff": {"volume_spikes": [], "candidates": [], "current_box": None},
                 "pivots": [], "fib": [], "state": dict(_STATE_NONE), "settings": settings}
     wy, el = settings["wyckoff"], settings["elliott"]
@@ -128,6 +158,7 @@ async def get_chart(
     t0 = shown[0]["open_time"]
     return {
         "candles": shown,
+        "indicators": _chart_indicators(candles, ind_cfg, t0),
         "ichimoku": [r for r in ich if r["time"] >= t0],
         "wyckoff": {
             "volume_spikes": [t for t in wyckoff["volume_spikes"] if t >= t0],
