@@ -2,6 +2,33 @@
 
 :root {
   color-scheme: dark;
+  --bg: #09090B;
+  --bg-inset: #0D0D10;
+  --surface: #131316;
+  --surface-2: #19191D;
+  --border: #222227;
+  --line: #1C1C21;
+  --seg-active: #2B2B31;
+  --border-strong: #313138;
+  --text: #F1F1F3;
+  --text-2: #ABABB4;
+  --text-3: #86868F;
+  --accent: #C8A86B;
+  --link: #D9BE86;
+  --link-hover: #EBD9B3;
+  --up: #F2606A;
+  --down: #5AA9FF;
+  --warn: #E8913A;
+  --warn-text: #F0A35E;
+  --ok: #3FCB8B;
+  --danger: #FF7A5C;
+  --violet: #B58CFF;
+  --info: #8EA2FF;
+  --neutral-series: #6E6E78;
+  --shadow-card: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35);
+  --radius-card: 16px;
+  --font-sans: 'IBM Plex Sans KR', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 }
 
 *,
@@ -12,9 +39,9 @@
 
 body {
   margin: 0;
-  background: #0f1117;
-  color: #e2e8f0;
-  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -491,11 +518,11 @@ body {
 }
 
 .mock-up {
-  color: #36c273 !important;
+  color: var(--up) !important;
 }
 
 .mock-down {
-  color: #ff5d51 !important;
+  color: var(--down) !important;
 }
 
 .mock-sidebar {
@@ -673,21 +700,21 @@ body {
 
 .mock-direction-up,
 .mock-direction-up i {
-  color: #36c273;
+  color: var(--up);
 }
 
 .mock-direction-up i {
-  background: #48d17c;
+  background: var(--up);
   color: #062012;
 }
 
 .mock-direction-down,
 .mock-direction-down i {
-  color: #ff5d51;
+  color: var(--down);
 }
 
 .mock-direction-down i {
-  background: #ff5d51;
+  background: var(--down);
   color: #2a0906;
 }
 
