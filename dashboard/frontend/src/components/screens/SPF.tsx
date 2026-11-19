@@ -84,10 +84,10 @@ const FLOW_LABELS: Record<string, string> = {
 }
 
 const FLOW_COLORS: Record<string, string> = {
-  long_entry: C.up,    // 롱 계열
-  short_entry: C.down, // 숏 계열
-  long_exit: C.up,
-  short_exit: C.down,
+  long_entry: C.up,    // 매수 방향: 롱 신규 진입
+  short_exit: C.up,    // 매수 방향: 숏 청산(되사기)
+  short_entry: C.down, // 매도 방향: 숏 신규 진입
+  long_exit: C.down,   // 매도 방향: 롱 청산
   neutral: C.text2,
 }
 
