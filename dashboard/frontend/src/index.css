@@ -1185,9 +1185,13 @@ body {
   gap: 12px;
 }
 
-.mock-market-overview,
-.mock-data-section {
+.mock-market-overview {
   padding: 0;
+}
+
+/* 대시보드 섹션 카드(코인가격·미국주식·한국주식 등) — 제목과 안쪽 카드가 테두리에 붙지 않게 카드 규격 여백 */
+.mock-data-section {
+  padding: 16px clamp(14px, 2.5vw, 20px);
 }
 
 .mock-overview-grid {
