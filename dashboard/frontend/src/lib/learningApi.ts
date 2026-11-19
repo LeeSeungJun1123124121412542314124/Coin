@@ -244,7 +244,12 @@ export const removeSymbol = (symbol: string) =>
 
 export const getSettings = () => apiFetch<LearningSettings>('/api/learning/settings')
 
-export const putSettings = (patch: { [K in keyof LearningSettings]?: Partial<LearningSettings[K]> }) =>
+// indicators는 서버가 깊은 병합하므로 하위 지표도 부분 객체를 허용한다
+type SettingsPatch = Omit<{ [K in keyof LearningSettings]?: Partial<LearningSettings[K]> }, 'indicators'> & {
+  indicators?: { [K in keyof LearningSettings['indicators']]?: Partial<LearningSettings['indicators'][K]> }
+}
+
+export const putSettings = (patch: SettingsPatch) =>
   apiFetch<LearningSettings>('/api/learning/settings', jsonBody('PUT', patch))
 
 export const getChart = (symbol: string, interval: Interval, limit?: number) => {

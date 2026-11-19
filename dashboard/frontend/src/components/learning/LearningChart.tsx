@@ -82,26 +82,41 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
   const fibLinesRef = useRef<IPriceLine[]>([])
   // 보조 지표 시리즈 — 데이터가 바뀔 때마다 지우고 다시 만든다
   const indSeriesRef = useRef<ISeriesApi<SeriesType>[]>([])
+  // 마지막으로 fitContent 한 종목|시간봉 — 같은 대상 재조회(칩·폼 저장)에서는 줌을 유지한다
+  const fitKeyRef = useRef('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [logScale, setLogScale] = useState(false)
   // 칩 낙관적 상태 — 만들 때의 차트 데이터(base)에만 유효하다. 새 데이터가 오면 서버 값이 우선
   const [pending, setPending] = useState<{ base: ChartResponse | null; map: Partial<Record<SettingKey, boolean>> }>({ base: null, map: {} })
   const [chipError, setChipError] = useState<string | null>(null)
+  // 종목·시간봉이 바뀌면 칩 오류 메시지를 지운다
+  const [errorKey, setErrorKey] = useState(`${symbol}|${interval}`)
+  if (errorKey !== `${symbol}|${interval}`) {
+    setErrorKey(`${symbol}|${interval}`)
+    setChipError(null)
+  }
   const [shown, setShown] = useState<Record<IndicatorKey, boolean>>({ ichimoku: true, zigzag: true, fib: true })
 
   const load = useMemo(() => (ready ? () => getChart(symbol, interval) : null), [ready, symbol, interval])
   const chart = useLoader(load)
   const data = chart.data
-  const paneCount = data
-    ? paneLayout({ volume: data.settings.indicators.volume.enabled, rsi: !!data.indicators?.rsi, macd: !!data.indicators?.macd }).length
-    : 0
+  // 칸 수 — 로딩 중(data=null)에는 직전 값을 유지해 아래 칸 높이가 접혔다 펴지지 않게 한다
+  const [paneCount, setPaneCount] = useState(0)
+  if (data) {
+    const n = paneLayout({ volume: data.settings.indicators.volume.enabled, rsi: !!data.indicators?.rsi, macd: !!data.indicators?.macd }).length
+    if (n !== paneCount) setPaneCount(n)
+  }
 
   // 차트 인스턴스 생성·정리 (마운트 시 1회, KrStockChart 패턴)
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
     const c = createChart(el, {
-      layout: { background: { color: C.surface }, textColor: C.text3, fontSize: 11 },
+      layout: {
+        background: { color: C.surface }, textColor: C.text3, fontSize: 11,
+        // 칸 구분선 — 기본 색(#E0E3EB)이 흰색으로 보이는 문제
+        panes: { separatorColor: C.border, separatorHoverColor: softBg(C.text, 0.12) },
+      },
       grid: { vertLines: { color: C.line }, horzLines: { color: C.line } },
       // 일반 모드: 가로줄이 캔들 종가에 달라붙지 않고 마우스 위치 가격을 그대로 따라감
       crosshair: { mode: CrosshairMode.Normal },
@@ -165,24 +180,24 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
     const precision = last < 0.001 ? 8 : last < 1 ? 6 : last < 100 ? 4 : 2
     p.candle.applyOptions({ priceFormat: { type: 'price', precision, minMove: 10 ** -precision } })
     p.chart.applyOptions({ timeScale: { timeVisible: isIntraday(interval) } })
-    p.chart.timeScale().fitContent()
-  }, [data, interval])
+    const fitKey = `${symbol}|${interval}`
+    if (fitKeyRef.current !== fitKey) {
+      fitKeyRef.current = fitKey
+      p.chart.timeScale().fitContent()
+    }
+  }, [data, symbol, interval])
 
-  // 보조 지표 반영 — 기존 시리즈와 빈 아래 칸을 지우고, 응답에 있는 지표만 다시 그린다
+  // 보조 지표 반영 — 기존 시리즈를 지우고(빈 칸은 라이브러리가 정리), 응답에 있는 지표만 다시 그린다
   useEffect(() => {
     const p = partsRef.current
     if (!p) return
     for (const s of indSeriesRef.current) p.chart.removeSeries(s)
     indSeriesRef.current = []
-    // 번호가 밀리지 않게 높은 칸부터 빈 pane 제거 (본 칸 0번은 유지)
-    for (let i = p.chart.panes().length - 1; i >= 1; i--) {
-      if (p.chart.panes()[i].getSeries().length === 0) p.chart.removePane(i)
-    }
     if (!data) return
 
     const ind = data.indicators ?? {}
-    const addLineAt = (pane: number, color: string, style: LineStyle = LineStyle.Solid) => {
-      const s = p.chart.addSeries(LineSeries, lineOptions(color, 1, style), pane)
+    const addLineAt = (pane: number, color: string, style: LineStyle = LineStyle.Solid, extra: { lastValueVisible?: boolean; autoscaleInfoProvider?: () => { priceRange: { minValue: number; maxValue: number } } } = {}) => {
+      const s = p.chart.addSeries(LineSeries, { ...lineOptions(color, 1, style), ...extra }, pane)
       indSeriesRef.current.push(s)
       return s
     }
@@ -216,7 +231,11 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
           })),
         )
       } else if (key === 'rsi' && ind.rsi) {
-        const line = addLineAt(index, C.violet)
+        // RSI는 세로축을 0~100으로 고정하고 현재 값을 표시
+        const line = addLineAt(index, C.violet, LineStyle.Solid, {
+          lastValueVisible: true,
+          autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
+        })
         line.setData(ind.rsi.map(pt => ({ time: toSec(pt.time), value: pt.value })))
         for (const [price, color] of [[70, C.warn], [30, C.ok]] as const) {
           line.createPriceLine({ price, color, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false, title: '' })
@@ -225,8 +244,8 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
         addHistAt(index).setData(
           ind.macd.map(pt => ({ time: toSec(pt.time), value: pt.hist, color: softBg(pt.hist >= 0 ? C.up : C.down, 0.5) })),
         )
-        addLineAt(index, C.info).setData(ind.macd.map(pt => ({ time: toSec(pt.time), value: pt.macd })))
-        addLineAt(index, C.warn).setData(ind.macd.map(pt => ({ time: toSec(pt.time), value: pt.signal })))
+        addLineAt(index, C.info, LineStyle.Solid, { lastValueVisible: true }).setData(ind.macd.map(pt => ({ time: toSec(pt.time), value: pt.macd })))
+        addLineAt(index, C.warn, LineStyle.Solid, { lastValueVisible: true }).setData(ind.macd.map(pt => ({ time: toSec(pt.time), value: pt.signal })))
       }
     }
 
@@ -268,12 +287,24 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
     const prev = pendingOf(key)
     setPending(p => ({ base: data, map: { ...(p.base === data ? p.map : {}), [key]: enabled } }))
     try {
-      await putSettings({ indicators: { [key]: { ...data.settings.indicators[key], enabled } } })
+      await putSettings({ indicators: { [key]: { enabled } } })
       chart.reload()
     } catch (e) {
       // 토글 전 상태(없으면 서버 값)로 정확히 복원
       setPending(p => ({ base: data, map: { ...(p.base === data ? p.map : {}), [key]: prev } }))
       setChipError(errorText(e))
+    }
+  }
+
+  // 켜진 보조 지표 범례 — 서버 응답(켜진 지표만 존재)과 설정 기간 기준 (거래량은 막대로 명확해 제외)
+  const indicatorLegend: [string, string][] = []
+  if (data?.indicators) {
+    const { ma, bb, rsi, macd } = data.settings.indicators
+    data.indicators.ma?.forEach((m, i) => indicatorLegend.push([`${ma.type.toUpperCase()} ${m.period}`, maColor(i)]))
+    if (data.indicators.bb) indicatorLegend.push([`볼린저 ${bb.period}·${bb.stddev}`, C.text2])
+    if (data.indicators.rsi) indicatorLegend.push([`RSI ${rsi.period}`, C.violet])
+    if (data.indicators.macd) {
+      indicatorLegend.push([`MACD ${macd.fast}·${macd.slow}`, C.info], [`시그널 ${macd.signal}`, C.warn])
     }
   }
 
@@ -349,7 +380,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8, fontSize: '0.72rem', color: MUTED }}>
-            {LEGEND.map(([label, color]) => (
+            {[...LEGEND, ...indicatorLegend].map(([label, color]) => (
               <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ width: 12, height: 2, background: color, display: 'inline-block' }} />
                 {label}
@@ -410,7 +441,7 @@ function StateSummary({ data, withHour }: { data: ChartResponse; withHour: boole
   )
 }
 
-// 와이코프·엘리엇(지그재그·피보) 설정 편집 — 저장 후 차트 재조회, 400은 메시지 표시
+// 와이코프·엘리엇(지그재그·피보)·보조 지표 설정 편집 — 저장 후 차트 재조회, 400은 메시지 표시
 function SettingsForm({ settings, isOn, onSaved, onClose }: {
   settings: LearningSettings
   isOn: (key: SettingKey) => boolean
