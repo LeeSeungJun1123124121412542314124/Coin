@@ -259,7 +259,7 @@ export function SPF() {
           <StatRow
             label="3일 변화"
             value={`${(current?.oi_change_3d ?? 0) > 0 ? '+' : ''}${((current?.oi_change_3d ?? 0) * 100).toFixed(2)}%`}
-            highlight={(current?.oi_change_3d ?? 0) > 0.10 ? 'down' : (current?.oi_change_3d ?? 0) < -0.05 ? 'up' : 'neutral'}
+            highlight={(current?.oi_change_3d ?? 0) > 0.10 ? 'warn' : (current?.oi_change_3d ?? 0) < -0.05 ? 'ok' : 'neutral'}
           />
           <StatRow label="7일 변화" value={`${((current?.oi_change_7d ?? 0) * 100).toFixed(2)}%`} />
           <StatRow label="연속 상승" value={`${current?.oi_consecutive_up ?? 0}일`} />
@@ -271,7 +271,7 @@ export function SPF() {
           <StatRow
             label="현재 FR"
             value={`${((current?.fr ?? 0) * 100).toFixed(4)}%`}
-            highlight={(current?.fr ?? 0) > 0.0003 ? 'down' : (current?.fr ?? 0) < -0.0001 ? 'up' : 'neutral'}
+            highlight={(current?.fr ?? 0) > 0.0003 ? 'warn' : (current?.fr ?? 0) < -0.0001 ? 'ok' : 'neutral'}
           />
           <StatRow label="3일 누적 FR" value={`${((current?.cum_fr_3d ?? 0) * 100).toFixed(4)}%`} />
           <StatRow label="7일 누적 FR" value={`${((current?.cum_fr_7d ?? 0) * 100).toFixed(4)}%`} />

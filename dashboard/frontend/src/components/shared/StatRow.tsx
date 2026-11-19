@@ -5,13 +5,15 @@ interface StatRowProps {
   value: string | number | null | undefined
   change?: number | null
   unit?: string
-  highlight?: 'up' | 'down' | 'neutral'
+  highlight?: 'up' | 'down' | 'warn' | 'ok' | 'neutral'
 }
 
 export function StatRow({ label, value, change, unit = '', highlight }: StatRowProps) {
   const valColor =
     highlight === 'up' ? 'var(--up)'
     : highlight === 'down' ? 'var(--down)'
+    : highlight === 'warn' ? 'var(--warn)'
+    : highlight === 'ok' ? 'var(--ok)'
     : 'var(--text)'
 
   return (
