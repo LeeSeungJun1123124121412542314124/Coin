@@ -84,7 +84,7 @@ function VolumeRatio({ upbit, bithumb }: { upbit: number | null; bithumb: number
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-3)' }}>
         <span style={{ color: 'var(--accent)' }}>업비트 {upbitPct}%</span>
-        <span style={{ color: 'var(--neutral-series)' }}>빗썸 {bithumbPct}%</span>
+        <span style={{ color: 'var(--text-2)' }}>빗썸 {bithumbPct}%</span>
       </div>
     </div>
   )
@@ -500,7 +500,7 @@ export function Volume() {
                 />
                 <ReferenceLine y={70} stroke={C.warn} strokeDasharray="3 3" />
                 <ReferenceLine y={30} stroke={C.ok} strokeDasharray="3 3" />
-                <Line type="monotone" dataKey="rsi" stroke={C.warn} dot={false} strokeWidth={2} name="주봉 RSI" />
+                <Line type="monotone" dataKey="rsi" stroke={C.info} dot={false} strokeWidth={2} name="주봉 RSI" />
               </LineChart>
             </ResponsiveContainer>
           </Card>
