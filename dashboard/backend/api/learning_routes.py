@@ -135,7 +135,7 @@ async def get_chart(
     interval: Interval = "1d",
     limit: int = Query(500, ge=1, le=2000),
 ):
-    """차트용 캔들·일목·와이코프·지그재그·피보나치. 지표는 limit+52봉으로 계산 후 잘라 반환."""
+    """차트용 캔들·일목·와이코프·지그재그·피보나치. 지표는 limit + 워밍업(최소 52, 켜진 보조 지표에 따라 최대 1500)봉으로 계산 후 잘라 반환."""
     symbol = symbol.strip().upper()
     if not _is_tracked(symbol):
         return _not_tracked(symbol)
