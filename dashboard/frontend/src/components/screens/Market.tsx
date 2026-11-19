@@ -11,7 +11,7 @@ import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
 import { AssetTabs } from '../shared/AssetTabs'
 import { readAssetTab, replaceAssetTab, type AssetTab } from '../shared/assetTabUtils'
-import { LEVEL_COLORS, LEVEL_BG, LEVEL_BORDER } from '../../lib/theme'
+import { C, LEVEL_COLORS, LEVEL_BG, LEVEL_BORDER, changeColor, changeArrow, softBg } from '../../lib/theme'
 
 interface Insight {
   level: string
@@ -76,22 +76,22 @@ function MacroCard({ title, data, color }: { title: string; data: MacroHistoryDa
     close: point.close,
   }))
   const change = data.current?.change_pct ?? 0
-  const changeColor = change > 0 ? '#f87171' : change < 0 ? '#60a5fa' : '#94a3b8'
+  const changeClr = changeColor(change)
 
   return (
     <Card>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
         <div>
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 4 }}>{title}</div>
-          <div style={{ color: '#64748b', fontSize: '0.7rem' }}>{data.ticker}</div>
+          <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 4 }}>{title}</div>
+          <div style={{ color: 'var(--text-3)', fontSize: '0.7rem' }}>{data.ticker}</div>
         </div>
         {data.current && (
           <div style={{ textAlign: 'right' }}>
-            <div style={{ color: '#e2e8f0', fontSize: '1.1rem', fontWeight: 700 }}>
+            <div style={{ color: 'var(--text)', fontSize: '1.1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
               {formatMacroPrice(data.ticker, data.current.price)}
             </div>
-            <div style={{ color: changeColor, fontSize: '0.8rem', fontWeight: 600 }}>
-              {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+            <div style={{ color: changeClr, fontSize: '0.8rem', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+              {changeArrow(change)} {change >= 0 ? '+' : ''}{change.toFixed(2)}%
             </div>
           </div>
         )}
@@ -99,22 +99,22 @@ function MacroCard({ title, data, color }: { title: string; data: MacroHistoryDa
       {chartData.length > 0 ? (
         <ResponsiveContainer width="100%" height={180}>
           <LineChart data={chartData} margin={{ top: 6, right: 12, left: 0, bottom: 0 }}>
-            <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 9 }} interval="preserveStartEnd" />
+            <XAxis dataKey="date" tick={{ fill: C.text3, fontSize: 9 }} interval="preserveStartEnd" />
             <YAxis
               domain={['auto', 'auto']}
-              tick={{ fill: '#94a3b8', fontSize: 10 }}
+              tick={{ fill: C.text2, fontSize: 10 }}
               width={44}
             />
             <Tooltip
-              contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
-              labelStyle={{ color: '#94a3b8' }}
+              contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8 }}
+              labelStyle={{ color: C.text2 }}
               formatter={(v) => [Number(v).toFixed(4), title]}
             />
             <Line type="monotone" dataKey="close" dot={false} stroke={color} strokeWidth={2} name={title} />
           </LineChart>
         </ResponsiveContainer>
       ) : (
-        <div style={{ color: '#64748b', fontSize: '0.85rem', textAlign: 'center', padding: '56px 0' }}>
+        <div style={{ color: 'var(--text-3)', fontSize: '0.85rem', textAlign: 'center', padding: '56px 0' }}>
           히스토리 데이터 없음
         </div>
       )}
@@ -142,9 +142,9 @@ function MacroMarketView({ markets }: { markets: { title: string; color: string;
 
 
 function InsightCard({ insight }: { insight: Insight }) {
-  const color = LEVEL_COLORS[insight.level] ?? '#94a3b8'
-  const bg    = LEVEL_BG[insight.level]    ?? 'rgba(100,116,139,0.08)'
-  const border = LEVEL_BORDER[insight.level] ?? 'rgba(100,116,139,0.2)'
+  const color = LEVEL_COLORS[insight.level] ?? C.text2
+  const bg    = LEVEL_BG[insight.level]    ?? softBg(C.text2, 0.08)
+  const border = LEVEL_BORDER[insight.level] ?? softBg(C.text2, 0.2)
 
   return (
     <div style={{
@@ -156,7 +156,7 @@ function InsightCard({ insight }: { insight: Insight }) {
         <span style={{ fontSize: '1rem' }}>{insight.icon}</span>
         <span style={{ color, fontWeight: 600, fontSize: '0.88rem' }}>{insight.title}</span>
       </div>
-      <div style={{ color: '#94a3b8', fontSize: '0.80rem', lineHeight: 1.5 }}>
+      <div style={{ color: 'var(--text-2)', fontSize: '0.80rem', lineHeight: 1.5 }}>
         {insight.body}
       </div>
     </div>
@@ -165,13 +165,13 @@ function InsightCard({ insight }: { insight: Insight }) {
 
 function IndicatorChip({ ind }: { ind: KeyIndicator }) {
   return (
-    <div style={{ background: '#1e293b', borderRadius: 8, padding: '10px 14px', textAlign: 'center' }}>
-      <div style={{ color: '#64748b', fontSize: '0.7rem', marginBottom: 4 }}>{ind.label}</div>
-      <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#e2e8f0' }}>
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
+      <div style={{ color: 'var(--text-3)', fontSize: '0.7rem', marginBottom: 4 }}>{ind.label}</div>
+      <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
         {ind.value}{ind.unit}
       </div>
       {ind.label2 && (
-        <div style={{ color: '#64748b', fontSize: '0.7rem', marginTop: 2 }}>{ind.label2}</div>
+        <div style={{ color: 'var(--text-3)', fontSize: '0.7rem', marginTop: 2 }}>{ind.label2}</div>
       )}
     </div>
   )
@@ -193,9 +193,9 @@ export function Market() {
 
   if (asset === 'us') {
     const macroMarkets = [
-      { title: '달러 인덱스', color: '#38bdf8', api: dxyApi },
-      { title: '미 10년물', color: '#f59e0b', api: tnxApi },
-      { title: '원달러 환율', color: '#22c55e', api: krwApi },
+      { title: '달러 인덱스', color: C.info, api: dxyApi },
+      { title: '미 10년물', color: C.accent, api: tnxApi },
+      { title: '원달러 환율', color: C.violet, api: krwApi },
     ]
     const lastUpdated = dxyApi.lastUpdated ?? tnxApi.lastUpdated ?? krwApi.lastUpdated
 
@@ -249,10 +249,10 @@ export function Market() {
       {/* 상태 요약 배너 */}
       {(criticalCount > 0 || warningCount > 0) && (
         <div style={{
-          background: criticalCount > 0 ? 'rgba(239,68,68,0.12)' : 'rgba(249,115,22,0.10)',
-          border: `1px solid ${criticalCount > 0 ? '#ef4444' : '#f97316'}`,
+          background: softBg(criticalCount > 0 ? C.danger : C.warn, 0.07),
+          border: `1px solid ${softBg(criticalCount > 0 ? C.danger : C.warn, 0.28)}`,
           borderRadius: 8, padding: '10px 16px',
-          color: criticalCount > 0 ? '#f87171' : '#fb923c',
+          color: criticalCount > 0 ? 'var(--danger)' : 'var(--warn)',
           fontWeight: 600, fontSize: '0.88rem',
           display: 'flex', gap: 12, alignItems: 'center',
         }}>
@@ -263,7 +263,7 @@ export function Market() {
             {warningCount > 0 && `주의 시그널 ${warningCount}개`}
           </span>
           {bot_level && (
-            <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: '#94a3b8' }}>
+            <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-2)' }}>
               봇 레벨: {bot_level}
             </span>
           )}
@@ -282,7 +282,7 @@ export function Market() {
       {/* 인사이트 목록 */}
       {insights.length > 0 && (
         <Card>
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>
+          <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 12 }}>
             시장 인사이트 ({insights.length}개)
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -295,7 +295,7 @@ export function Market() {
 
       {insights.length === 0 && (
         <Card>
-          <div style={{ color: '#64748b', fontSize: '0.85rem', textAlign: 'center', padding: '16px 0' }}>
+          <div style={{ color: 'var(--text-3)', fontSize: '0.85rem', textAlign: 'center', padding: '16px 0' }}>
             현재 특이 시그널 없음 — 정상 시장 상태
           </div>
         </Card>
@@ -304,30 +304,30 @@ export function Market() {
       {/* VIX vs BTC 30일 차트 */}
       {vixBtcChart.length > 0 && (
         <Card>
-          <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 12 }}>
+          <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 12 }}>
             VIX vs BTC 변화율 (30일, 첫날 대비 %)
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <ComposedChart data={vixBtcChart}>
-              <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 9 }} interval="preserveStartEnd" />
+              <XAxis dataKey="date" tick={{ fill: C.text3, fontSize: 9 }} interval="preserveStartEnd" />
               <YAxis
                 domain={['auto', 'auto']}
-                tick={{ fill: '#94a3b8', fontSize: 10 }}
+                tick={{ fill: C.text2, fontSize: 10 }}
                 tickFormatter={v => `${v}%`}
                 width={40}
               />
               <Tooltip
-                contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
-                labelStyle={{ color: '#94a3b8' }}
+                contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8 }}
+                labelStyle={{ color: C.text2 }}
                 formatter={(v, name) => {
                   const n = v as number
                   return [`${n >= 0 ? '+' : ''}${n}%`, name as string]
                 }}
               />
-              <ReferenceLine y={0} stroke="#334155" strokeDasharray="3 3" />
-              <Legend wrapperStyle={{ fontSize: '0.75rem', color: '#94a3b8' }} />
-              <Bar dataKey="vix" fill="rgba(248,113,113,0.7)" name="VIX" barSize={8} />
-              <Bar dataKey="btc" fill="rgba(245,158,11,0.7)" name="BTC" barSize={8} />
+              <ReferenceLine y={0} stroke={C.border} strokeDasharray="3 3" />
+              <Legend wrapperStyle={{ fontSize: '0.75rem', color: C.text2 }} />
+              <Bar dataKey="vix" fill={softBg(C.neutralSeries, 0.85)} name="VIX" barSize={8} />
+              <Bar dataKey="btc" fill={softBg(C.accent, 0.85)} name="BTC" barSize={8} />
             </ComposedChart>
           </ResponsiveContainer>
         </Card>

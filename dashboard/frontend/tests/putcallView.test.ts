@@ -4,19 +4,19 @@ import { describePutcall, toPutcallChartRows } from '../src/components/screens/v
 
 assert.deepEqual(describePutcall(0.66), {
   label: '과열',
-  color: '#f87171',
+  color: 'var(--warn)',
   help: '0.7 미만',
 })
 
 assert.deepEqual(describePutcall(1.05), {
   label: '공포',
-  color: '#4ade80',
+  color: 'var(--ok)',
   help: '1.0 초과',
 })
 
 assert.deepEqual(describePutcall(null), {
   label: '데이터 없음',
-  color: '#64748b',
+  color: 'var(--text-3)',
   help: '-',
 })
 
