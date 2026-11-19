@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import './index.css'
 import { Dashboard } from './components/screens/Dashboard'
@@ -143,6 +143,8 @@ export default function App() {
   })
   const [pageLastUpdated, setPageLastUpdated] = useState('')
   const [moreOpen, setMoreOpen] = useState(false)
+  const moreBtnRef = useRef<HTMLButtonElement>(null)
+  const sheetRef = useRef<HTMLDivElement>(null)
   const activeTab = TABS.find(tab => (
     tab.path === '/' ? location.pathname === '/' : location.pathname.startsWith(tab.path)
   )) ?? TABS[0]
@@ -161,6 +163,37 @@ export default function App() {
     window.addEventListener('dashboard:last-updated', handleLastUpdated)
     return () => window.removeEventListener('dashboard:last-updated', handleLastUpdated)
   }, [])
+
+  // 더보기 시트: 열릴 때 첫 링크로 포커스, Esc 닫기, Tab은 시트 안에서 순환, 닫히면 버튼으로 복귀
+  useEffect(() => {
+    if (!moreOpen) return
+    const sheet = sheetRef.current
+    const btn = moreBtnRef.current
+    const links = () => Array.from(sheet?.querySelectorAll<HTMLElement>('a[href]') ?? [])
+    links()[0]?.focus()
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMoreOpen(false)
+      } else if (e.key === 'Tab') {
+        const items = links()
+        if (items.length === 0) return
+        const first = items[0]
+        const last = items[items.length - 1]
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      btn?.focus()
+    }
+  }, [moreOpen])
 
   if (!authenticated) {
     return <PinScreen onSuccess={() => setAuthenticated(true)} />
@@ -232,8 +265,10 @@ export default function App() {
         <button
           type="button"
           className={`shell-bottom-item${moreActive ? ' shell-bottom-active' : ''}`}
+          ref={moreBtnRef}
           onClick={() => setMoreOpen(true)}
           aria-haspopup="dialog"
+          aria-expanded={moreOpen}
         >
           <Icon name="more" />
           <span>더보기</span>
@@ -241,7 +276,7 @@ export default function App() {
       </nav>
       {moreOpen && (
         <div className="shell-sheet-backdrop" onClick={closeMore}>
-          <div className="shell-sheet" role="dialog" aria-label="전체 메뉴" onClick={e => e.stopPropagation()}>
+          <div className="shell-sheet" ref={sheetRef} role="dialog" aria-modal="true" aria-label="전체 메뉴" onClick={e => e.stopPropagation()}>
             {NAV_GROUPS.map(group => {
               const rest = group.paths.filter(path => !primaryPaths.includes(path))
               if (rest.length === 0) return null
