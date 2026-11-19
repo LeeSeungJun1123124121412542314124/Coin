@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 
+import { C } from '../src/lib/theme.ts'
+
 import {
   RESEARCH_CATEGORIES,
   STOCK_SENTIMENT_INDEX_NOTES,
@@ -10,7 +12,7 @@ import {
 
 // 주식수급 카테고리 칩·색
 assert.ok(RESEARCH_CATEGORIES.includes('주식수급'))
-assert.notEqual(getResearchCategoryColor('주식수급'), '#94a3b8')
+assert.notEqual(getResearchCategoryColor('주식수급'), C.text2)
 
 // 주식수급 상세 행 — 억원을 조 단위로 표기
 assert.deepEqual(
@@ -45,7 +47,7 @@ assert.equal(STOCK_SENTIMENT_INDEX_NOTES[1][0], 'Put/Call 비율')
 assert.ok(STOCK_SENTIMENT_INDEX_NOTES[1][1].includes('풋'))
 
 assert.ok(RESEARCH_CATEGORIES.includes('주식심리'))
-assert.equal(getResearchCategoryColor('주식심리'), '#38bdf8')
+assert.equal(getResearchCategoryColor('주식심리'), C.info)
 
 assert.deepEqual(
   toStockSentimentDetailRows({

@@ -1,14 +1,17 @@
+import { C } from '../../lib/theme.ts'
+
+// 카테고리 구분 색 — 상승/하락 의미 없는 구분용이라 의미 토큰 hex를 그대로 사용
 export const RESEARCH_CATEGORY_COLORS: Record<string, string> = {
-  '매크로': '#60a5fa',
-  '온체인': '#4ade80',
-  '파생상품': '#f97316',
-  '알트코인': '#a78bfa',
-  '기술적분석': '#f59e0b',
-  '시장분석': '#f87171',
-  '기타': '#94a3b8',
-  '반도체 정점': '#2dd4bf',
-  '주식심리': '#38bdf8',
-  '주식수급': '#34d399',
+  '매크로': C.info,
+  '온체인': C.ok,
+  '파생상품': C.warn,
+  '알트코인': C.violet,
+  '기술적분석': C.warnText,
+  '시장분석': C.danger,
+  '기타': C.text2,
+  '반도체 정점': C.accent,
+  '주식심리': C.info,
+  '주식수급': C.ok,
 }
 
 export const RESEARCH_CATEGORIES = [
@@ -47,7 +50,7 @@ interface StockSentimentDetails {
 }
 
 export function getResearchCategoryColor(category: string) {
-  return category === '전체' ? '#60a5fa' : (RESEARCH_CATEGORY_COLORS[category] ?? '#94a3b8')
+  return category === '전체' ? C.accent : (RESEARCH_CATEGORY_COLORS[category] ?? C.text2)
 }
 
 export function toStockSentimentDetailRows(details: StockSentimentDetails): Array<[string, string]> {

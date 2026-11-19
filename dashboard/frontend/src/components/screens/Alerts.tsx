@@ -4,6 +4,8 @@ import { Card } from '../shared/Card'
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
+import { C, softBg } from '../../lib/theme'
+import { LEVEL_LABEL, countByLevel, groupAlertsByDay } from './alertsView'
 
 interface AlertRecord {
   id: number
@@ -24,22 +26,14 @@ interface AlertsData {
   total: number
 }
 
+// 레벨 색 — 위험·경보 등 의미 토큰 (상승/하락 색 아님)
 const LEVEL_COLOR: Record<string, string> = {
-  CONFIRMED_HIGH: '#ef4444',
-  HIGH: '#f97316',
-  LIQUIDATION_RISK: '#a855f7',
-  WHALE: '#60a5fa',
-  STALE_SIGNAL: '#2dd4bf',
-  MACRO_EVENT: '#38bdf8',
-}
-
-const LEVEL_LABEL: Record<string, string> = {
-  CONFIRMED_HIGH: '확인 경보',
-  HIGH: '경보',
-  LIQUIDATION_RISK: '청산 위험',
-  WHALE: '고래 감지',
-  STALE_SIGNAL: '갱신 필요',
-  MACRO_EVENT: '매크로 이벤트',
+  CONFIRMED_HIGH: C.danger,
+  HIGH: C.warn,
+  LIQUIDATION_RISK: C.violet,
+  WHALE: C.accent,
+  STALE_SIGNAL: C.text2,
+  MACRO_EVENT: C.info,
 }
 
 function formatTs(ts: string): string {
@@ -47,22 +41,22 @@ function formatTs(ts: string): string {
   return ts.slice(5, 16).replace('T', ' ')
 }
 
-// 방향 라벨/색 — long=급등(녹), short=급락(적), neutral=중립(회)
-const DIR: Record<string, { label: string; color: string }> = {
-  long: { label: '급등', color: '#4ade80' },
-  short: { label: '급락', color: '#f87171' },
-  neutral: { label: '중립', color: '#94a3b8' },
+// 방향 라벨/색 — long=급등(--up), short=급락(--down), neutral=중립(--surface-2 바탕)
+const DIR: Record<string, { label: string; color: string; bg: string }> = {
+  long: { label: '급등', color: C.up, bg: softBg(C.up, 0.14) },
+  short: { label: '급락', color: C.down, bg: softBg(C.down, 0.14) },
+  neutral: { label: '중립', color: C.text2, bg: C.surface2 },
 }
 
 function DirBadge({ kind, dir, tooltip }: { kind: string; dir: string | null; tooltip?: string }) {
   const d = dir ? DIR[dir] : null
   return (
     <div style={{ textAlign: 'center' }} title={tooltip}>
-      <div style={{ color: '#64748b', fontSize: '0.65rem' }}>{kind}</div>
+      <div style={{ color: 'var(--text-3)', fontSize: 11, marginBottom: 3 }}>{kind}</div>
       {d ? (
-        <span style={{ color: d.color, fontSize: '0.8rem', fontWeight: 600 }}>{d.label}</span>
+        <span style={{ background: d.bg, color: d.color, borderRadius: 6, padding: '2px 8px', fontSize: 12, fontWeight: 600 }}>{d.label}</span>
       ) : (
-        <span style={{ color: '#475569', fontSize: '0.8rem' }}>–</span>
+        <span style={{ color: 'var(--text-3)', fontSize: 12 }}>–</span>
       )}
     </div>
   )
@@ -78,24 +72,26 @@ export function Alerts() {
   if (!data) return null
 
   const alerts = data.alerts ?? []
+  // 심볼 필터가 적용된 목록 기준으로 건수·날짜 묶음 계산
+  const levelCounts = countByLevel(alerts)
+  const dayGroups = groupAlertsByDay(alerts, new Date())
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <LastUpdated timestamp={lastUpdated} />
 
       {/* 요약 + 필터 */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <p style={{ color: '#64748b', fontSize: '0.8rem', margin: 0 }}>
-            총 {data.total}건
-          </p>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
+        <span style={{ color: 'var(--text-2)', fontSize: 14 }}>
+          총 <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text)', fontWeight: 600 }}>{data.total}</span>건
+        </span>
         <select
           value={symbol}
           onChange={e => setSymbol(e.target.value)}
+          aria-label="심볼 필터"
           style={{
-            background: '#1e293b', border: '1px solid #334155', color: '#e2e8f0',
-            borderRadius: 8, padding: '6px 12px', fontSize: '0.875rem', cursor: 'pointer',
+            background: 'var(--bg-inset)', border: '1px solid var(--border-strong)', color: 'var(--text)',
+            borderRadius: 8, padding: '6px 12px', fontSize: 14, cursor: 'pointer',
           }}
         >
           <option value="">전체 심볼</option>
@@ -104,68 +100,97 @@ export function Alerts() {
         </select>
       </div>
 
-      {/* 알림 목록 */}
+      {/* 레벨별 건수 칩 */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {levelCounts.map(({ level, label, count }) => {
+          const color = LEVEL_COLOR[level]
+          return (
+            <span key={level} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: softBg(color, 0.14), color, border: `1px solid ${softBg(color, 0.28)}`,
+              borderRadius: 999, padding: '5px 12px', fontSize: 12, fontWeight: 600,
+              opacity: count === 0 ? 0.55 : 1,
+            }}>
+              {label}
+              <span style={{ fontFamily: 'var(--font-mono)' }}>{count}</span>
+            </span>
+          )
+        })}
+      </div>
+
+      {/* 알림 목록 — 날짜별 묶음 */}
       {alerts.length === 0 ? (
         <Card>
-          <div style={{ color: '#64748b', textAlign: 'center', padding: '24px 0', fontSize: '0.9rem' }}>
+          <div style={{ color: 'var(--text-3)', textAlign: 'center', padding: '24px 0', fontSize: 14 }}>
             알림 기록이 없습니다.
           </div>
         </Card>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {alerts.map(alert => {
-            const color = LEVEL_COLOR[alert.alert_level] ?? '#94a3b8'
-            const label = LEVEL_LABEL[alert.alert_level] ?? alert.alert_level
-            return (
-              <Card key={alert.id}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                  {/* 좌측: 레벨 배지 + 심볼 + 시간 */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{
-                      background: `${color}22`, color, border: `1px solid ${color}55`,
-                      borderRadius: 6, padding: '2px 8px', fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap',
-                    }}>
-                      {label}
-                    </span>
-                    <div>
-                      <div style={{ color: '#e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}>{alert.symbol}</div>
-                      <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{formatTs(alert.timestamp)}</div>
-                    </div>
-                  </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {dayGroups.map(group => (
+            <section key={group.date} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
+                {group.label}
+                {group.label !== group.date && (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 400, color: 'var(--text-3)' }}>{group.date}</span>
+                )}
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 400, color: 'var(--text-3)' }}>{group.items.length}건</span>
+              </h3>
+              {group.items.map(alert => {
+                const color = LEVEL_COLOR[alert.alert_level] ?? C.text2
+                const label = LEVEL_LABEL[alert.alert_level] ?? alert.alert_level
+                return (
+                  <Card key={alert.id}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                      {/* 좌측: 레벨 배지 + 심볼 + 시간 */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{
+                          background: softBg(color, 0.14), color, border: `1px solid ${softBg(color, 0.28)}`,
+                          borderRadius: 6, padding: '2px 8px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
+                        }}>
+                          {label}
+                        </span>
+                        <div>
+                          <div style={{ color: 'var(--text)', fontSize: 14, fontWeight: 600 }}>{alert.symbol}</div>
+                          <div style={{ color: 'var(--text-3)', fontSize: 12, fontFamily: 'var(--font-mono)' }}>{formatTs(alert.timestamp)}</div>
+                        </div>
+                      </div>
 
-                  {/* 우측: 방향 + 점수 */}
-                  <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                    <DirBadge kind="종목방향" dir={alert.asset_direction} />
-                    <DirBadge
-                      kind="시장방향"
-                      dir={alert.market_direction}
-                      tooltip={
-                        alert.market_tilt_confidence != null
-                          ? `신뢰도 ${alert.market_tilt_confidence.toFixed(0)} · z ${alert.market_tilt_z?.toFixed(2) ?? '–'}`
-                          : undefined
-                      }
-                    />
-                    {alert.alert_score != null && (
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ color: '#94a3b8', fontSize: '0.7rem' }}>기술 점수</div>
-                        <div style={{ color, fontSize: '0.9rem', fontWeight: 700 }}>
-                          {alert.alert_score.toFixed(1)}
-                        </div>
+                      {/* 우측: 방향 + 점수 */}
+                      <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                        <DirBadge kind="종목방향" dir={alert.asset_direction} />
+                        <DirBadge
+                          kind="시장방향"
+                          dir={alert.market_direction}
+                          tooltip={
+                            alert.market_tilt_confidence != null
+                              ? `신뢰도 ${alert.market_tilt_confidence.toFixed(0)} · z ${alert.market_tilt_z?.toFixed(2) ?? '–'}`
+                              : undefined
+                          }
+                        />
+                        {alert.alert_score != null && (
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ color: 'var(--text-3)', fontSize: 11 }}>기술 점수</div>
+                            <div style={{ color, fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+                              {alert.alert_score.toFixed(1)}
+                            </div>
+                          </div>
+                        )}
+                        {alert.final_score != null && (
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ color: 'var(--text-3)', fontSize: 11 }}>종합 점수</div>
+                            <div style={{ color: 'var(--text)', fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+                              {alert.final_score.toFixed(1)}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {alert.final_score != null && (
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ color: '#94a3b8', fontSize: '0.7rem' }}>종합 점수</div>
-                        <div style={{ color: '#e2e8f0', fontSize: '0.9rem', fontWeight: 700 }}>
-                          {alert.final_score.toFixed(1)}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            )
-          })}
+                    </div>
+                  </Card>
+                )
+              })}
+            </section>
+          ))}
         </div>
       )}
     </div>

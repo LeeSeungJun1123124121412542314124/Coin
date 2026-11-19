@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { apiFetch } from '../../lib/api'
+import { C, changeColor, softBg } from '../../lib/theme'
 
 // 지표 리더보드 — 각 지표가 가상 시드로 자동매매한 포워드 성과 순위
 interface LeaderRow {
@@ -41,10 +42,11 @@ interface Detail {
 }
 
 const PANEL: CSSProperties = {
-  background: '#0f172a',
-  border: '1px solid #1e293b',
-  borderRadius: 10,
-  padding: '16px 20px',
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
+  boxShadow: 'var(--shadow-card)',
+  borderRadius: 16,
+  padding: '18px 20px',
   marginBottom: 20,
 }
 
@@ -53,19 +55,18 @@ function pct(v: number | null): string {
   return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
 }
 
-function clr(v: number | null): string {
-  if (v == null) return '#94a3b8'
-  return v > 0 ? '#4ade80' : v < 0 ? '#f87171' : '#94a3b8'
-}
+// 숫자 칸 공통 — Mono
+const MONO: CSSProperties = { fontFamily: 'var(--font-mono)' }
 
-// 자산별 방향 배지 (BTC·ETH·SOL) — 롱=초록·숏=빨강·현금=회색 대시
+// 자산별 방향 배지 (BTC·ETH·SOL) — 롱=--up·숏=--down·현금=--surface-2 바탕 대시
 const ASSETS = ['BTC', 'ETH', 'SOL'] as const
 function DirectionBadges({ directions = {} }: { directions?: Record<string, 'long' | 'short'> }) {
   return (
     <span style={{ display: 'inline-flex', gap: 4 }}>
       {ASSETS.map((a) => {
         const d = directions[a]
-        const color = d === 'long' ? '#4ade80' : d === 'short' ? '#f87171' : '#475569'
+        const color = d === 'long' ? C.up : d === 'short' ? C.down : C.text3
+        const bg = d === 'long' ? softBg(C.up, 0.14) : d === 'short' ? softBg(C.down, 0.14) : C.surface2
         const label = d === 'long' ? '롱' : d === 'short' ? '숏' : '–'
         return (
           <span
@@ -76,8 +77,8 @@ function DirectionBadges({ directions = {} }: { directions?: Record<string, 'lon
               minWidth: 24, fontSize: '0.6rem', lineHeight: 1.3,
             }}
           >
-            <span style={{ color: '#64748b' }}>{a[0]}</span>
-            <span style={{ color, fontWeight: 600 }}>{label}</span>
+            <span style={{ color: 'var(--text-3)' }}>{a[0]}</span>
+            <span style={{ color, background: bg, borderRadius: 6, padding: '1px 6px', fontWeight: 600 }}>{label}</span>
           </span>
         )
       })}
@@ -140,7 +141,7 @@ export function Leaderboard() {
       <div className="leaderboard-toolbar">
         <p className="leaderboard-toolbar-copy">
           💰 <b>지표 수익 검증</b> — 각 지표가 동일 시드로 자기 신호대로 자동매매, 포워드 성과(수익)로 어느 지표가 실제 돈이 되나 비교.
-          <span style={{ color: '#475569' }}> 시장 방향 전망은 SPF 탭에서.</span>
+          <span style={{ color: 'var(--text-3)' }}> 시장 방향 전망은 SPF 탭에서.</span>
         </p>
         <button
           className="leaderboard-reset-button"
@@ -153,9 +154,9 @@ export function Leaderboard() {
       {loading ? (
         <div style={PANEL}>로딩 중...</div>
       ) : error ? (
-        <div style={{ ...PANEL, color: '#f87171' }}>{error}</div>
+        <div style={{ ...PANEL, color: 'var(--danger)' }}>{error}</div>
       ) : rows.length === 0 ? (
-        <div style={{ ...PANEL, color: '#94a3b8' }}>
+        <div style={{ ...PANEL, color: 'var(--text-2)' }}>
           아직 데이터가 없습니다. 일일 리밸런스 잡(UTC 00:05)이 1회 이상 실행되면 표시됩니다.
         </div>
       ) : (
@@ -164,7 +165,7 @@ export function Leaderboard() {
           <div className="table-scroll">
           <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
             <thead>
-              <tr style={{ color: '#64748b', textAlign: 'right', borderBottom: '1px solid #1e293b' }}>
+              <tr style={{ color: 'var(--text-3)', textAlign: 'right', borderBottom: '1px solid var(--line)' }}>
                 <th style={{ textAlign: 'left', padding: '8px 6px' }}>#</th>
                 <th style={{ textAlign: 'left', padding: '8px 6px' }}>지표</th>
                 <th style={{ textAlign: 'center', padding: '8px 6px' }}>방향</th>
@@ -183,19 +184,19 @@ export function Leaderboard() {
                   onClick={() => fetchDetail(r.indicator)}
                   style={{
                     textAlign: 'right', cursor: 'pointer',
-                    borderBottom: '1px solid #1e293b',
-                    background: selected === r.indicator ? '#1e293b' : 'transparent',
+                    borderBottom: '1px solid var(--line)',
+                    background: selected === r.indicator ? softBg(C.accent, 0.07) : 'transparent',
                   }}
                 >
-                  <td style={{ textAlign: 'left', padding: '8px 6px', color: '#64748b' }}>{i + 1}</td>
-                  <td style={{ textAlign: 'left', padding: '8px 6px', color: '#e2e8f0', fontWeight: 600 }}>{r.indicator}</td>
+                  <td style={{ textAlign: 'left', padding: '8px 6px', color: i < 3 ? 'var(--accent)' : 'var(--text-3)', fontWeight: i < 3 ? 700 : 400, ...MONO }}>{i + 1}</td>
+                  <td style={{ textAlign: 'left', padding: '8px 6px', color: 'var(--text)', fontWeight: 600 }}>{r.indicator}</td>
                   <td style={{ textAlign: 'center', padding: '8px 6px' }}><DirectionBadges directions={r.directions} /></td>
-                  <td style={{ padding: '8px 6px', color: clr(r.total_return_pct), fontWeight: 600 }}>{pct(r.total_return_pct)}</td>
-                  <td style={{ padding: '8px 6px', color: clr(r.vs_buyhold_pct) }}>{pct(r.vs_buyhold_pct)}</td>
-                  <td style={{ padding: '8px 6px', color: '#cbd5e1' }}>{r.win_rate == null ? '–' : `${r.win_rate.toFixed(0)}%`}</td>
-                  <td style={{ padding: '8px 6px', color: '#f87171' }}>{r.mdd_pct.toFixed(1)}%</td>
-                  <td style={{ padding: '8px 6px', color: '#cbd5e1' }}>{r.sharpe.toFixed(2)}</td>
-                  <td style={{ padding: '8px 6px', color: '#64748b' }}>{r.n_trades}</td>
+                  <td style={{ padding: '8px 6px', color: changeColor(r.total_return_pct), fontWeight: 600, ...MONO }}>{pct(r.total_return_pct)}</td>
+                  <td style={{ padding: '8px 6px', color: changeColor(r.vs_buyhold_pct), ...MONO }}>{pct(r.vs_buyhold_pct)}</td>
+                  <td style={{ padding: '8px 6px', color: 'var(--text-2)', ...MONO }}>{r.win_rate == null ? '–' : `${r.win_rate.toFixed(0)}%`}</td>
+                  <td style={{ padding: '8px 6px', color: 'var(--down)', ...MONO }}>{r.mdd_pct.toFixed(1)}%</td>
+                  <td style={{ padding: '8px 6px', color: 'var(--text-2)', ...MONO }}>{r.sharpe.toFixed(2)}</td>
+                  <td style={{ padding: '8px 6px', color: 'var(--text-3)', ...MONO }}>{r.n_trades}</td>
                 </tr>
               ))}
             </tbody>
@@ -206,33 +207,33 @@ export function Leaderboard() {
 
       {selected && (
         <div style={PANEL}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#e2e8f0', marginTop: 0 }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text)', marginTop: 0 }}>
             {selected} — 에쿼티 곡선
           </h3>
           {detailLoading ? (
-            <div style={{ color: '#94a3b8' }}>로딩 중...</div>
+            <div style={{ color: 'var(--text-2)' }}>로딩 중...</div>
           ) : !detail || detail.equity_curve.length === 0 ? (
-            <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>곡선 데이터 없음</div>
+            <div style={{ color: 'var(--text-2)', fontSize: '0.85rem' }}>곡선 데이터 없음</div>
           ) : (
             <>
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={detail.equity_curve}>
-                  <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 9 }} interval="preserveStartEnd" />
-                  <YAxis tick={{ fill: '#64748b', fontSize: 10 }} width={50} domain={['auto', 'auto']} />
+                  <CartesianGrid stroke={C.line} strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tick={{ fill: C.text3, fontSize: 9 }} interval="preserveStartEnd" />
+                  <YAxis tick={{ fill: C.text3, fontSize: 10 }} width={50} domain={['auto', 'auto']} />
                   <Tooltip
-                    contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, color: '#e2e8f0' }}
+                    contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text }}
                   />
-                  <Line type="monotone" dataKey="equity" stroke="#60a5fa" dot={false} strokeWidth={2} name="에쿼티" />
+                  <Line type="monotone" dataKey="equity" stroke={C.accent} dot={false} strokeWidth={2} name="에쿼티" />
                 </LineChart>
               </ResponsiveContainer>
 
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#e2e8f0', marginTop: 16 }}>포지션 이력</h3>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text)', marginTop: 16 }}>포지션 이력</h3>
               {/* 7컬럼 테이블 — 모바일 가로 스크롤(잘림 방지) */}
               <div className="table-scroll">
               <table style={{ width: '100%', minWidth: 520, borderCollapse: 'collapse', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                 <thead>
-                  <tr style={{ color: '#64748b', textAlign: 'right', borderBottom: '1px solid #1e293b' }}>
+                  <tr style={{ color: 'var(--text-3)', textAlign: 'right', borderBottom: '1px solid var(--line)' }}>
                     <th style={{ textAlign: 'left', padding: '6px' }}>자산</th>
                     <th style={{ textAlign: 'left', padding: '6px' }}>방향</th>
                     <th style={{ padding: '6px' }}>레버리지</th>
@@ -244,16 +245,16 @@ export function Leaderboard() {
                 </thead>
                 <tbody>
                   {detail.positions.slice(0, 50).map((p, i) => (
-                    <tr key={i} style={{ textAlign: 'right', borderBottom: '1px solid #1e293b' }}>
-                      <td style={{ textAlign: 'left', padding: '6px', color: '#e2e8f0' }}>{p.asset}</td>
-                      <td style={{ textAlign: 'left', padding: '6px', color: p.direction === 'long' ? '#4ade80' : '#f87171' }}>
+                    <tr key={i} style={{ textAlign: 'right', borderBottom: '1px solid var(--line)' }}>
+                      <td style={{ textAlign: 'left', padding: '6px', color: 'var(--text)' }}>{p.asset}</td>
+                      <td style={{ textAlign: 'left', padding: '6px', color: p.direction === 'long' ? 'var(--up)' : 'var(--down)' }}>
                         {p.direction === 'long' ? '롱' : '숏'}
                       </td>
-                      <td style={{ padding: '6px', color: '#cbd5e1' }}>{p.leverage.toFixed(1)}x</td>
-                      <td style={{ padding: '6px', color: '#cbd5e1' }}>{p.entry_price.toFixed(2)}</td>
-                      <td style={{ padding: '6px', color: '#94a3b8' }}>{p.exit_price == null ? '–' : p.exit_price.toFixed(2)}</td>
-                      <td style={{ padding: '6px', color: clr(p.pnl) }}>{p.pnl == null ? '–' : p.pnl.toFixed(2)}</td>
-                      <td style={{ padding: '6px', color: '#64748b' }}>{p.status === 'open' ? '보유' : '청산'}</td>
+                      <td style={{ padding: '6px', color: 'var(--text-2)', ...MONO }}>{p.leverage.toFixed(1)}x</td>
+                      <td style={{ padding: '6px', color: 'var(--text-2)', ...MONO }}>{p.entry_price.toFixed(2)}</td>
+                      <td style={{ padding: '6px', color: 'var(--text-2)', ...MONO }}>{p.exit_price == null ? '–' : p.exit_price.toFixed(2)}</td>
+                      <td style={{ padding: '6px', color: changeColor(p.pnl), ...MONO }}>{p.pnl == null ? '–' : p.pnl.toFixed(2)}</td>
+                      <td style={{ padding: '6px', color: 'var(--text-3)' }}>{p.status === 'open' ? '보유' : '청산'}</td>
                     </tr>
                   ))}
                 </tbody>

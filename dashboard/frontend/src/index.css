@@ -1161,7 +1161,7 @@ body {
 .leaderboard-toolbar-copy {
   max-width: 620px;
   margin: 0;
-  color: #94a3b8;
+  color: var(--text-2);
   font-size: 0.8rem;
   line-height: 1.5;
 }
@@ -1169,11 +1169,11 @@ body {
 .leaderboard-reset-button {
   flex-shrink: 0;
   min-height: 34px;
-  border: 1px solid #334155;
+  border: 1px solid var(--warn-text);
   border-radius: 8px;
   padding: 6px 14px;
-  color: #94a3b8;
-  background: #0f172a;
+  color: var(--warn-text);
+  background: transparent;
   cursor: pointer;
   font-size: 0.8rem;
 }
