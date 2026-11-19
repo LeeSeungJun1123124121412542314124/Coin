@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { addSymbol, getSymbols, removeSymbol } from '../../lib/learningApi.ts'
 import type { Interval, LearningSymbol } from '../../lib/learningApi.ts'
+import { C, softBg } from '../../lib/theme.ts'
 import { Card } from '../shared/Card'
 import ErrorState from '../shared/ErrorState'
 import { BacktestPanel } from '../learning/BacktestPanel'
@@ -10,24 +11,23 @@ import { PerformancePanel } from '../learning/PerformancePanel'
 import { ReviewPanel } from '../learning/ReviewPanel'
 import { TradePanel } from '../learning/TradePanel'
 import {
-  DIM, MUTED, buttonStyle, errorStyle, errorText, inputStyle, noteStyle, titleStyle, toggleStyle, useLoader,
+  DIM, MUTED, buttonStyle, errorStyle, errorText, inputStyle, noteStyle, titleStyle, useLoader,
 } from '../learning/learningShared.ts'
 
-type SubTab = 'chart' | 'trade' | 'journal' | 'review' | 'performance' | 'backtest'
+// 차트·모의 주문은 항상 위에 보이고, 아래 기록 카드의 탭만 바뀐다
+type SubTab = 'journal' | 'review' | 'performance' | 'backtest'
 
 const SUB_TABS: [SubTab, string][] = [
-  ['chart', '차트'],
-  ['trade', '매매'],
-  ['journal', '일지'],
+  ['journal', '매매 일지'],
   ['review', '복기'],
   ['performance', '성과'],
   ['backtest', '백테스트'],
 ]
 
 const STATUS_LABELS: Record<string, { text: string; color: string }> = {
-  pending: { text: '백필 중', color: '#facc15' },
-  done: { text: '준비됨', color: '#4ade80' },
-  failed: { text: '백필 실패', color: '#f87171' },
+  pending: { text: '백필 중', color: C.warn },
+  done: { text: '준비됨', color: C.ok },
+  failed: { text: '백필 실패', color: C.danger },
 }
 
 const BACKFILL_POLL_MS = 3000
@@ -36,7 +36,7 @@ const BACKFILL_POLL_MS = 3000
 export function Learning() {
   const symbols = useLoader(getSymbols)
   const [chosen, setChosen] = useState<string | null>(null)
-  const [tab, setTab] = useState<SubTab>('chart')
+  const [tab, setTab] = useState<SubTab>('journal')
   const [chartInterval, setChartInterval] = useState<Interval>('1d')
 
   const list = symbols.data ?? []
@@ -49,8 +49,6 @@ export function Learning() {
     const id = setTimeout(reloadSymbols, BACKFILL_POLL_MS)
     return () => clearTimeout(id)
   }, [symbolData, reloadSymbols])
-
-  const needsSymbol = tab === 'chart' || tab === 'trade'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -66,32 +64,52 @@ export function Learning() {
         />
       )}
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {SUB_TABS.map(([key, label]) => (
-          <button key={key} style={toggleStyle(tab === key)} onClick={() => setTab(key)}>{label}</button>
-        ))}
-      </div>
-
-      {needsSymbol && !selected ? (
-        symbols.data && <Card><div style={noteStyle}>추적 종목을 먼저 추가하세요 (예: BTCUSDT).</div></Card>
-      ) : tab === 'chart' && selected ? (
+      {selected ? (
         <LearningChart
           symbol={selected.symbol}
           interval={chartInterval}
           onIntervalChange={setChartInterval}
           ready={selected.backfill_status !== 'pending'}
+          aside={<TradePanel symbol={selected.symbol} interval={chartInterval} />}
         />
-      ) : tab === 'trade' && selected ? (
-        <TradePanel symbol={selected.symbol} interval={chartInterval} />
-      ) : tab === 'journal' ? (
-        <JournalPanel />
-      ) : tab === 'review' ? (
-        <ReviewPanel />
-      ) : tab === 'performance' ? (
-        <PerformancePanel symbols={list.map(s => s.symbol)} />
-      ) : tab === 'backtest' ? (
-        <BacktestPanel />
-      ) : null}
+      ) : (
+        symbols.data && <Card><div style={noteStyle}>추적 종목을 먼저 추가하세요 (예: BTCUSDT).</div></Card>
+      )}
+
+      <Card style={{ padding: 0 }}>
+        <div role="tablist" style={{ display: 'flex', gap: 4, padding: '0 20px', borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
+          {SUB_TABS.map(([key, label]) => {
+            const active = tab === key
+            return (
+              <button
+                key={key}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setTab(key)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                  padding: '14px 12px 12px', fontSize: 14, fontWeight: active ? 600 : 500,
+                  color: active ? 'var(--text)' : 'var(--text-3)',
+                  borderBottom: `2px solid ${active ? 'var(--accent)' : 'transparent'}`, marginBottom: -1,
+                }}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+        <div style={{ padding: '18px 20px' }}>
+          {tab === 'journal' ? (
+            <JournalPanel />
+          ) : tab === 'review' ? (
+            <ReviewPanel />
+          ) : tab === 'performance' ? (
+            <PerformancePanel symbols={list.map(s => s.symbol)} />
+          ) : (
+            <BacktestPanel />
+          )}
+        </div>
+      </Card>
     </div>
   )
 }
@@ -153,15 +171,15 @@ function SymbolManager({ list, loading, selected, onSelect, onChanged }: {
           return (
             <div key={s.symbol} style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              background: active ? '#1e3a5f' : '#0f172a',
-              border: `1px solid ${active ? '#60a5fa' : '#334155'}`,
-              borderRadius: 8, padding: '4px 6px 4px 10px',
+              background: active ? softBg(C.accent, 0.14) : 'var(--bg-inset)',
+              border: `1px solid ${active ? 'var(--accent)' : 'var(--border-strong)'}`,
+              borderRadius: 999, padding: '4px 8px 4px 14px',
             }}>
               <button
                 onClick={() => onSelect(s.symbol)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
               >
-                <span style={{ color: '#e2e8f0', fontWeight: 600, fontSize: '0.85rem' }}>{s.symbol}</span>
+                <span style={{ color: 'var(--text)', fontWeight: 600, fontSize: '0.85rem' }}>{s.symbol}</span>
                 <span style={{ color: status.color, fontSize: '0.72rem', marginLeft: 6 }}>{status.text}</span>
                 {s.listed_at && <span style={{ color: DIM, fontSize: '0.7rem', marginLeft: 6 }}>상장 {s.listed_at}</span>}
               </button>

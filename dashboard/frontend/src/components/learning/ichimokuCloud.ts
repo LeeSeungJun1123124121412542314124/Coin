@@ -7,6 +7,7 @@ import type {
   Time,
   UTCTimestamp,
 } from 'lightweight-charts'
+import { C, softBg } from '../../lib/theme.ts'
 
 // 일목 구름 채우기 — 선행스팬 A·B 사이를 양운/음운 색으로 칠하는 시리즈 프리미티브 (lightweight-charts v5)
 export interface CloudBand {
@@ -19,8 +20,9 @@ export interface CloudBand {
 type Target = Parameters<IPrimitivePaneRenderer['draw']>[0]
 interface Point { x: number; top: number; bottom: number }
 
-const BULL_FILL = 'rgba(74, 222, 128, 0.16)'
-const BEAR_FILL = 'rgba(248, 113, 113, 0.16)'
+// 양운 = 상승(--up), 음운 = 하락(--down) 16% 투명
+const BULL_FILL = softBg(C.up, 0.16)
+const BEAR_FILL = softBg(C.down, 0.16)
 
 function fillBand(ctx: CanvasRenderingContext2D, pts: Point[], color: string) {
   if (pts.length < 2) return

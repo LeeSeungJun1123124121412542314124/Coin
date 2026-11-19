@@ -29,16 +29,16 @@ function JournalCard({ entry }: { entry: JournalEntry }) {
   return (
     <Card>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'baseline', marginBottom: 8, fontSize: '0.85rem' }}>
-        <b style={{ color: '#e2e8f0' }}>#{p.id} {p.symbol}</b>
-        <span style={{ color: p.status === 'open' ? '#60a5fa' : DIM }}>{p.status === 'open' ? '보유 중' : '청산'}</span>
-        <span style={{ color: '#cbd5e1' }}>진입 국면 {PHASE_LABELS[p.entry_phase]}</span>
+        <b style={{ color: 'var(--text)' }}>#{p.id} {p.symbol}</b>
+        <span style={{ color: p.status === 'open' ? 'var(--accent)' : DIM }}>{p.status === 'open' ? '보유 중' : '청산'}</span>
+        <span style={{ color: 'var(--text-2)' }}>진입 국면 {PHASE_LABELS[p.entry_phase]}</span>
         <span style={{ color: DIM }}>첫 진입 {fmtDateTime(p.opened_at)} · {fmtPrice(p.first_entry_price)}</span>
         {p.closed_at && <span style={{ color: DIM }}>청산 {fmtDateTime(p.closed_at)}</span>}
       </div>
       <div className="table-scroll">
         <table style={{ width: '100%', minWidth: 720, borderCollapse: 'collapse', fontSize: '0.78rem' }}>
           <thead>
-            <tr style={{ color: DIM, textAlign: 'right', borderBottom: '1px solid #334155', whiteSpace: 'nowrap' }}>
+            <tr style={{ color: DIM, textAlign: 'right', borderBottom: '1px solid var(--line)', whiteSpace: 'nowrap' }}>
               <th style={{ ...thStyle, textAlign: 'left' }}>시각</th>
               <th style={{ ...thStyle, textAlign: 'left' }}>방향</th>
               <th style={thStyle}>수량</th>
@@ -50,9 +50,9 @@ function JournalCard({ entry }: { entry: JournalEntry }) {
           </thead>
           <tbody>
             {fills.map(f => (
-              <tr key={f.id} style={{ textAlign: 'right', borderBottom: '1px solid #334155', verticalAlign: 'top' }}>
+              <tr key={f.id} style={{ textAlign: 'right', borderBottom: '1px solid var(--line)', verticalAlign: 'top' }}>
                 <td style={{ ...tdStyle, textAlign: 'left', whiteSpace: 'nowrap' }}>{fmtDateTime(f.executed_at)}</td>
-                <td style={{ ...tdStyle, textAlign: 'left', color: f.side === 'buy' ? '#4ade80' : '#f87171' }}>
+                <td style={{ ...tdStyle, textAlign: 'left', color: f.side === 'buy' ? 'var(--up)' : 'var(--down)' }}>
                   {f.side === 'buy' ? '매수' : '매도'}
                 </td>
                 <td style={tdStyle}>{fmtQty(f.qty)}</td>
@@ -61,7 +61,7 @@ function JournalCard({ entry }: { entry: JournalEntry }) {
                 <td style={tdStyle}>{f.fee_usdt.toFixed(2)}</td>
                 <td style={{ ...tdStyle, textAlign: 'left' }}>
                   <div>{rationaleText(f.phase, f.ichimoku)}</div>
-                  {f.memo && <div style={{ color: '#94a3b8', marginTop: 2, whiteSpace: 'pre-wrap' }}>메모: {f.memo}</div>}
+                  {f.memo && <div style={{ color: 'var(--text-2)', marginTop: 2, whiteSpace: 'pre-wrap' }}>메모: {f.memo}</div>}
                 </td>
               </tr>
             ))}

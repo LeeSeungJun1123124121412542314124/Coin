@@ -6,7 +6,7 @@ import ErrorState from '../shared/ErrorState'
 import { SkeletonCard } from '../shared/Skeleton'
 import {
   DIM, MUTED, VERDICT_LABELS, buttonStyle, errorStyle, errorText, fmtDateTime, fmtPrice, fmtSignedPct, inputStyle,
-  noteStyle, pnlColor, rationaleText, useLoader,
+  noteStyle, pnlArrow, pnlColor, rationaleText, useLoader,
 } from './learningShared.ts'
 
 const HORIZONS = [14, 28] as const
@@ -35,9 +35,9 @@ function PositionReview({ position }: { position: JournalPosition }) {
   return (
     <Card>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'baseline', marginBottom: 10, fontSize: '0.85rem' }}>
-        <b style={{ color: '#e2e8f0' }}>#{position.id} {position.symbol}</b>
+        <b style={{ color: 'var(--text)' }}>#{position.id} {position.symbol}</b>
         <span style={{ color: DIM }}>첫 진입 {fmtDateTime(position.opened_at)} · {fmtPrice(position.first_entry_price)}</span>
-        <span style={{ color: position.status === 'open' ? '#60a5fa' : DIM }}>{position.status === 'open' ? '보유 중' : '청산'}</span>
+        <span style={{ color: position.status === 'open' ? 'var(--accent)' : DIM }}>{position.status === 'open' ? '보유 중' : '청산'}</span>
       </div>
       {reviews.error ? (
         <div style={errorStyle}>{reviews.error}</div>
@@ -63,29 +63,29 @@ function HorizonReview({ positionId, horizon, review, onConfirmed }: {
   review: Review
   onConfirmed: () => void
 }) {
-  const box = { background: '#0f172a', borderRadius: 6, padding: '10px 12px', fontSize: '0.8rem', color: '#cbd5e1' }
+  const box = { background: 'var(--bg-inset)', borderRadius: 8, padding: '10px 12px', fontSize: '0.8rem', color: 'var(--text-2)' }
   if (review.status === 'pending') {
     return (
       <div style={box}>
-        <b style={{ color: '#e2e8f0' }}>{horizon}일 복기</b>
+        <b style={{ color: 'var(--text)' }}>{horizon}일 복기</b>
         <div style={{ color: MUTED, marginTop: 4 }}>대기 중 — 기준일 {review.due} (UTC, 그날 일봉 종가가 생기면 열립니다)</div>
       </div>
     )
   }
   return (
     <div style={box}>
-      <b style={{ color: '#e2e8f0' }}>{horizon}일 복기</b>
+      <b style={{ color: 'var(--text)' }}>{horizon}일 복기</b>
       <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
         <div><span style={{ color: DIM }}>진입 근거 </span>{rationaleText(review.rationale.phase, review.rationale.ichimoku)}</div>
         {review.rationale.memo && <div style={{ whiteSpace: 'pre-wrap' }}><span style={{ color: DIM }}>메모 </span>{review.rationale.memo}</div>}
         <div><span style={{ color: DIM }}>기준일 종가 </span>{fmtPrice(review.close_price)}</div>
         <div>
           <span style={{ color: DIM }}>손익 (실현+평가) </span>
-          <span style={{ color: pnlColor(review.pnl_usdt) }}>{review.pnl_usdt.toFixed(2)} USDT</span>
+          <span style={{ color: pnlColor(review.pnl_usdt) }}>{pnlArrow(review.pnl_usdt)}{review.pnl_usdt.toFixed(2)} USDT</span>
         </div>
         <div>
           <span style={{ color: DIM }}>보유 가정 수익률 </span>
-          <span style={{ color: pnlColor(review.hold_return_pct) }}>{fmtSignedPct(review.hold_return_pct)}</span>
+          <span style={{ color: pnlColor(review.hold_return_pct) }}>{pnlArrow(review.hold_return_pct)}{fmtSignedPct(review.hold_return_pct)}</span>
         </div>
         <div>
           <span style={{ color: DIM }}>제안 판정 </span>

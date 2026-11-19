@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { getPerformance, getSettings, putSettings } from '../../lib/learningApi.ts'
 import type { PerformanceResponse } from '../../lib/learningApi.ts'
+import { C } from '../../lib/theme.ts'
 import { Card } from '../shared/Card'
 import ErrorState from '../shared/ErrorState'
 import { SkeletonCard } from '../shared/Skeleton'
@@ -44,7 +45,7 @@ export function PerformancePanel({ symbols }: { symbols: string[] }) {
           return (
             <Card key={h}>
               <div style={{ color: DIM, fontSize: '0.78rem' }}>{h}일 국면 적중률</div>
-              <div style={{ color: '#e2e8f0', fontSize: '1.4rem', fontWeight: 700, margin: '4px 0' }}>{fmtRatio(r?.hit_rate ?? null)}</div>
+              <div style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: '1.4rem', fontWeight: 700, margin: '4px 0' }}>{fmtRatio(r?.hit_rate ?? null)}</div>
               <div style={{ color: MUTED, fontSize: '0.75rem' }}>
                 {r && r.n > 0 ? `확정 ${r.n}건 · 부분 적중 ${fmtRatio(r.partial_ratio)} 별도` : '확정된 복기가 없습니다'}
               </div>
@@ -53,7 +54,7 @@ export function PerformancePanel({ symbols }: { symbols: string[] }) {
         })}
         <Card>
           <div style={{ color: DIM, fontSize: '0.78rem' }}>청산 승률</div>
-          <div style={{ color: '#e2e8f0', fontSize: '1.4rem', fontWeight: 700, margin: '4px 0' }}>{fmtRatio(p.win_rate.win_rate)}</div>
+          <div style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: '1.4rem', fontWeight: 700, margin: '4px 0' }}>{fmtRatio(p.win_rate.win_rate)}</div>
           <div style={{ color: MUTED, fontSize: '0.75rem' }}>
             {p.win_rate.n > 0 ? `청산 ${p.win_rate.n}건 (실현 손익 > 0이면 승)` : '청산된 포지션이 없습니다'}
           </div>
@@ -89,7 +90,7 @@ function LatestValues({ perf }: { perf: PerformanceResponse }) {
   const equity = perf.equity.at(-1)?.value ?? null
   const dca = perf.dca?.series.at(-1)?.value ?? null
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, fontSize: '0.82rem', color: '#cbd5e1', marginBottom: 10 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, fontSize: '0.82rem', color: 'var(--text-2)', marginBottom: 10 }}>
       <div><span style={{ color: DIM }}>계좌 자산 </span>{equity === null ? '—' : formatUsdtKrw(equity, perf.usd_krw)}</div>
       {perf.dca && (
         <div><span style={{ color: DIM }}>DCA ({perf.dca.symbol}) </span>{dca === null ? '—' : formatUsdtKrw(dca, perf.usd_krw)}</div>
@@ -110,17 +111,17 @@ function EquityChart({ perf }: { perf: PerformanceResponse }) {
   return (
     <ResponsiveContainer width="100%" height={260}>
       <LineChart data={rows}>
-        <CartesianGrid stroke="#334155" strokeDasharray="3 3" />
-        <XAxis dataKey="date" tick={{ fill: DIM, fontSize: 9 }} interval="preserveStartEnd" />
-        <YAxis tick={{ fill: DIM, fontSize: 10 }} width={60} domain={['auto', 'auto']} />
+        <CartesianGrid stroke={C.line} strokeDasharray="3 3" />
+        <XAxis dataKey="date" tick={{ fill: C.text3, fontSize: 9 }} interval="preserveStartEnd" />
+        <YAxis tick={{ fill: C.text3, fontSize: 10 }} width={60} domain={['auto', 'auto']} />
         <Tooltip
-          contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, color: '#e2e8f0' }}
+          contentStyle={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text }}
           formatter={(v) => (typeof v === 'number' ? `${v.toFixed(2)} USDT` : String(v))}
         />
-        <Legend wrapperStyle={{ fontSize: 12, color: MUTED }} />
-        <Line type="monotone" dataKey="equity" name="계좌 자산" stroke="#60a5fa" dot={false} strokeWidth={2} connectNulls />
+        <Legend wrapperStyle={{ fontSize: 12, color: C.text2 }} />
+        <Line type="monotone" dataKey="equity" name="계좌 자산" stroke={C.accent} dot={false} strokeWidth={2} connectNulls />
         {perf.dca && (
-          <Line type="monotone" dataKey="dca" name={`DCA (${perf.dca.symbol})`} stroke="#facc15" dot={false} strokeWidth={2} connectNulls />
+          <Line type="monotone" dataKey="dca" name={`DCA (${perf.dca.symbol})`} stroke={C.info} dot={false} strokeWidth={2} connectNulls />
         )}
       </LineChart>
     </ResponsiveContainer>

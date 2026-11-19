@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { IchimokuState, Interval, Phase, Verdict } from '../../lib/learningApi.ts'
+import { changeArrow, changeColor } from '../../lib/theme.ts'
 import { PHASE_LABELS } from './learningChartData.ts'
 
 // ── 비동기 조회 훅 ──
@@ -85,7 +86,9 @@ export const fmtPrice = (v: number | null) => (v === null ? '—' : priceFormat.
 export const fmtQty = (v: number) => qtyFormat.format(v)
 export const fmtRatio = (v: number | null) => (v === null ? '—' : `${(v * 100).toFixed(1)}%`)
 export const fmtSignedPct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
-export const pnlColor = (v: number | null) => (v === null || v === 0 ? '#94a3b8' : v > 0 ? '#4ade80' : '#f87171')
+// 한국식 등락 색(상승 빨강·하락 파랑) + ▲/▼ 접두 — 손익·수익률 표기에 함께 쓴다
+export const pnlColor = changeColor
+export const pnlArrow = (v: number | null) => `${changeArrow(v)} `
 
 // 캔들 시각(epoch ms, UTC) — 4시간봉은 시각까지
 export function fmtBarTime(ms: number, withHour: boolean): string {
@@ -95,46 +98,66 @@ export function fmtBarTime(ms: number, withHour: boolean): string {
 
 export const fmtDateTime = (iso: string) => new Date(iso).toLocaleString('ko-KR')
 
-// ── 스타일 (기존 화면 색상 체계) ──
+// ── 스타일 (디자인 토큰 CSS 변수. lightweight-charts에 넘기는 색은 theme.ts의 C hex를 쓴다) ──
 
-export const MUTED = '#94a3b8'
-export const DIM = '#64748b'
-export const TEXT = '#e2e8f0'
+export const MUTED = 'var(--text-2)'
+export const DIM = 'var(--text-3)'
+export const TEXT = 'var(--text)'
 
 export const titleStyle: CSSProperties = { fontSize: '0.95rem', fontWeight: 700, color: TEXT, margin: '0 0 12px' }
-export const errorStyle: CSSProperties = { color: '#f87171', fontSize: '0.8rem' }
+export const errorStyle: CSSProperties = { color: 'var(--danger)', fontSize: '0.8rem' }
 export const noteStyle: CSSProperties = { color: MUTED, fontSize: '0.8rem' }
 
 export const inputStyle: CSSProperties = {
-  background: '#0f172a',
-  border: '1px solid #334155',
-  borderRadius: 6,
+  background: 'var(--bg-inset)',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 8,
   color: TEXT,
-  padding: '6px 8px',
+  padding: '7px 10px',
   fontSize: '0.8rem',
 }
 
-export const toggleStyle = (active: boolean): CSSProperties => ({
-  background: active ? '#1e3a5f' : 'transparent',
-  border: `1px solid ${active ? '#60a5fa' : '#334155'}`,
-  borderRadius: 8,
-  padding: '6px 14px',
+// 세그먼트 컨트롤 (시간봉·선형/로그·매수/매도)
+export const segGroupStyle: CSSProperties = {
+  display: 'inline-flex', gap: 2, padding: 3,
+  background: 'var(--bg-inset)', border: '1px solid var(--border)', borderRadius: 12,
+}
+
+// tone을 주면 활성 배경을 그 색으로 칠하고 글자는 --bg (매수 --up, 매도 --down)
+export const segButtonStyle = (active: boolean, tone?: string): CSSProperties => ({
+  border: 'none',
+  background: active ? (tone ?? 'var(--seg-active)') : 'transparent',
+  color: active ? (tone ? 'var(--bg)' : 'var(--text)') : MUTED,
+  borderRadius: 9,
+  height: 30,
+  padding: '0 12px',
   fontSize: 13,
-  color: active ? '#60a5fa' : DIM,
+  fontWeight: active ? 600 : 500,
+  cursor: 'pointer',
+})
+
+// 지표 토글·보조 버튼용 알약 칩
+export const toggleStyle = (active: boolean): CSSProperties => ({
+  background: active ? 'var(--seg-active)' : 'transparent',
+  border: `1px solid ${active ? 'var(--border-strong)' : 'var(--border)'}`,
+  borderRadius: 999,
+  padding: '5px 14px',
+  fontSize: 13,
+  color: active ? TEXT : DIM,
   cursor: 'pointer',
   fontWeight: active ? 600 : 400,
 })
 
 export const buttonStyle = (enabled: boolean): CSSProperties => ({
-  background: enabled ? '#2563eb' : '#334155',
+  background: enabled ? 'var(--accent)' : 'var(--seg-active)',
   border: 'none',
-  borderRadius: 6,
-  padding: '6px 14px',
+  borderRadius: 8,
+  padding: '7px 14px',
   fontSize: '0.8rem',
-  color: enabled ? '#fff' : DIM,
+  color: enabled ? 'var(--bg)' : DIM,
   cursor: enabled ? 'pointer' : 'not-allowed',
   fontWeight: 600,
 })
 
 export const thStyle: CSSProperties = { padding: '6px', fontWeight: 500 }
-export const tdStyle: CSSProperties = { padding: '6px', color: '#cbd5e1' }
+export const tdStyle: CSSProperties = { padding: '6px', color: MUTED }
