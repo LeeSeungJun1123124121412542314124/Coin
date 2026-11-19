@@ -98,9 +98,7 @@ export function Liquidity() {
         borderRadius: 16, padding: '14px 20px',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
-        <span style={{ fontSize: '1.2rem' }}>
-          {summary.overall_direction === 'supply' ? '🟢' : summary.overall_direction === 'drain' ? '🔴' : '⚪'}
-        </span>
+        <span style={{ width: 12, height: 12, borderRadius: '50%', background: dirColor, flexShrink: 0 }} />
         <div>
           <div style={{ color: dirColor, fontWeight: 700, fontSize: '0.95rem' }}>
             {dirLabel}

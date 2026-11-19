@@ -730,7 +730,7 @@ export function CompositeSimulator() {
 
                     {/* 방향 */}
                     <div style={{ color: isLong ? 'var(--up)' : 'var(--down)', fontSize: '0.78rem', fontWeight: 600 }}>
-                      {isLong ? '🟢롱' : '🔴숏'}
+                      {isLong ? '▲ 롱' : '▼ 숏'}
                     </div>
 
                     {/* 가격 */}

@@ -53,9 +53,9 @@ const LEVEL_LABELS: Record<string, string> = {
 const LEVEL_ICONS: Record<string, string> = {
   critical: '🚨',
   warning:  '⚠️',
-  bearish:  '🔵',
-  bullish:  '🟢',
-  neutral:  '⚪',
+  bearish:  '▼',
+  bullish:  '▲',
+  neutral:  '●',
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -75,7 +75,7 @@ function AnalysisCard({ cat, expanded, onToggle }: {
   const levelBg = LEVEL_BG[cat.level] ?? softBg(C.text2, 0.08)
   const levelBorder = LEVEL_BORDER[cat.level] ?? softBg(C.text2, 0.2)
   const levelLabel = LEVEL_LABELS[cat.level] ?? cat.level
-  const icon = LEVEL_ICONS[cat.level] ?? '⚪'
+  const icon = LEVEL_ICONS[cat.level] ?? '●'
   const time = cat.updated_at ? new Date(cat.updated_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
 
   const details = cat.details as Record<string, unknown>
