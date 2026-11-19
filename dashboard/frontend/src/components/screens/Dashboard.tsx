@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { Area, AreaChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Card } from '../shared/Card'
 import { GaugeChart } from '../shared/GaugeChart'
@@ -15,10 +16,14 @@ import { EconomicNewsSection } from '../shared/EconomicNewsSection'
 import { AltcoinSeasonCard } from '../shared/AltcoinSeasonCard'
 import { MacroHealthCard } from '../shared/MacroHealthCard'
 import { StatRow } from '../shared/StatRow'
+import { SkeletonCard } from '../shared/Skeleton'
 import { useApi } from '../../hooks/useApi'
 import { apiFetch } from '../../lib/api'
 import { fmt } from '../../lib/format'
 import { toTvSymbol } from '../../lib/tvSymbolMap'
+import { C, changeArrow, changeColor, softBg } from '../../lib/theme'
+import type { ChartResponse } from '../../lib/learningApi'
+import { summarizeBtcPhase, type PhaseTone } from './dashboardPhase'
 
 interface DashboardData {
   coins: Array<{
@@ -141,7 +146,7 @@ function BtcMarketCard({
 }) {
   const change = btc?.change_24h ?? null
   const up = change == null || change >= 0
-  const chartColor = (kimchi?.kimchi_premium_pct ?? 0) >= 0 ? '#4ade80' : '#f87171'
+  const chartColor = changeColor(kimchi?.kimchi_premium_pct)
 
   return (
     <Card className="mock-data-card" onClick={onOpen} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}>
@@ -170,16 +175,69 @@ function BtcMarketCard({
               </defs>
               <XAxis dataKey="t" hide />
               <YAxis hide domain={['auto', 'auto']} />
-              <ReferenceLine y={0} stroke="#64748b" strokeDasharray="3 3" strokeWidth={1} />
+              <ReferenceLine y={0} stroke={C.text3} strokeDasharray="3 3" strokeWidth={1} />
               <Tooltip
-                contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 6, fontSize: '0.7rem' }}
-                labelStyle={{ color: '#94a3b8' }}
+                contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, fontSize: '0.7rem' }}
+                labelStyle={{ color: C.text2 }}
                 formatter={(v) => [`${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`, '김프']}
               />
               <Area type="monotone" dataKey="v" stroke={chartColor} strokeWidth={2} fill="url(#mockKimchiGrad)" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
+      )}
+    </Card>
+  )
+}
+
+const TONE_COLOR: Record<PhaseTone, string> = { up: 'var(--up)', down: 'var(--down)', flat: 'var(--text-2)' }
+const TONE_MARK: Record<PhaseTone, string> = { up: '▲', down: '▼', flat: '–' }
+const fmtUsdt = (v: number) => v.toLocaleString('en-US', { maximumFractionDigits: 2 })
+
+// BTC 시장 국면 — 학습 탭 일봉 차트(BTCUSDT)에서 요약. 404·오류·빈 응답은 안내 문구
+function BtcPhaseCard() {
+  const { data, loading } = useApi<ChartResponse>('/api/learning/chart?symbol=BTCUSDT&interval=1d&limit=90', 300_000)
+  if (loading && !data) return <SkeletonCard height={260} />
+
+  const phase = summarizeBtcPhase(data)
+
+  return (
+    <Card className="phase-card">
+      <div className="phase-head">
+        <div>
+          <h2 className="phase-title">BTC 시장 국면</h2>
+          <span className="phase-pill">일봉 · 바이낸스 현물</span>
+        </div>
+        <Link to="/learning" className="phase-link">{phase ? '학습 탭에서 차트 보기 →' : '학습 탭으로 이동 →'}</Link>
+      </div>
+      {phase ? (
+        <>
+          <div className="phase-price-row">
+            <span className="phase-price">{fmtUsdt(phase.close)}</span>
+            <span className="phase-unit">USDT</span>
+          </div>
+          <div className="phase-sub">
+            <span style={{ color: changeColor(phase.changePct), fontWeight: 600 }}>
+              {changeArrow(phase.changePct)} {Math.abs(phase.changePct).toFixed(2)}%
+            </span>
+            <span> 전일 대비</span>
+            <span className="phase-range">90일 범위 {fmtUsdt(phase.low)} – {fmtUsdt(phase.high)}</span>
+          </div>
+          <svg className="phase-spark" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true">
+            <polygon points={`${phase.spark} 300,64 0,64`} fill={softBg(C.accent, 0.14)} />
+            <polyline points={phase.spark} fill="none" stroke="var(--accent)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+          </svg>
+          <div className="phase-states">
+            {phase.states.map(s => (
+              <div key={s.k} className="phase-state">
+                <div className="phase-state-label">{s.k}</div>
+                <div className="phase-state-value" style={{ color: TONE_COLOR[s.tone] }}>{TONE_MARK[s.tone]} {s.v}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="phase-empty">학습 탭에서 BTCUSDT를 추가하면 표시됩니다</div>
       )}
     </Card>
   )
@@ -295,48 +353,6 @@ export function Dashboard() {
   return (
     <div className="mock-spf-dashboard mock-real-dashboard">
       <div className="mock-real-stack">
-        <section className="mock-market-overview">
-          <div className="mock-card-head">
-            <h2>시장 메인 카드</h2>
-          </div>
-          <div className="mock-overview-grid">
-            <BtcMarketCard btc={btc} kimchi={data.kimchi} kimchiHistory={kimchiHistory} onOpen={() => setSelectedSymbol('BTC')} />
-            {data.global && <GlobalMarketCard data={data.global} />}
-            {stockIndices?.slice(0, 3).map(idx => (
-              <StockIndexCard
-                key={idx.ticker}
-                name={idx.name}
-                ticker={idx.ticker}
-                price={idx.price}
-                change_pct={idx.change_pct}
-                sparkline={idx.sparkline ?? []}
-                high={idx.high ?? null}
-                low={idx.low ?? null}
-                onOpenModal={(ticker) => {
-                  const found = stockIndices.find(item => item.ticker === ticker)
-                  setActiveIndex(found ? { ticker: found.ticker, name: found.name } : null)
-                }}
-              />
-            ))}
-            {data.fear_greed && (
-              <Card className="mock-data-card mock-gauge-data-card">
-                <div className="mock-data-title">공포탐욕지수</div>
-                <GaugeChart value={data.fear_greed.value} label={data.fear_greed.label} size={110} />
-              </Card>
-            )}
-            {mvrv !== null && (
-              <Card className="mock-data-card mock-gauge-data-card">
-                <div className="mock-data-title">MVRV Ratio</div>
-                <GaugeChart value={mvrvToGauge(mvrv)} label={mvrvLabel(data.onchain?.mvrv_signal, mvrv)} size={110} />
-              </Card>
-            )}
-          </div>
-        </section>
-
-        <section className="mock-news-section">
-          <EconomicNewsSection />
-        </section>
-
         <Section
           className="mock-coin-price-section"
           title="코인가격"
@@ -376,6 +392,54 @@ export function Dashboard() {
             ))}
           </div>
         </Section>
+
+        <div className="dash-top">
+          <BtcPhaseCard />
+          <div className="dash-kpi">
+            {data.fear_greed && (
+              <Card className="mock-data-card mock-gauge-data-card">
+                <div className="mock-data-title">공포탐욕지수</div>
+                <GaugeChart value={data.fear_greed.value} label={data.fear_greed.label} size={110} />
+              </Card>
+            )}
+            {mvrv !== null && (
+              <Card className="mock-data-card mock-gauge-data-card">
+                <div className="mock-data-title">MVRV Ratio</div>
+                <GaugeChart value={mvrvToGauge(mvrv)} label={mvrvLabel(data.onchain?.mvrv_signal, mvrv)} size={110} />
+              </Card>
+            )}
+          </div>
+        </div>
+
+        <section className="mock-market-overview">
+          <div className="mock-card-head">
+            <h2>시장 메인 카드</h2>
+          </div>
+          <div className="mock-overview-grid">
+            <BtcMarketCard btc={btc} kimchi={data.kimchi} kimchiHistory={kimchiHistory} onOpen={() => setSelectedSymbol('BTC')} />
+            {data.global && <GlobalMarketCard data={data.global} />}
+            {stockIndices?.slice(0, 3).map(idx => (
+              <StockIndexCard
+                key={idx.ticker}
+                name={idx.name}
+                ticker={idx.ticker}
+                price={idx.price}
+                change_pct={idx.change_pct}
+                sparkline={idx.sparkline ?? []}
+                high={idx.high ?? null}
+                low={idx.low ?? null}
+                onOpenModal={(ticker) => {
+                  const found = stockIndices.find(item => item.ticker === ticker)
+                  setActiveIndex(found ? { ticker: found.ticker, name: found.name } : null)
+                }}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className="mock-news-section">
+          <EconomicNewsSection />
+        </section>
 
         <Section
           className="mock-us-stock-section"
