@@ -84,8 +84,8 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
   const indSeriesRef = useRef<ISeriesApi<SeriesType>[]>([])
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [logScale, setLogScale] = useState(false)
-  // 칩 낙관적 상태 — 저장 성공 후 재조회될 때까지 서버 값보다 우선, 실패하면 지워서 되돌린다
-  const [pendingEnabled, setPendingEnabled] = useState<Partial<Record<SettingKey, boolean>>>({})
+  // 칩 낙관적 상태 — 만들 때의 차트 데이터(base)에만 유효하다. 새 데이터가 오면 서버 값이 우선
+  const [pending, setPending] = useState<{ base: ChartResponse | null; map: Partial<Record<SettingKey, boolean>> }>({ base: null, map: {} })
   const [chipError, setChipError] = useState<string | null>(null)
   const [shown, setShown] = useState<Record<IndicatorKey, boolean>>({ ichimoku: true, zigzag: true, fib: true })
 
@@ -257,19 +257,22 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
     })
   }, [logScale])
 
-  const isOn = (key: SettingKey) => pendingEnabled[key] ?? data?.settings.indicators[key].enabled ?? false
+  const pendingOf = (key: SettingKey) => (pending.base === data ? pending.map[key] : undefined)
+  const isOn = (key: SettingKey) => pendingOf(key) ?? data?.settings.indicators[key].enabled ?? false
 
   // 칩 — 낙관적으로 바꾸고 저장, 성공하면 차트 재조회, 실패하면 되돌리고 메시지 표시
   const toggleSetting = async (key: SettingKey) => {
     if (!data) return
     const enabled = !isOn(key)
     setChipError(null)
-    setPendingEnabled(s => ({ ...s, [key]: enabled }))
+    const prev = pendingOf(key)
+    setPending(p => ({ base: data, map: { ...(p.base === data ? p.map : {}), [key]: enabled } }))
     try {
       await putSettings({ indicators: { [key]: { ...data.settings.indicators[key], enabled } } })
       chart.reload()
     } catch (e) {
-      setPendingEnabled(s => { const n = { ...s }; delete n[key]; return n })
+      // 토글 전 상태(없으면 서버 값)로 정확히 복원
+      setPending(p => ({ base: data, map: { ...(p.base === data ? p.map : {}), [key]: prev } }))
       setChipError(errorText(e))
     }
   }
@@ -324,6 +327,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
       {settingsOpen && data && (
         <SettingsForm
           settings={data.settings}
+          isOn={isOn}
           onSaved={() => chart.reload()}
           onClose={() => setSettingsOpen(false)}
         />
@@ -407,8 +411,9 @@ function StateSummary({ data, withHour }: { data: ChartResponse; withHour: boole
 }
 
 // 와이코프·엘리엇(지그재그·피보) 설정 편집 — 저장 후 차트 재조회, 400은 메시지 표시
-function SettingsForm({ settings, onSaved, onClose }: {
+function SettingsForm({ settings, isOn, onSaved, onClose }: {
   settings: LearningSettings
+  isOn: (key: SettingKey) => boolean
   onSaved: () => void
   onClose: () => void
 }) {
@@ -470,17 +475,17 @@ function SettingsForm({ settings, onSaved, onClose }: {
           threshold_1M: Number(form.threshold_1M),
           levels: form.levels.split(',').map(s => s.trim()).filter(Boolean).map(Number),
         },
-        // enabled는 칩이 바꾸므로 기존 값을 그대로 보낸다
+        // enabled는 칩이 방금 저장한 값을 덮어쓰지 않게 현재 칩 상태를 보낸다
         indicators: {
           ma: {
-            ...settings.indicators.ma,
+            ...settings.indicators.ma, enabled: isOn('ma'),
             type: form.ma_type === 'ema' ? 'ema' : 'sma',
             periods: form.ma_periods.split(',').map(s => s.trim()).filter(Boolean).map(Number),
           },
-          bb: { ...settings.indicators.bb, period: Number(form.bb_period), stddev: Number(form.bb_stddev) },
-          rsi: { ...settings.indicators.rsi, period: Number(form.rsi_period) },
+          bb: { ...settings.indicators.bb, enabled: isOn('bb'), period: Number(form.bb_period), stddev: Number(form.bb_stddev) },
+          rsi: { ...settings.indicators.rsi, enabled: isOn('rsi'), period: Number(form.rsi_period) },
           macd: {
-            ...settings.indicators.macd,
+            ...settings.indicators.macd, enabled: isOn('macd'),
             fast: Number(form.macd_fast), slow: Number(form.macd_slow), signal: Number(form.macd_signal),
           },
         },
