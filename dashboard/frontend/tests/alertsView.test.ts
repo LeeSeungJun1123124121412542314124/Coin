@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 
-import { countByLevel, groupAlertsByDay } from '../src/components/screens/alertsView.ts'
+import { countByLevel, formatKst, groupAlertsByDay } from '../src/components/screens/alertsView.ts'
 
 // 기준 시각: 2026-11-19T03:00:00Z = KST 12:00
 const now = new Date('2026-11-19T03:00:00Z')
@@ -52,3 +52,9 @@ assert.deepEqual(counts, [
   { level: 'MACRO_EVENT', label: '매크로 이벤트', count: 0 },
 ])
 assert.equal(countByLevel([]).length, 6)
+
+// 카드 시각 KST 변환 (naive는 UTC 취급, offset 있으면 그대로)
+assert.equal(formatKst('2026-11-18T15:30:00'), '11-19 00:30')
+assert.equal(formatKst('2026-11-18T14:59:00.000000'), '11-18 23:59')
+assert.equal(formatKst('2026-11-18T15:30:00Z'), '11-19 00:30')
+assert.equal(formatKst('2026-11-19T00:30:00+09:00'), '11-19 00:30')

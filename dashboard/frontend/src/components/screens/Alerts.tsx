@@ -5,7 +5,7 @@ import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
 import { C, softBg } from '../../lib/theme'
-import { LEVEL_LABEL, countByLevel, groupAlertsByDay } from './alertsView'
+import { LEVEL_LABEL, countByLevel, formatKst, groupAlertsByDay } from './alertsView'
 
 interface AlertRecord {
   id: number
@@ -34,11 +34,6 @@ const LEVEL_COLOR: Record<string, string> = {
   WHALE: C.accent,
   STALE_SIGNAL: C.text2,
   MACRO_EVENT: C.info,
-}
-
-function formatTs(ts: string): string {
-  // "2026-04-10T12:34:56.000000" → "04-10 12:34"
-  return ts.slice(5, 16).replace('T', ' ')
 }
 
 // 방향 라벨/색 — long=급등(--up), short=급락(--down), neutral=중립(--surface-2 바탕)
@@ -82,6 +77,7 @@ export function Alerts() {
 
       {/* 요약 + 필터 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
+        <span style={{ color: 'var(--text-3)', fontSize: 12 }}>시각은 KST</span>
         <span style={{ color: 'var(--text-2)', fontSize: 14 }}>
           총 <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text)', fontWeight: 600 }}>{data.total}</span>건
         </span>
@@ -101,7 +97,8 @@ export function Alerts() {
       </div>
 
       {/* 레벨별 건수 칩 */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ color: 'var(--text-3)', fontSize: 12 }}>최근 {alerts.length}건 기준</span>
         {levelCounts.map(({ level, label, count }) => {
           const color = LEVEL_COLOR[level]
           return (
@@ -152,7 +149,7 @@ export function Alerts() {
                         </span>
                         <div>
                           <div style={{ color: 'var(--text)', fontSize: 14, fontWeight: 600 }}>{alert.symbol}</div>
-                          <div style={{ color: 'var(--text-3)', fontSize: 12, fontFamily: 'var(--font-mono)' }}>{formatTs(alert.timestamp)}</div>
+                          <div style={{ color: 'var(--text-3)', fontSize: 12, fontFamily: 'var(--font-mono)' }}>{formatKst(alert.timestamp)}</div>
                         </div>
                       </div>
 

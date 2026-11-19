@@ -19,11 +19,30 @@ function parseTs(ts: string): number {
   return new Date(hasZone ? ts : `${ts}Z`).getTime()
 }
 
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+// KST(UTC+9) 시각 구성요소 — 날짜 묶음과 카드 시각 표시가 같은 변환을 쓴다
+function kstParts(ms: number) {
+  const d = new Date(ms + KST_OFFSET_MS)
+  return {
+    year: d.getUTCFullYear(),
+    month: pad2(d.getUTCMonth() + 1),
+    day: pad2(d.getUTCDate()),
+    hour: pad2(d.getUTCHours()),
+    minute: pad2(d.getUTCMinutes()),
+  }
+}
+
 // KST 날짜 키 'YYYY-MM-DD'
 function kstDayKey(ms: number): string {
-  const d = new Date(ms + KST_OFFSET_MS)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
+  const p = kstParts(ms)
+  return `${p.year}-${p.month}-${p.day}`
+}
+
+// 카드 표시용 KST 'MM-DD HH:MM'
+export function formatKst(ts: string): string {
+  const p = kstParts(parseTs(ts))
+  return `${p.month}-${p.day} ${p.hour}:${p.minute}`
 }
 
 export function groupAlertsByDay<T extends { timestamp: string }>(
