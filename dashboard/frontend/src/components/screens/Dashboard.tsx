@@ -220,12 +220,12 @@ function BtcPhaseCard() {
             <span style={{ color: changeColor(phase.changePct), fontWeight: 600 }}>
               {changeArrow(phase.changePct)} {Math.abs(phase.changePct).toFixed(2)}%
             </span>
-            <span> 전일 대비</span>
+            <span style={{ marginLeft: 6 }}>전일 대비</span>
             <span className="phase-range">90일 범위 {fmtUsdt(phase.low)} – {fmtUsdt(phase.high)}</span>
           </div>
           <svg className="phase-spark" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true">
             <polygon points={`${phase.spark} 300,64 0,64`} fill={softBg(C.accent, 0.14)} />
-            <polyline points={phase.spark} fill="none" stroke="var(--accent)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+            <polyline points={phase.spark} fill="none" stroke={C.accent} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
           </svg>
           <div className="phase-states">
             {phase.states.map(s => (
