@@ -52,6 +52,11 @@ def test_rsi_monotonic_and_warmup():
     assert all(v == 0 for v in down[14:])
 
 
+def test_rsi_wilder_smoothing_by_hand():
+    # period 2: 첫 평균 gain/loss 0.5/0.5 → RSI 50, 다음 봉(+2) gain 1.25·loss 0.25 → RS 5 → 100-100/6
+    assert li.rsi([1, 2, 1, 3], 2) == [None, None, 50, pytest.approx(100 - 100 / 6)]
+
+
 def test_macd_shape():
     vals = [float(i % 7 + i) for i in range(80)]
     out = li.macd(vals, 12, 26, 9)
