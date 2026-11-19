@@ -369,7 +369,7 @@ function UsInsiderView({ data }: { data: UsInsiderData }) {
                   </span>
                   <span style={{
                     textAlign: 'right', fontWeight: 600,
-                    color: changeColor(t.value ?? 0), fontFamily: 'var(--font-mono)',
+                    color: t.code === 'P' ? 'var(--up)' : 'var(--down)', fontFamily: 'var(--font-mono)',
                   }}>
                     {fmt(t.value)}
                   </span>
