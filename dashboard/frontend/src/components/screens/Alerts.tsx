@@ -125,7 +125,7 @@ export function Alerts() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {dayGroups.map(group => (
-            <section key={group.date} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <section key={group.key} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <h3 style={{ margin: 0, display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
                 {group.label}
                 {group.label !== group.date && (

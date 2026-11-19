@@ -36,6 +36,12 @@ assert.deepEqual(unordered[0].items.map((i) => i.alert_level), ['B', 'C'])
 
 assert.deepEqual(groupAlertsByDay([], now), [])
 
+// 날짜 키는 연도를 포함한다 (React key용, 해가 다른 같은 MM-DD 구분)
+assert.deepEqual(
+  groupAlertsByDay([mk('2025-11-16T10:00:00Z'), mk('2026-11-16T10:00:00Z')], now).map((g) => g.key),
+  ['2026-11-16', '2025-11-16'],
+)
+
 // 레벨 건수: 6개 고정 순서, 없는 레벨 0, 모르는 레벨은 세지 않음
 const counts = countByLevel([
   { alert_level: 'HIGH' },

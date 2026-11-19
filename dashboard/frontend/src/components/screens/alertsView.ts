@@ -49,7 +49,7 @@ export function formatKst(ts: string): string {
 export function groupAlertsByDay<T extends { timestamp: string }>(
   alerts: T[],
   now: Date,
-): { label: string; date: string; items: T[] }[] {
+): { key: string; label: string; date: string; items: T[] }[] {
   const todayKey = kstDayKey(now.getTime())
   const yesterdayKey = kstDayKey(now.getTime() - DAY_MS)
   const byDay = new Map<string, T[]>()
@@ -65,7 +65,7 @@ export function groupAlertsByDay<T extends { timestamp: string }>(
     .map((key) => {
       const date = key.slice(5)
       const label = key === todayKey ? '오늘' : key === yesterdayKey ? '어제' : date
-      return { label, date, items: byDay.get(key) as T[] }
+      return { key, label, date, items: byDay.get(key) as T[] }
     })
 }
 
