@@ -3,6 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Cell,
 } from 'recharts'
 import { apiFetch } from '../../lib/api'
+import { C, softBg } from '../../lib/theme'
 
 // ────────────────────────────────────────
 // 타입 정의
@@ -34,9 +35,9 @@ interface BacktestResult {
 // ────────────────────────────────────────
 
 function hitRateColor(rate: number): string {
-  if (rate >= 60) return '#4ade80'
-  if (rate >= 40) return '#fbbf24'
-  return '#f87171'
+  if (rate >= 60) return C.ok
+  if (rate >= 40) return C.warn
+  return C.danger
 }
 
 // ────────────────────────────────────────
@@ -58,18 +59,18 @@ function BacktestTooltip({
   const d = payload[0].payload
   return (
     <div style={{
-      background: '#0f172a',
-      border: '1px solid #334155',
+      background: 'var(--bg-inset)',
+      border: '1px solid var(--border-strong)',
       borderRadius: 8,
       padding: '8px 12px',
       fontSize: '0.75rem',
-      color: '#e2e8f0',
+      color: 'var(--text)',
     }}>
       <div style={{ fontWeight: 600, marginBottom: 4 }}>{d.name}</div>
-      <div style={{ color: '#94a3b8' }}>
+      <div style={{ color: 'var(--text-2)' }}>
         적중률: <span style={{ color: hitRateColor(d.hit_rate) }}>{d.hit_rate.toFixed(1)}%</span>
       </div>
-      <div style={{ color: '#94a3b8' }}>신호수: {d.signal_count}</div>
+      <div style={{ color: 'var(--text-2)' }}>신호수: {d.signal_count}</div>
     </div>
   )
 }
@@ -81,10 +82,10 @@ function BacktestTooltip({
 function SectionDivider({ title }: { title: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-      <span style={{ color: '#94a3b8', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+      <span style={{ color: 'var(--text-2)', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
         {title}
       </span>
-      <div style={{ flex: 1, height: 1, background: '#1e293b' }} />
+      <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
     </div>
   )
 }
@@ -128,8 +129,8 @@ export function AutoBacktest() {
 
       {/* 컨트롤 바 */}
       <div style={{
-        background: '#0f172a',
-        border: '1px solid #1e293b',
+        background: 'var(--bg-inset)',
+        border: '1px solid var(--border)',
         borderRadius: 10,
         padding: '14px 20px',
         marginBottom: 12,
@@ -140,15 +141,15 @@ export function AutoBacktest() {
       }}>
         {/* 심볼 선택 */}
         <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>심볼:</span>
+          <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>심볼:</span>
           <select
             value={symbol}
             onChange={(e) => setSymbol(e.target.value)}
             style={{
-              background: '#1e293b',
-              border: '1px solid #334155',
+              background: 'var(--surface-2)',
+              border: '1px solid var(--border-strong)',
               borderRadius: 6,
-              color: '#e2e8f0',
+              color: 'var(--text)',
               fontSize: '0.82rem',
               padding: '4px 8px',
               cursor: 'pointer',
@@ -162,15 +163,15 @@ export function AutoBacktest() {
 
         {/* 수평선 선택 */}
         <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>수평선:</span>
+          <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>수평선:</span>
           <select
             value={horizonH}
             onChange={(e) => setHorizonH(Number(e.target.value))}
             style={{
-              background: '#1e293b',
-              border: '1px solid #334155',
+              background: 'var(--surface-2)',
+              border: '1px solid var(--border-strong)',
               borderRadius: 6,
-              color: '#e2e8f0',
+              color: 'var(--text)',
               fontSize: '0.82rem',
               padding: '4px 8px',
               cursor: 'pointer',
@@ -189,9 +190,9 @@ export function AutoBacktest() {
           style={{
             padding: '5px 16px',
             borderRadius: 6,
-            border: '1px solid #3b82f6',
-            background: loading ? '#1e293b' : 'rgba(59,130,246,0.15)',
-            color: loading ? '#475569' : '#60a5fa',
+            border: '1px solid var(--accent)',
+            background: loading ? 'var(--surface-2)' : softBg(C.accent, 0.15),
+            color: loading ? 'var(--text-3)' : 'var(--accent)',
             fontSize: '0.82rem',
             cursor: loading ? 'not-allowed' : 'pointer',
             fontWeight: 600,
@@ -202,12 +203,12 @@ export function AutoBacktest() {
 
         {/* 로딩 표시 */}
         {loading && (
-          <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>로딩 중...</span>
+          <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>로딩 중...</span>
         )}
 
         {/* 메타 정보 */}
         {result && !loading && (
-          <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: 4 }}>
+          <span style={{ color: 'var(--text-3)', fontSize: '0.75rem', marginLeft: 4 }}>
             데이터: {result.lookback_bars}봉 기준
             {' '}&nbsp;|&nbsp;{result.from_cache ? '캐시됨' : '신규 계산'}
             {' '}&nbsp;|&nbsp;갱신: {result.computed_at.slice(0, 16).replace('T', ' ')}
@@ -218,11 +219,11 @@ export function AutoBacktest() {
       {/* 에러 메시지 */}
       {error && (
         <div style={{
-          background: 'rgba(248,113,113,0.1)',
-          border: '1px solid #f87171',
+          background: softBg(C.danger, 0.1),
+          border: '1px solid var(--danger)',
           borderRadius: 8,
           padding: '10px 16px',
-          color: '#f87171',
+          color: 'var(--danger)',
           fontSize: '0.85rem',
           marginBottom: 12,
         }}>
@@ -233,8 +234,8 @@ export function AutoBacktest() {
       {/* 결과 테이블 */}
       {result && (
         <div style={{
-          background: '#0f172a',
-          border: '1px solid #1e293b',
+          background: 'var(--bg-inset)',
+          border: '1px solid var(--border)',
           borderRadius: 10,
           overflow: 'hidden',
           marginBottom: 16,
@@ -244,12 +245,12 @@ export function AutoBacktest() {
             display: 'grid',
             gridTemplateColumns: '1.4fr 60px 50px 50px 70px 80px 110px',
             padding: '10px 16px',
-            borderBottom: '1px solid #1e293b',
-            background: '#0f172a',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--bg-inset)',
           }}>
             {['지표', '신호수', '롱', '숏', '적중률', '평균수익', '최대익/손'].map((col) => (
               <div key={col} style={{
-                color: '#64748b',
+                color: 'var(--text-3)',
                 fontSize: '0.7rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.06em',
@@ -267,19 +268,19 @@ export function AutoBacktest() {
                 display: 'grid',
                 gridTemplateColumns: '1.4fr 60px 50px 50px 70px 80px 110px',
                 padding: '9px 16px',
-                borderBottom: idx < result.indicators.length - 1 ? '1px solid #1e293b' : 'none',
-                background: idx % 2 === 0 ? '#0f172a' : 'rgba(30,41,59,0.3)',
+                borderBottom: idx < result.indicators.length - 1 ? '1px solid var(--border)' : 'none',
+                background: idx % 2 === 0 ? 'var(--bg-inset)' : softBg(C.surface2, 0.3),
                 alignItems: 'center',
               }}
             >
-              <div style={{ color: '#e2e8f0', fontSize: '0.82rem', fontWeight: 500 }}>
+              <div style={{ color: 'var(--text)', fontSize: '0.82rem', fontWeight: 500 }}>
                 {ind.name}
               </div>
 
               {ind.signal_count === 0 ? (
                 <div style={{
                   gridColumn: '2 / 8',
-                  color: '#475569',
+                  color: 'var(--text-3)',
                   fontSize: '0.78rem',
                   fontStyle: 'italic',
                 }}>
@@ -287,23 +288,23 @@ export function AutoBacktest() {
                 </div>
               ) : (
                 <>
-                  <div style={{ color: '#94a3b8', fontSize: '0.78rem' }}>{ind.signal_count}</div>
-                  <div style={{ color: '#4ade80', fontSize: '0.78rem' }}>{ind.long_signals}</div>
-                  <div style={{ color: '#f87171', fontSize: '0.78rem' }}>{ind.short_signals}</div>
+                  <div style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>{ind.signal_count}</div>
+                  <div style={{ color: 'var(--up)', fontSize: '0.78rem' }}>{ind.long_signals}</div>
+                  <div style={{ color: 'var(--down)', fontSize: '0.78rem' }}>{ind.short_signals}</div>
                   <div style={{ color: hitRateColor(ind.hit_rate), fontSize: '0.82rem', fontWeight: 600 }}>
                     {ind.hit_rate.toFixed(0)}%
                   </div>
                   <div style={{
-                    color: ind.avg_return_pct >= 0 ? '#4ade80' : '#f87171',
+                    color: ind.avg_return_pct >= 0 ? 'var(--up)' : 'var(--down)',
                     fontSize: '0.78rem',
                     fontWeight: 600,
                   }}>
                     {ind.avg_return_pct >= 0 ? '+' : ''}{ind.avg_return_pct.toFixed(2)}%
                   </div>
                   <div style={{ fontSize: '0.73rem' }}>
-                    <span style={{ color: '#4ade80' }}>{ind.max_win_pct >= 0 ? '+' : ''}{ind.max_win_pct.toFixed(1)}%</span>
-                    <span style={{ color: '#64748b' }}>/</span>
-                    <span style={{ color: '#f87171' }}>{ind.max_loss_pct.toFixed(1)}%</span>
+                    <span style={{ color: 'var(--up)' }}>{ind.max_win_pct >= 0 ? '+' : ''}{ind.max_win_pct.toFixed(1)}%</span>
+                    <span style={{ color: 'var(--text-3)' }}>/</span>
+                    <span style={{ color: 'var(--down)' }}>{ind.max_loss_pct.toFixed(1)}%</span>
                   </div>
                 </>
               )}
@@ -315,8 +316,8 @@ export function AutoBacktest() {
       {/* Recharts 바 차트 */}
       {result && chartData.length > 0 && (
         <div style={{
-          background: '#0f172a',
-          border: '1px solid #1e293b',
+          background: 'var(--bg-inset)',
+          border: '1px solid var(--border)',
           borderRadius: 10,
           padding: '16px 20px',
           marginBottom: 12,
@@ -325,13 +326,13 @@ export function AutoBacktest() {
             <BarChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
               <XAxis
                 dataKey="name"
-                tick={{ fill: '#475569', fontSize: 10 }}
+                tick={{ fill: C.text3, fontSize: 10 }}
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis
                 domain={[0, 100]}
-                tick={{ fill: '#475569', fontSize: 10 }}
+                tick={{ fill: C.text3, fontSize: 10 }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v: number) => `${v}%`}
@@ -340,9 +341,9 @@ export function AutoBacktest() {
               <Tooltip content={<BacktestTooltip />} />
               <ReferenceLine
                 y={50}
-                stroke="#64748b"
+                stroke={C.text3}
                 strokeDasharray="3 3"
-                label={{ value: '50%', fill: '#64748b', fontSize: 10 }}
+                label={{ value: '50%', fill: C.text3, fontSize: 10 }}
               />
               <Bar dataKey="hit_rate" radius={[3, 3, 0, 0]} isAnimationActive={false}>
                 {chartData.map((entry) => (
@@ -355,7 +356,7 @@ export function AutoBacktest() {
       )}
 
       {/* 면책 문구 */}
-      <div style={{ color: '#64748b', fontSize: '0.72rem', marginTop: 8 }}>
+      <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginTop: 8 }}>
         ⚠️ 과거 데이터 기반 통계입니다. 미래 수익을 보장하지 않습니다.
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiFetch } from '../../lib/api'
+import { C, softBg } from '../../lib/theme'
 
 // ────────────────────────────────────────
 // 타입 정의 (백엔드 backtest_tuner 결과 스키마와 일치)
@@ -85,18 +86,18 @@ interface TuningResultTableProps {
 // ────────────────────────────────────────
 
 const cardStyle: React.CSSProperties = {
-  background: '#111827',
-  border: '1px solid #1e293b',
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
   borderRadius: 10,
   padding: '16px 20px',
   marginBottom: 12,
 }
 
 const inputStyle: React.CSSProperties = {
-  background: '#1e293b',
-  border: '1px solid #334155',
+  background: 'var(--bg-inset)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 6,
-  color: '#e2e8f0',
+  color: 'var(--text)',
   fontSize: '0.82rem',
   padding: '4px 8px',
   outline: 'none',
@@ -198,11 +199,11 @@ export function TuningResultTable({
           alignItems: 'center',
           gap: 14,
         }}>
-          <span style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>
+          <span style={{ color: 'var(--text-2)', fontSize: '0.85rem', fontWeight: 600 }}>
             🔬 자동 튜닝 (Walk-Forward)
           </span>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>윈도우당 trials:</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>윈도우당 trials:</span>
             <input
               type="number"
               value={nTrials}
@@ -215,7 +216,7 @@ export function TuningResultTable({
             />
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>윈도우 수:</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>윈도우 수:</span>
             <input
               type="number"
               value={nWindows}
@@ -233,9 +234,9 @@ export function TuningResultTable({
             style={{
               padding: '6px 18px',
               borderRadius: 6,
-              border: `1px solid ${isRunning ? '#1e293b' : '#a855f7'}`,
-              background: isRunning ? '#0f1117' : 'rgba(168,85,247,0.15)',
-              color: isRunning ? '#334155' : '#c084fc',
+              border: `1px solid ${isRunning ? 'var(--border)' : 'var(--violet)'}`,
+              background: isRunning ? 'var(--bg)' : softBg(C.violet, 0.15),
+              color: isRunning ? 'var(--text-3)' : 'var(--violet)',
               fontSize: '0.85rem',
               cursor: isRunning ? 'not-allowed' : 'pointer',
               fontWeight: 600,
@@ -245,7 +246,7 @@ export function TuningResultTable({
             {isRunning ? '🔄 실행 중...' : '🚀 자동 튜닝 시작'}
           </button>
         </div>
-        <div style={{ color: '#64748b', fontSize: '0.72rem', marginTop: 6 }}>
+        <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginTop: 6 }}>
           전체 기간({startDate} ~ {endDate})을 expanding window로 분할해 IS에서 최적
           파라미터를 찾고 OOS로 검증합니다. 12개 파라미터(임계값/SL·TP/포지션/가중치)를
           Optuna TPE로 탐색.
@@ -255,11 +256,11 @@ export function TuningResultTable({
       {/* ── 에러 ── */}
       {error && (
         <div style={{
-          background: 'rgba(239,68,68,0.08)',
-          border: '1px solid #b91c1c',
+          background: softBg(C.danger, 0.08),
+          border: '1px solid var(--danger)',
           borderRadius: 8,
           padding: '10px 14px',
-          color: '#fca5a5',
+          color: 'var(--danger)',
           marginBottom: 12,
           fontSize: '0.8rem',
         }}>
@@ -270,11 +271,11 @@ export function TuningResultTable({
       {/* ── 진행률 ── */}
       {isRunning && progress && (
         <div style={cardStyle}>
-          <div style={{ color: '#cbd5e1', fontSize: '0.8rem', marginBottom: 8 }}>
+          <div style={{ color: 'var(--text-2)', fontSize: '0.8rem', marginBottom: 8 }}>
             진행: Window {progress.current_window}/{progress.total_windows}, Trial{' '}
             {progress.current_trial}/{progress.total_trials}
           </div>
-          <div style={{ background: '#1e293b', borderRadius: 4, height: 8, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--seg-active)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
             <div
               style={{
                 width: `${
@@ -284,7 +285,7 @@ export function TuningResultTable({
                       100
                     : 0
                 }%`,
-                background: 'linear-gradient(90deg, #a855f7, #60a5fa)',
+                background: 'linear-gradient(90deg, var(--violet), var(--accent))',
                 height: '100%',
                 transition: 'width 0.4s ease',
               }}
@@ -301,8 +302,8 @@ export function TuningResultTable({
               <div style={{
                 padding: '6px 14px',
                 borderRadius: 999,
-                background: aggregate.passes_filter ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-                color: aggregate.passes_filter ? '#86efac' : '#fca5a5',
+                background: aggregate.passes_filter ? softBg(C.ok, 0.15) : softBg(C.danger, 0.15),
+                color: aggregate.passes_filter ? 'var(--ok)' : 'var(--danger)',
                 fontSize: '0.85rem',
                 fontWeight: 700,
               }}>
@@ -310,13 +311,13 @@ export function TuningResultTable({
               </div>
               <Metric label="OOS 평균 Expectancy"
                 value={`${aggregate.avg_oos_expectancy >= 0 ? '+' : ''}${aggregate.avg_oos_expectancy.toFixed(3)}`}
-                color={aggregate.avg_oos_expectancy > 0 ? '#22c55e' : '#ef4444'} />
+                color={aggregate.avg_oos_expectancy > 0 ? 'var(--up)' : 'var(--down)'} />
               <Metric label="OOS 평균 PF"
                 value={aggregate.avg_oos_profit_factor.toFixed(2)}
-                color={aggregate.avg_oos_profit_factor >= 1.5 ? '#22c55e' : '#94a3b8'} />
+                color={aggregate.avg_oos_profit_factor >= 1.5 ? 'var(--ok)' : 'var(--text-2)'} />
               <Metric label="OOS 평균 MDD"
                 value={`${aggregate.avg_oos_mdd.toFixed(2)}%`}
-                color={aggregate.avg_oos_mdd <= 25 ? '#22c55e' : '#ef4444'} />
+                color={aggregate.avg_oos_mdd <= 25 ? 'var(--ok)' : 'var(--danger)'} />
               <Metric label="OOS 평균 승률"
                 value={`${(aggregate.avg_oos_win_rate * 100).toFixed(1)}%`} />
               <Metric label="OOS 평균 거래수"
@@ -328,11 +329,11 @@ export function TuningResultTable({
 
           {/* ── 상위 10 조합 테이블 ── */}
           <div style={cardStyle}>
-            <div style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600, marginBottom: 10 }}>
+            <div style={{ color: 'var(--text-2)', fontSize: '0.85rem', fontWeight: 600, marginBottom: 10 }}>
               상위 {top.length}개 필터 통과 조합 (행 클릭 시 단일 백테스트로 재현)
             </div>
             {top.length === 0 ? (
-              <div style={{ color: '#64748b', fontSize: '0.8rem' }}>
+              <div style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>
                 필터(PF≥1.5, MDD≤25%, 거래수≥30)를 통과하는 조합이 없습니다.
                 튜닝 trial 수를 늘리거나 신호 체계 자체를 재검토해야 합니다.
               </div>
@@ -340,7 +341,7 @@ export function TuningResultTable({
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
                   <thead>
-                    <tr style={{ color: '#94a3b8', borderBottom: '1px solid #1e293b' }}>
+                    <tr style={{ color: 'var(--text-2)', borderBottom: '1px solid var(--border)' }}>
                       <th style={th}>#</th>
                       <th style={th}>Win</th>
                       <th style={th}>Expectancy</th>
@@ -372,16 +373,16 @@ export function TuningResultTable({
                           leverage: Number(c.params.leverage),
                         })}
                         style={{
-                          color: '#e2e8f0',
-                          borderBottom: '1px solid #1e293b',
+                          color: 'var(--text)',
+                          borderBottom: '1px solid var(--border)',
                           cursor: onSelectParams ? 'pointer' : 'default',
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = '#1e293b')}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-2)')}
                         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                       >
                         <td style={td}>{idx + 1}</td>
                         <td style={td}>{c.window_index}</td>
-                        <td style={{ ...td, color: c.metrics.expectancy > 0 ? '#86efac' : '#fca5a5' }}>
+                        <td style={{ ...td, color: c.metrics.expectancy > 0 ? 'var(--up)' : 'var(--down)' }}>
                           {c.metrics.expectancy.toFixed(3)}
                         </td>
                         <td style={td}>{c.metrics.profit_factor.toFixed(2)}</td>
@@ -410,8 +411,8 @@ export function TuningResultTable({
       {job?.status === 'failed' && (
         <div style={{
           ...cardStyle,
-          border: '1px solid #b91c1c',
-          color: '#fca5a5',
+          border: '1px solid var(--danger)',
+          color: 'var(--danger)',
         }}>
           ❌ 튜닝 실패: {job.error ?? '알 수 없는 오류'}
         </div>
@@ -427,8 +428,8 @@ export function TuningResultTable({
 function Metric({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div>
-      <div style={{ color: '#94a3b8', fontSize: '0.7rem', marginBottom: 2 }}>{label}</div>
-      <div style={{ color: color ?? '#f1f5f9', fontWeight: 700, fontSize: '0.95rem' }}>{value}</div>
+      <div style={{ color: 'var(--text-2)', fontSize: '0.7rem', marginBottom: 2 }}>{label}</div>
+      <div style={{ color: color ?? 'var(--text)', fontWeight: 700, fontSize: '0.95rem' }}>{value}</div>
     </div>
   )
 }

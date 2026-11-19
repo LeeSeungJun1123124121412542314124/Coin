@@ -80,7 +80,7 @@ export function StockSlotEditor({ market, slots, onUpdate }: StockSlotEditorProp
         const row = rows[i]
         return (
           <div key={slot.position} style={{ display: 'flex', flexDirection: 'column', gap: 4, position: 'relative' }}>
-            <div style={{ color: '#94a3b8', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            <div style={{ color: 'var(--text-2)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               슬롯 #{slot.position}
             </div>
 
@@ -100,10 +100,10 @@ export function StockSlotEditor({ market, slots, onUpdate }: StockSlotEditorProp
                 style={{
                   flex: 1,
                   minWidth: 0,
-                  background: '#0f172a',
-                  border: `1px solid ${row.error ? '#f87171' : '#334155'}`,
+                  background: 'var(--bg-inset)',
+                  border: `1px solid ${row.error ? 'var(--danger)' : 'var(--border-strong)'}`,
                   borderRadius: 4,
-                  color: '#e2e8f0',
+                  color: 'var(--text)',
                   fontSize: '0.85rem',
                   padding: '3px 6px',
                   outline: 'none',
@@ -116,9 +116,9 @@ export function StockSlotEditor({ market, slots, onUpdate }: StockSlotEditorProp
                 title="검색"
                 style={{
                   background: 'transparent',
-                  border: '1px solid #60a5fa',
+                  border: '1px solid var(--accent)',
                   borderRadius: 4,
-                  color: '#60a5fa',
+                  color: 'var(--accent)',
                   cursor: row.loading ? 'not-allowed' : 'pointer',
                   fontSize: '0.85rem',
                   padding: '2px 6px',
@@ -131,7 +131,7 @@ export function StockSlotEditor({ market, slots, onUpdate }: StockSlotEditorProp
                       display: 'inline-block',
                       width: 10,
                       height: 10,
-                      border: '2px solid #60a5fa',
+                      border: '2px solid var(--accent)',
                       borderTopColor: 'transparent',
                       borderRadius: '50%',
                       animation: 'spin 0.6s linear infinite',
@@ -151,15 +151,15 @@ export function StockSlotEditor({ market, slots, onUpdate }: StockSlotEditorProp
                   left: 0,
                   right: 0,
                   zIndex: 50,
-                  background: '#1e293b',
-                  border: '1px solid #334155',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 6,
                   boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
                   overflow: 'hidden',
                 }}
               >
                 {row.suggestions.length === 0 ? (
-                  <div style={{ padding: '6px 10px', color: '#94a3b8', fontSize: '0.8rem' }}>
+                  <div style={{ padding: '6px 10px', color: 'var(--text-2)', fontSize: '0.8rem' }}>
                     검색 결과 없음
                   </div>
                 ) : (
@@ -177,14 +177,14 @@ export function StockSlotEditor({ market, slots, onUpdate }: StockSlotEditorProp
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         gap: 8,
-                        borderBottom: '1px solid #1e293b',
-                        background: '#0f172a',
+                        borderBottom: '1px solid var(--border)',
+                        background: 'var(--bg-inset)',
                       }}
-                      onMouseEnter={e => (e.currentTarget.style.background = '#1e3a5f')}
-                      onMouseLeave={e => (e.currentTarget.style.background = '#0f172a')}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--seg-active)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'var(--bg-inset)')}
                     >
-                      <span style={{ color: '#60a5fa', fontSize: '0.8rem', fontWeight: 600 }}>{s.ticker}</span>
-                      <span style={{ color: '#94a3b8', fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+                      <span style={{ color: 'var(--accent)', fontSize: '0.8rem', fontWeight: 600 }}>{s.ticker}</span>
+                      <span style={{ color: 'var(--text-2)', fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
                     </div>
                   ))
                 )}
@@ -192,7 +192,7 @@ export function StockSlotEditor({ market, slots, onUpdate }: StockSlotEditorProp
             )}
 
             {row.error && (
-              <div style={{ color: '#f87171', fontSize: '0.7rem' }}>{row.error}</div>
+              <div style={{ color: 'var(--danger)', fontSize: '0.7rem' }}>{row.error}</div>
             )}
           </div>
         )

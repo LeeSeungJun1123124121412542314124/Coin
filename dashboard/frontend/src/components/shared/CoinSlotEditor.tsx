@@ -37,7 +37,7 @@ export function CoinSlotEditor({
       style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
     >
       {/* 슬롯 번호 라벨 */}
-      <div style={{ color: '#94a3b8', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+      <div style={{ color: 'var(--text-2)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
         슬롯 #{position}
       </div>
 
@@ -53,10 +53,10 @@ export function CoinSlotEditor({
           style={{
             flex: 1,
             minWidth: 0,
-            background: '#0f172a',
-            border: `1px solid ${error ? '#f87171' : '#334155'}`,
+            background: 'var(--bg-inset)',
+            border: `1px solid ${error ? 'var(--danger)' : 'var(--border-strong)'}`,
             borderRadius: 4,
-            color: '#e2e8f0',
+            color: 'var(--text)',
             fontSize: '0.85rem',
             padding: '3px 6px',
             outline: 'none',
@@ -70,9 +70,9 @@ export function CoinSlotEditor({
           title="저장"
           style={{
             background: 'transparent',
-            border: '1px solid #60a5fa',
+            border: '1px solid var(--accent)',
             borderRadius: 4,
-            color: '#60a5fa',
+            color: 'var(--accent)',
             cursor: loading ? 'not-allowed' : 'pointer',
             fontSize: '0.85rem',
             padding: '2px 6px',
@@ -86,7 +86,7 @@ export function CoinSlotEditor({
                 display: 'inline-block',
                 width: 10,
                 height: 10,
-                border: '2px solid #60a5fa',
+                border: '2px solid var(--accent)',
                 borderTopColor: 'transparent',
                 borderRadius: '50%',
                 animation: 'spin 0.6s linear infinite',
@@ -103,9 +103,9 @@ export function CoinSlotEditor({
           title="취소"
           style={{
             background: 'transparent',
-            border: '1px solid #475569',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
-            color: '#94a3b8',
+            color: 'var(--text-2)',
             cursor: loading ? 'not-allowed' : 'pointer',
             fontSize: '0.85rem',
             padding: '2px 6px',
@@ -118,7 +118,7 @@ export function CoinSlotEditor({
 
       {/* 에러 텍스트 */}
       {error && (
-        <div style={{ color: '#f87171', fontSize: '0.7rem' }}>{error}</div>
+        <div style={{ color: 'var(--danger)', fontSize: '0.7rem' }}>{error}</div>
       )}
 
       {/* 스피너 keyframe 인젝션 (전역 style 태그) */}

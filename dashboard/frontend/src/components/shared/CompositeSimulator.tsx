@@ -9,6 +9,7 @@ import {
   ReferenceLine,
 } from 'recharts'
 import { apiFetch } from '../../lib/api'
+import { C, softBg } from '../../lib/theme'
 import { TuningResultTable } from './TuningResultTable'
 import type { TuningParamsForReplay } from './TuningResultTable'
 
@@ -108,10 +109,10 @@ const REASON_MAP: Record<string, string> = {
 function SectionDivider({ title }: { title: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-      <span style={{ color: '#94a3b8', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+      <span style={{ color: 'var(--text-2)', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
         {title}
       </span>
-      <div style={{ flex: 1, height: 1, background: '#1e293b' }} />
+      <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
     </div>
   )
 }
@@ -130,21 +131,21 @@ interface SummaryCardProps {
 function SummaryCard({ label, value, sub, valueColor }: SummaryCardProps) {
   return (
     <div style={{
-      background: '#111827',
-      border: '1px solid #1e293b',
+      background: 'var(--surface)',
+      border: '1px solid var(--border)',
       borderRadius: 10,
       padding: '14px 18px',
       flex: 1,
       minWidth: 0,
     }}>
-      <div style={{ color: '#94a3b8', fontSize: '0.72rem', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+      <div style={{ color: 'var(--text-2)', fontSize: '0.72rem', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
         {label}
       </div>
-      <div style={{ color: valueColor ?? '#f1f5f9', fontSize: '1.25rem', fontWeight: 700 }}>
+      <div style={{ color: valueColor ?? 'var(--text)', fontSize: '1.25rem', fontWeight: 700 }}>
         {value}
       </div>
       {sub && (
-        <div style={{ color: '#475569', fontSize: '0.72rem', marginTop: 4 }}>
+        <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginTop: 4 }}>
           {sub}
         </div>
       )}
@@ -161,14 +162,14 @@ function EquityTooltip({ active, payload }: { active?: boolean; payload?: Array<
   const d = payload[0].payload
   return (
     <div style={{
-      background: '#0f172a',
-      border: '1px solid #334155',
+      background: 'var(--bg-inset)',
+      border: '1px solid var(--border-strong)',
       borderRadius: 8,
       padding: '8px 12px',
       fontSize: '0.75rem',
-      color: '#e2e8f0',
+      color: 'var(--text)',
     }}>
-      <div style={{ color: '#94a3b8', marginBottom: 2 }}>{d.timestamp.slice(0, 10)}</div>
+      <div style={{ color: 'var(--text-2)', marginBottom: 2 }}>{d.timestamp.slice(0, 10)}</div>
       <div style={{ fontWeight: 600 }}>${d.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
     </div>
   )
@@ -179,20 +180,20 @@ function EquityTooltip({ active, payload }: { active?: boolean; payload?: Array<
 // ────────────────────────────────────────
 
 const selectStyle: React.CSSProperties = {
-  background: '#1e293b',
-  border: '1px solid #334155',
+  background: 'var(--surface-2)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 6,
-  color: '#e2e8f0',
+  color: 'var(--text)',
   fontSize: '0.82rem',
   padding: '4px 8px',
   cursor: 'pointer',
 }
 
 const inputStyle: React.CSSProperties = {
-  background: '#1e293b',
-  border: '1px solid #334155',
+  background: 'var(--surface-2)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 6,
-  color: '#e2e8f0',
+  color: 'var(--text)',
   fontSize: '0.82rem',
   padding: '4px 8px',
   outline: 'none',
@@ -200,10 +201,10 @@ const inputStyle: React.CSSProperties = {
 }
 
 const numberInputStyle: React.CSSProperties = {
-  background: '#1e293b',
-  border: '1px solid #334155',
+  background: 'var(--surface-2)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 6,
-  color: '#e2e8f0',
+  color: 'var(--text)',
   fontSize: '0.82rem',
   padding: '4px 8px',
   outline: 'none',
@@ -280,7 +281,7 @@ export function CompositeSimulator() {
   // 요약 값 계산
   const summary = result?.summary
   const totalReturnPct = summary?.total_return_pct ?? 0
-  const returnColor = totalReturnPct >= 0 ? '#22c55e' : '#ef4444'
+  const returnColor = totalReturnPct >= 0 ? 'var(--up)' : 'var(--down)'
   const returnStr = `${totalReturnPct >= 0 ? '+' : ''}${totalReturnPct.toFixed(2)}%`
   const winRatePct = summary ? (summary.win_rate * 100).toFixed(1) : '0.0'
   const winLossSub = summary ? `${summary.winning_trades}승 ${summary.losing_trades}패` : ''
@@ -297,8 +298,8 @@ export function CompositeSimulator() {
 
       {/* ── 설정 패널 ── */}
       <div style={{
-        background: '#111827',
-        border: '1px solid #1e293b',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
         borderRadius: 10,
         padding: '16px 20px',
         marginBottom: 16,
@@ -313,7 +314,7 @@ export function CompositeSimulator() {
         }}>
           {/* 심볼 */}
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>심볼:</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>심볼:</span>
             <select value={symbol} onChange={(e) => setSymbol(e.target.value)} style={selectStyle}>
               {SYMBOLS.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -321,7 +322,7 @@ export function CompositeSimulator() {
 
           {/* 캔들 */}
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>캔들:</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>캔들:</span>
             <select value={interval} onChange={(e) => setInterval(e.target.value)} style={selectStyle}>
               {INTERVALS.map((iv) => <option key={iv} value={iv}>{iv}</option>)}
             </select>
@@ -329,14 +330,14 @@ export function CompositeSimulator() {
 
           {/* 기간 */}
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>기간:</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>기간:</span>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               style={inputStyle}
             />
-            <span style={{ color: '#475569', fontSize: '0.78rem' }}>~</span>
+            <span style={{ color: 'var(--text-3)', fontSize: '0.78rem' }}>~</span>
             <input
               type="date"
               value={endDate}
@@ -355,7 +356,7 @@ export function CompositeSimulator() {
         }}>
           {/* 손절 */}
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>손절:</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>손절:</span>
             <input
               type="number"
               value={stopLoss}
@@ -364,12 +365,12 @@ export function CompositeSimulator() {
               onChange={(e) => setStopLoss(Number(e.target.value))}
               style={numberInputStyle}
             />
-            <span style={{ color: '#475569', fontSize: '0.78rem' }}>%</span>
+            <span style={{ color: 'var(--text-3)', fontSize: '0.78rem' }}>%</span>
           </label>
 
           {/* 익절 */}
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>익절:</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>익절:</span>
             <input
               type="number"
               value={takeProfit}
@@ -378,7 +379,7 @@ export function CompositeSimulator() {
               onChange={(e) => setTakeProfit(Number(e.target.value))}
               style={numberInputStyle}
             />
-            <span style={{ color: '#475569', fontSize: '0.78rem' }}>%</span>
+            <span style={{ color: 'var(--text-3)', fontSize: '0.78rem' }}>%</span>
           </label>
 
           {/* 버튼 영역 */}
@@ -389,9 +390,9 @@ export function CompositeSimulator() {
               style={{
                 padding: '6px 20px',
                 borderRadius: 6,
-                border: `1px solid ${loading ? '#1e293b' : '#3b82f6'}`,
-                background: loading ? '#0f1117' : 'rgba(59,130,246,0.15)',
-                color: loading ? '#334155' : '#60a5fa',
+                border: `1px solid ${loading ? 'var(--border)' : 'var(--accent)'}`,
+                background: loading ? 'var(--bg)' : softBg(C.accent, 0.15),
+                color: loading ? 'var(--text-3)' : 'var(--accent)',
                 fontSize: '0.85rem',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 fontWeight: 600,
@@ -407,9 +408,9 @@ export function CompositeSimulator() {
                 style={{
                   padding: '6px 16px',
                   borderRadius: 6,
-                  border: '1px solid #ef4444',
-                  background: 'rgba(239,68,68,0.12)',
-                  color: '#f87171',
+                  border: '1px solid var(--danger)',
+                  background: softBg(C.danger, 0.12),
+                  color: 'var(--danger)',
                   fontSize: '0.85rem',
                   cursor: 'pointer',
                   fontWeight: 600,
@@ -431,7 +432,7 @@ export function CompositeSimulator() {
           marginTop: 12,
         }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>롱임계값:</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>롱임계값:</span>
             <input
               type="number"
               value={longThreshold}
@@ -441,10 +442,10 @@ export function CompositeSimulator() {
               onChange={(e) => setLongThreshold(Number(e.target.value))}
               style={numberInputStyle}
             />
-            <span style={{ color: '#475569', fontSize: '0.78rem' }}>%</span>
+            <span style={{ color: 'var(--text-3)', fontSize: '0.78rem' }}>%</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>숏임계값:</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>숏임계값:</span>
             <input
               type="number"
               value={shortThreshold}
@@ -454,10 +455,10 @@ export function CompositeSimulator() {
               onChange={(e) => setShortThreshold(Number(e.target.value))}
               style={numberInputStyle}
             />
-            <span style={{ color: '#475569', fontSize: '0.78rem' }}>%</span>
+            <span style={{ color: 'var(--text-3)', fontSize: '0.78rem' }}>%</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>레버리지:</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>레버리지:</span>
             <input
               type="number"
               value={leverage}
@@ -467,10 +468,10 @@ export function CompositeSimulator() {
               onChange={(e) => setLeverage(Number(e.target.value))}
               style={numberInputStyle}
             />
-            <span style={{ color: '#475569', fontSize: '0.78rem' }}>x</span>
+            <span style={{ color: 'var(--text-3)', fontSize: '0.78rem' }}>x</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>포지션크기:</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>포지션크기:</span>
             <input
               type="number"
               value={positionSizePct}
@@ -480,10 +481,10 @@ export function CompositeSimulator() {
               onChange={(e) => setPositionSizePct(Number(e.target.value))}
               style={numberInputStyle}
             />
-            <span style={{ color: '#475569', fontSize: '0.78rem' }}>%</span>
+            <span style={{ color: 'var(--text-3)', fontSize: '0.78rem' }}>%</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>초기자본:</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>초기자본:</span>
             <input
               type="number"
               value={initialCapital}
@@ -492,10 +493,10 @@ export function CompositeSimulator() {
               onChange={(e) => setInitialCapital(Number(e.target.value))}
               style={{ ...numberInputStyle, width: 90 }}
             />
-            <span style={{ color: '#475569', fontSize: '0.78rem' }}>$</span>
+            <span style={{ color: 'var(--text-3)', fontSize: '0.78rem' }}>$</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>청산버퍼:</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>청산버퍼:</span>
             <input
               type="number"
               value={scoreExitBuffer}
@@ -505,7 +506,7 @@ export function CompositeSimulator() {
               onChange={(e) => setScoreExitBuffer(Number(e.target.value))}
               style={numberInputStyle}
             />
-            <span style={{ color: '#475569', fontSize: '0.78rem' }}>pt</span>
+            <span style={{ color: 'var(--text-3)', fontSize: '0.78rem' }}>pt</span>
           </label>
         </div>
       </div>
@@ -532,11 +533,11 @@ export function CompositeSimulator() {
       {/* ── 에러 박스 ── */}
       {error && (
         <div style={{
-          background: 'rgba(239,68,68,0.1)',
-          border: '1px solid #ef4444',
+          background: softBg(C.danger, 0.1),
+          border: '1px solid var(--danger)',
           borderRadius: 8,
           padding: '10px 16px',
-          color: '#ef4444',
+          color: 'var(--danger)',
           fontSize: '0.85rem',
           marginBottom: 14,
         }}>
@@ -550,11 +551,11 @@ export function CompositeSimulator() {
           {/* 청산 경고 배지 */}
           {result.summary.liquidated && (
             <div style={{
-              background: 'rgba(239,68,68,0.15)',
-              border: '1px solid #ef4444',
+              background: softBg(C.danger, 0.15),
+              border: '1px solid var(--danger)',
               borderRadius: 8,
               padding: '8px 16px',
-              color: '#ef4444',
+              color: 'var(--danger)',
               fontSize: '0.82rem',
               marginBottom: 12,
               fontWeight: 600,
@@ -586,27 +587,27 @@ export function CompositeSimulator() {
           {/* 자본 곡선 */}
           {result.equity_curve.length > 0 && (
             <div style={{
-              background: '#111827',
-              border: '1px solid #1e293b',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
               borderRadius: 10,
               padding: '16px 20px',
               marginBottom: 16,
             }}>
-              <div style={{ color: '#94a3b8', fontSize: '0.78rem', marginBottom: 10, fontWeight: 600 }}>
+              <div style={{ color: 'var(--text-2)', fontSize: '0.78rem', marginBottom: 10, fontWeight: 600 }}>
                 자본 곡선
               </div>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={result.equity_curve} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
                   <XAxis
                     dataKey="timestamp"
-                    tick={{ fill: '#475569', fontSize: 10 }}
+                    tick={{ fill: 'var(--text-3)', fontSize: 10 }}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(v: string) => v.slice(5, 10)}  // MM-DD 형식
                     interval="preserveStartEnd"
                   />
                   <YAxis
-                    tick={{ fill: '#475569', fontSize: 10 }}
+                    tick={{ fill: 'var(--text-3)', fontSize: 10 }}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
@@ -615,13 +616,13 @@ export function CompositeSimulator() {
                   <Tooltip content={<EquityTooltip />} />
                   <ReferenceLine
                     y={equityStartCapital}
-                    stroke="#475569"
+                    stroke={C.text3}
                     strokeDasharray="4 4"
                   />
                   <Line
                     type="monotone"
                     dataKey="value"
-                    stroke="#60a5fa"
+                    stroke={C.accent}
                     strokeWidth={2}
                     dot={false}
                     isAnimationActive={false}
@@ -640,25 +641,25 @@ export function CompositeSimulator() {
             flexWrap: 'wrap',
           }}>
             <span style={{
-              background: 'rgba(96,165,250,0.12)',
-              border: '1px solid rgba(96,165,250,0.3)',
+              background: softBg(C.info, 0.12),
+              border: '1px solid var(--border-strong)',
               borderRadius: 6,
               padding: '3px 10px',
-              color: '#93c5fd',
+              color: 'var(--info)',
               fontSize: '0.75rem',
               fontWeight: 600,
             }}>
               현재 매크로: {result.params.macro_level}
             </span>
-            <span style={{ color: '#475569', fontSize: '0.68rem' }}>
+            <span style={{ color: 'var(--text-3)', fontSize: '0.68rem' }}>
               * 매크로 점수는 현재 시점 기준 정적 적용
             </span>
           </div>
 
           {/* 거래 내역 테이블 */}
           <div style={{
-            background: '#111827',
-            border: '1px solid #1e293b',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
             borderRadius: 10,
             overflow: 'hidden',
             marginBottom: 12,
@@ -668,12 +669,12 @@ export function CompositeSimulator() {
               display: 'grid',
               gridTemplateColumns: '1.4fr 56px 52px 1.0fr 80px 80px 60px 60px',
               padding: '10px 16px',
-              borderBottom: '1px solid #1e293b',
-              background: '#0f1117',
+              borderBottom: '1px solid var(--border)',
+              background: 'var(--bg)',
             }}>
               {['날짜', '유형', '방향', '가격', '수익률', '사유', '롱점수', '숏점수'].map((col) => (
                 <div key={col} style={{
-                  color: '#64748b',
+                  color: 'var(--text-3)',
                   fontSize: '0.68rem',
                   textTransform: 'uppercase',
                   letterSpacing: '0.06em',
@@ -687,7 +688,7 @@ export function CompositeSimulator() {
             {displayTrades.length === 0 ? (
               <div style={{
                 padding: '20px 16px',
-                color: '#475569',
+                color: 'var(--text-3)',
                 fontSize: '0.82rem',
                 textAlign: 'center',
               }}>
@@ -698,8 +699,8 @@ export function CompositeSimulator() {
                 const isEntry = trade.type === 'entry'
                 const isLong = trade.direction === 'long'
                 const pnlColor = trade.pnl_pct === null
-                  ? '#94a3b8'
-                  : trade.pnl_pct >= 0 ? '#22c55e' : '#ef4444'
+                  ? 'var(--text-2)'
+                  : trade.pnl_pct >= 0 ? 'var(--up)' : 'var(--down)'
                 const pnlStr = trade.pnl_pct === null
                   ? '-'
                   : `${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(2)}%`
@@ -712,28 +713,28 @@ export function CompositeSimulator() {
                       display: 'grid',
                       gridTemplateColumns: '1.4fr 56px 52px 1.0fr 80px 80px 60px 60px',
                       padding: '8px 16px',
-                      borderBottom: idx < displayTrades.length - 1 ? '1px solid #1e293b' : 'none',
-                      background: idx % 2 === 0 ? '#111827' : 'rgba(30,41,59,0.25)',
+                      borderBottom: idx < displayTrades.length - 1 ? '1px solid var(--border)' : 'none',
+                      background: idx % 2 === 0 ? 'var(--surface)' : softBg(C.surface2, 0.25),
                       alignItems: 'center',
                     }}
                   >
                     {/* 날짜 */}
-                    <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
+                    <div style={{ color: 'var(--text-2)', fontSize: '0.75rem' }}>
                       {trade.timestamp.slice(0, 16).replace('T', ' ')}
                     </div>
 
                     {/* 유형 */}
-                    <div style={{ color: '#94a3b8', fontSize: '0.78rem', fontWeight: 600 }}>
+                    <div style={{ color: 'var(--text-2)', fontSize: '0.78rem', fontWeight: 600 }}>
                       {isEntry ? '진입' : '청산'}
                     </div>
 
                     {/* 방향 */}
-                    <div style={{ color: isLong ? '#22c55e' : '#f97316', fontSize: '0.78rem', fontWeight: 600 }}>
+                    <div style={{ color: isLong ? 'var(--up)' : 'var(--down)', fontSize: '0.78rem', fontWeight: 600 }}>
                       {isLong ? '🟢롱' : '🔴숏'}
                     </div>
 
                     {/* 가격 */}
-                    <div style={{ color: '#f1f5f9', fontSize: '0.78rem' }}>
+                    <div style={{ color: 'var(--text)', fontSize: '0.78rem' }}>
                       ${trade.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </div>
 
@@ -743,17 +744,17 @@ export function CompositeSimulator() {
                     </div>
 
                     {/* 사유 */}
-                    <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
+                    <div style={{ color: 'var(--text-2)', fontSize: '0.75rem' }}>
                       {reasonStr}
                     </div>
 
                     {/* 롱점수 */}
-                    <div style={{ color: '#22c55e', fontSize: '0.72rem' }}>
+                    <div style={{ color: 'var(--up)', fontSize: '0.72rem' }}>
                       {trade.long_score?.toFixed(0) ?? '-'}
                     </div>
 
                     {/* 숏점수 */}
-                    <div style={{ color: '#f97316', fontSize: '0.72rem' }}>
+                    <div style={{ color: 'var(--down)', fontSize: '0.72rem' }}>
                       {trade.short_score?.toFixed(0) ?? '-'}
                     </div>
                   </div>
@@ -764,7 +765,7 @@ export function CompositeSimulator() {
 
           {/* 최대 50개 제한 안내 */}
           {(result.trades.length > 50) && (
-            <div style={{ color: '#475569', fontSize: '0.72rem', marginBottom: 8 }}>
+            <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginBottom: 8 }}>
               * 상위 50개 거래만 표시 (전체 {result.trades.length}개)
             </div>
           )}
@@ -772,7 +773,7 @@ export function CompositeSimulator() {
       )}
 
       {/* 면책 문구 */}
-      <div style={{ color: '#475569', fontSize: '0.72rem', marginTop: 8 }}>
+      <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginTop: 8 }}>
         ⚠️ 과거 데이터 기반 시뮬레이션입니다. 미래 수익을 보장하지 않습니다.
       </div>
     </div>

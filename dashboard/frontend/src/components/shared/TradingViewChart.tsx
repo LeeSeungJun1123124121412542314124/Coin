@@ -88,14 +88,14 @@ export function TradingViewChart({ symbol }: TradingViewChartProps) {
         <div style={{
           position: 'absolute', inset: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: '#0f172a',
+          background: 'var(--bg-inset)',
           zIndex: 1,
         }}>
           <div style={{
             width: 40, height: 40,
             borderRadius: '50%',
-            border: '3px solid #1e293b',
-            borderTopColor: '#60a5fa',
+            border: '3px solid var(--border)',
+            borderTopColor: 'var(--accent)',
             animation: 'tv-spin 0.8s linear infinite',
           }} />
           <style>{`@keyframes tv-spin { to { transform: rotate(360deg) } }`}</style>
@@ -105,7 +105,7 @@ export function TradingViewChart({ symbol }: TradingViewChartProps) {
         <div style={{
           position: 'absolute', inset: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#94a3b8', fontSize: '0.9rem',
+          color: 'var(--text-2)', fontSize: '0.9rem',
         }}>
           차트를 불러올 수 없습니다
         </div>

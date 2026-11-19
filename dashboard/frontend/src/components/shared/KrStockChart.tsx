@@ -6,6 +6,7 @@ import {
 } from 'lightweight-charts'
 import type { IChartApi, ISeriesApi, Time } from 'lightweight-charts'
 import { apiFetch } from '../../lib/api'
+import { C, softBg } from '../../lib/theme'
 
 interface OhlcvPoint {
   date: string
@@ -45,19 +46,19 @@ export function KrStockChart({ ticker, name }: KrStockChartProps) {
 
     const chart = createChart(containerRef.current, {
       layout: {
-        background: { color: '#0f172a' },
-        textColor: '#94a3b8',
+        background: { color: C.bgInset },
+        textColor: C.text2,
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: '#1e293b' },
-        horzLines: { color: '#1e293b' },
+        vertLines: { color: C.line },
+        horzLines: { color: C.line },
       },
       crosshair: { mode: 1 },
-      rightPriceScale: { borderColor: '#1e293b' },
+      rightPriceScale: { borderColor: C.line },
       leftPriceScale: { visible: false },
       timeScale: {
-        borderColor: '#1e293b',
+        borderColor: C.line,
         timeVisible: false,
       },
       width: containerRef.current.clientWidth,
@@ -66,17 +67,17 @@ export function KrStockChart({ ticker, name }: KrStockChartProps) {
 
     // 캔들스틱 시리즈 — 한국 관례: 양봉(상승)=빨강, 음봉(하락)=파랑
     const candle = chart.addSeries(CandlestickDef, {
-      upColor: '#f87171',
-      downColor: '#60a5fa',
-      borderUpColor: '#f87171',
-      borderDownColor: '#60a5fa',
-      wickUpColor: '#f8717180',
-      wickDownColor: '#60a5fa80',
+      upColor: C.up,
+      downColor: C.down,
+      borderUpColor: C.up,
+      borderDownColor: C.down,
+      wickUpColor: softBg(C.up, 0.5),
+      wickDownColor: softBg(C.down, 0.5),
     })
 
     // 거래량 (같은 패널, 하단 20%)
     const vol = chart.addSeries(HistogramDef, {
-      color: '#334155',
+      color: C.segActive,
       priceFormat: { type: 'volume' },
       priceScaleId: 'vol',
     })
@@ -129,7 +130,7 @@ export function KrStockChart({ ticker, name }: KrStockChartProps) {
             time: d.date as Time,
             value: d.volume,
             // 한국 관례: 상승 거래량=적색계열, 하락 거래량=청색계열
-            color: d.close >= d.open ? '#3b1f0d' : '#1e3a5f',
+            color: d.close >= d.open ? softBg(C.up, 0.3) : softBg(C.down, 0.3),
           }))
         )
 
@@ -145,7 +146,7 @@ export function KrStockChart({ ticker, name }: KrStockChartProps) {
 
   return (
     <div style={{
-      background: '#0f172a', width: '100%', height: '100%',
+      background: 'var(--bg-inset)', width: '100%', height: '100%',
       display: 'flex', flexDirection: 'column',
       boxSizing: 'border-box',
     }}>
@@ -155,13 +156,13 @@ export function KrStockChart({ ticker, name }: KrStockChartProps) {
         padding: '12px 16px 8px',
         flexShrink: 0,
       }}>
-        <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: 600 }}>{name}</span>
+        <span style={{ color: 'var(--text-2)', fontSize: '0.85rem', fontWeight: 600 }}>{name}</span>
         <div style={{ display: 'flex', gap: 4 }}>
           {(['1d', '1wk', '1mo'] as Interval[]).map(i => (
             <button key={i} onClick={() => setInterval(i)} style={{
-              background: interval === i ? '#334155' : 'transparent',
-              color: interval === i ? '#e2e8f0' : '#475569',
-              border: '1px solid ' + (interval === i ? '#475569' : '#1e293b'),
+              background: interval === i ? 'var(--seg-active)' : 'transparent',
+              color: interval === i ? 'var(--text)' : 'var(--text-3)',
+              border: '1px solid ' + (interval === i ? 'var(--border-strong)' : 'var(--border)'),
               borderRadius: 6, padding: '3px 10px', fontSize: '0.75rem', cursor: 'pointer',
             }}>
               {INTERVAL_LABELS[i]}
@@ -177,11 +178,11 @@ export function KrStockChart({ ticker, name }: KrStockChartProps) {
           <div style={{
             position: 'absolute', inset: 0, zIndex: 10,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: '#0f172a',
+            background: 'var(--bg-inset)',
           }}>
             <div style={{
               width: 36, height: 36, borderRadius: '50%',
-              border: '3px solid #1e293b', borderTopColor: '#60a5fa',
+              border: '3px solid var(--border)', borderTopColor: 'var(--accent)',
               animation: 'kr-spin 0.8s linear infinite',
             }} />
             <style>{`@keyframes kr-spin { to { transform: rotate(360deg) } }`}</style>
@@ -192,7 +193,7 @@ export function KrStockChart({ ticker, name }: KrStockChartProps) {
           <div style={{
             position: 'absolute', inset: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#94a3b8', fontSize: '0.9rem',
+            color: 'var(--text-2)', fontSize: '0.9rem',
           }}>
             차트를 불러올 수 없습니다
           </div>
