@@ -13,6 +13,7 @@ import { Alerts } from './components/screens/Alerts'
 import { Leaderboard } from './components/screens/Leaderboard'
 import { Learning } from './components/screens/Learning'
 import { BASE } from './lib/api'
+import { NAV_GROUPS, MOBILE_PRIMARY, groupOf } from './lib/navGroups.ts'
 
 const TABS = [
   { path: '/', label: '대시보드', description: '시장 핵심 카드와 뉴스, 코인·주식 요약을 한 화면에서 봅니다.' },
@@ -27,6 +28,46 @@ const TABS = [
   { path: '/alerts', label: '알림히스토리', description: '전송된 경보와 방향 판정 기록을 심볼별로 확인합니다.' },
   { path: '/learning', label: '학습', description: '차트로 국면을 판단하고 근거와 함께 모의매매한 뒤 복기합니다.' },
 ] as const
+
+// 경로별 아이콘 path (24 viewBox 선 아이콘)
+const ICONS: Record<string, string> = {
+  '/': 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z',
+  '/market': 'M3 3v18h18M7 15l4-4 3 3 5-6',
+  '/liquidity': 'M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z',
+  '/volume': 'M5 20V10M10 20V4M15 20v-7M20 20V8',
+  '/spf': 'M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5',
+  '/cvd': 'M4 5h16l-6 7v6l-4 2v-8z',
+  '/whale': 'M4 12a8 8 0 1 0 16 0a8 8 0 1 0-16 0M9 12a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
+  '/research': 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6',
+  '/leaderboard': 'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4',
+  '/alerts': 'M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0',
+  '/learning': 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5',
+  more: 'M5 12h.01M12 12h.01M19 12h.01',
+}
+
+function Icon({ name }: { name: string }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={ICONS[name]} />
+    </svg>
+  )
+}
+
+function Brand() {
+  return (
+    <div className="shell-brand">
+      <span className="shell-brand-mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--bg)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M3 17l5-5 4 4 8-9" />
+        </svg>
+      </span>
+      <span>
+        <span className="shell-brand-name">투자분석기</span>
+        <span className="shell-brand-sub">시장 · 파생 · 학습</span>
+      </span>
+    </div>
+  )
+}
 
 function PinScreen({ onSuccess }: { onSuccess: () => void }) {
   const [pin, setPin] = useState('')
@@ -59,14 +100,14 @@ function PinScreen({ onSuccess }: { onSuccess: () => void }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0f1117' }}>
-      <h1 style={{ color: '#fff', fontSize: '1.5rem', marginBottom: '2rem' }}>투자분석기</h1>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg)' }}>
+      <h1 style={{ color: 'var(--text)', fontSize: '1.5rem', marginBottom: '2rem' }}>투자분석기</h1>
       <div style={{ display: 'flex', gap: '12px', marginBottom: '2rem', animation: shake ? 'shake 0.5s' : 'none' }}>
         {[0, 1, 2, 3].map(i => (
           <div key={i} style={{
             width: 16, height: 16, borderRadius: '50%',
-            background: i < pin.length ? '#60a5fa' : 'transparent',
-            border: `2px solid ${i < pin.length ? '#60a5fa' : '#64748b'}`,
+            background: i < pin.length ? 'var(--accent)' : 'transparent',
+            border: `2px solid ${i < pin.length ? 'var(--accent)' : 'var(--text-3)'}`,
             transition: 'all 0.1s',
           }} />
         ))}
@@ -82,8 +123,8 @@ function PinScreen({ onSuccess }: { onSuccess: () => void }) {
             disabled={!k}
             style={{
               width: 64, height: 64, borderRadius: 12,
-              background: k ? '#1e293b' : 'transparent',
-              border: 'none', color: '#fff', fontSize: '1.25rem',
+              background: k ? 'var(--surface)' : 'transparent',
+              border: '1px solid var(--border)', color: 'var(--text)', fontSize: '1.25rem',
               cursor: k ? 'pointer' : 'default', opacity: k ? 1 : 0,
             }}
           >
@@ -101,9 +142,12 @@ export default function App() {
     return !!sessionStorage.getItem('auth_token')
   })
   const [pageLastUpdated, setPageLastUpdated] = useState('')
+  const [moreOpen, setMoreOpen] = useState(false)
   const activeTab = TABS.find(tab => (
     tab.path === '/' ? location.pathname === '/' : location.pathname.startsWith(tab.path)
   )) ?? TABS[0]
+  const primaryPaths = MOBILE_PRIMARY.map(m => m.path)
+  const moreActive = !primaryPaths.includes(activeTab.path)
 
   useEffect(() => {
     setPageLastUpdated('')
@@ -122,39 +166,42 @@ export default function App() {
     return <PinScreen onSuccess={() => setAuthenticated(true)} />
   }
 
+  const tabByPath = (path: string) => TABS.find(t => t.path === path)
+  const closeMore = () => setMoreOpen(false)
+
   return (
     <div className="app-shell">
-      <header className="mock-top-ticker">
-        <div className="mock-brand">
-          <span className="mock-brand-name">투자분석기</span>
-        </div>
-        <div className="mock-header-title">
-          <div className="mock-header-copy">
-            <span className="mock-header-menu-name">{activeTab.label}</span>
-            <span className="mock-header-separator">|</span>
-            <span>{activeTab.description}</span>
-          </div>
-          <span className="mock-header-meta">
-            {pageLastUpdated ? `마지막 업데이트 : ${pageLastUpdated}` : '마지막 업데이트 : -'}
-          </span>
-        </div>
-      </header>
-      <aside className="mock-sidebar">
-        <nav className="mock-sidebar-nav" aria-label="주요 화면">
-          {TABS.map(tab => (
-            <NavLink
-              key={tab.path}
-              to={tab.path}
-              end={tab.path === '/'}
-              className={({ isActive }) => `mock-sidebar-link${isActive ? ' mock-sidebar-link-active' : ''}`}
-            >
-              <b>{tab.label}</b>
-            </NavLink>
+      <aside className="shell-sidebar">
+        <Brand />
+        <nav className="shell-nav" aria-label="주요 화면">
+          {NAV_GROUPS.map(group => (
+            <div key={group.label} className="shell-group">
+              <div className="shell-group-label">{group.label}</div>
+              {group.paths.map(path => (
+                <NavLink
+                  key={path}
+                  to={path}
+                  end={path === '/'}
+                  className={({ isActive }) => `shell-link${isActive ? ' shell-link-active' : ''}`}
+                >
+                  <Icon name={path} />
+                  <span>{tabByPath(path)?.label}</span>
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
       </aside>
 
       <main className="app-main">
+        <header className="shell-page-head">
+          <div className="shell-page-head-text">
+            <div className="shell-crumb">{groupOf(activeTab.path)} / {activeTab.label}</div>
+            <h1 className="shell-title">{activeTab.label}</h1>
+            <p className="shell-desc">{activeTab.description}</p>
+          </div>
+          <span className="shell-updated">최종 갱신 {pageLastUpdated || '-'}</span>
+        </header>
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/volume" element={<Volume />} />
@@ -170,18 +217,55 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      <nav className="mock-bottom-nav" aria-label="모바일 전체 메뉴">
-        {TABS.map(tab => (
+      <nav className="shell-bottom" aria-label="모바일 메뉴">
+        {MOBILE_PRIMARY.map(m => (
           <NavLink
-            key={tab.path}
-            to={tab.path}
-            end={tab.path === '/'}
-            className={({ isActive }) => `mock-bottom-link${isActive ? ' mock-bottom-link-active' : ''}`}
+            key={m.path}
+            to={m.path}
+            end={m.path === '/'}
+            className={({ isActive }) => `shell-bottom-item${isActive ? ' shell-bottom-active' : ''}`}
           >
-            {tab.label}
+            <Icon name={m.path} />
+            <span>{m.label}</span>
           </NavLink>
         ))}
+        <button
+          type="button"
+          className={`shell-bottom-item${moreActive ? ' shell-bottom-active' : ''}`}
+          onClick={() => setMoreOpen(true)}
+          aria-haspopup="dialog"
+        >
+          <Icon name="more" />
+          <span>더보기</span>
+        </button>
       </nav>
+      {moreOpen && (
+        <div className="shell-sheet-backdrop" onClick={closeMore}>
+          <div className="shell-sheet" role="dialog" aria-label="전체 메뉴" onClick={e => e.stopPropagation()}>
+            {NAV_GROUPS.map(group => {
+              const rest = group.paths.filter(path => !primaryPaths.includes(path))
+              if (rest.length === 0) return null
+              return (
+                <div key={group.label} className="shell-group">
+                  <div className="shell-group-label">{group.label}</div>
+                  {rest.map(path => (
+                    <NavLink
+                      key={path}
+                      to={path}
+                      end={path === '/'}
+                      onClick={closeMore}
+                      className={({ isActive }) => `shell-link${isActive ? ' shell-link-active' : ''}`}
+                    >
+                      <Icon name={path} />
+                      <span>{tabByPath(path)?.label}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
