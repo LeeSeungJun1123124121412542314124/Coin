@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { CandlestickSeries, LineSeries, LineStyle, PriceScaleMode, createChart, createSeriesMarkers } from 'lightweight-charts'
+import { CandlestickSeries, CrosshairMode, LineSeries, LineStyle, PriceScaleMode, createChart, createSeriesMarkers } from 'lightweight-charts'
 import type { IChartApi, IPriceLine, ISeriesApi, ISeriesMarkersPluginApi, LineWidth, Time } from 'lightweight-charts'
 import { getChart, putSettings } from '../../lib/learningApi.ts'
 import type { ChartResponse, Interval, LearningSettings } from '../../lib/learningApi.ts'
@@ -82,7 +82,8 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
     const c = createChart(el, {
       layout: { background: { color: C.surface }, textColor: C.text3, fontSize: 11 },
       grid: { vertLines: { color: C.line }, horzLines: { color: C.line } },
-      crosshair: { mode: 1 },
+      // 일반 모드: 가로줄이 캔들 종가에 달라붙지 않고 마우스 위치 가격을 그대로 따라감
+      crosshair: { mode: CrosshairMode.Normal },
       rightPriceScale: { borderColor: C.line },
       timeScale: { borderColor: C.line },
       width: el.clientWidth,
