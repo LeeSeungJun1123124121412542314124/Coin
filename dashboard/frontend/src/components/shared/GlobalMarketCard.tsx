@@ -2,6 +2,7 @@ import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis, YAxis } from 'rec
 import { useId } from 'react'
 import { Card } from './Card'
 import { fmt } from '../../lib/format'
+import { C, changeColor, changeArrow } from '../../lib/theme'
 
 interface GlobalMarketCardProps {
   data: {
@@ -30,12 +31,10 @@ export function GlobalMarketCard({ data }: GlobalMarketCardProps) {
   const ethDom = eth_dominance ?? 0
   const othersDom = Math.max(0, 100 - btcDom - ethDom)
 
-  const changePositive =
-    market_cap_change_24h != null && market_cap_change_24h >= 0
-  const changeColor = changePositive ? '#4ade80' : '#f87171'
+  const deltaColor = changeColor(market_cap_change_24h)
   const changeText =
     market_cap_change_24h != null
-      ? `${changePositive ? '+' : ''}${market_cap_change_24h.toFixed(2)}%`
+      ? `${changeArrow(market_cap_change_24h)} ${market_cap_change_24h > 0 ? '+' : ''}${market_cap_change_24h.toFixed(2)}%`
       : null
 
   const chartData = market_cap_chart ?? []
@@ -59,7 +58,7 @@ export function GlobalMarketCard({ data }: GlobalMarketCardProps) {
           {fmt(total_market_cap_usd)}
         </span>
         {changeText != null && (
-          <span style={{ color: changeColor, fontSize: '0.85rem', marginLeft: 8 }}>
+          <span style={{ color: deltaColor, fontSize: '0.85rem', marginLeft: 8, fontFamily: 'var(--font-mono)' }}>
             {changeText}
           </span>
         )}
@@ -68,20 +67,20 @@ export function GlobalMarketCard({ data }: GlobalMarketCardProps) {
       {/* 도미넌스 가로 바 */}
       {hasDominance && (
         <div style={{ marginTop: 10, display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden' }}>
-          <div style={{ flex: btcDom, background: '#3b82f6' }} />
-          {eth_dominance != null && <div style={{ flex: ethDom, background: '#10b981' }} />}
-          <div style={{ flex: othersDom, background: '#ef4444' }} />
+          <div style={{ flex: btcDom, background: C.accent }} />
+          {eth_dominance != null && <div style={{ flex: ethDom, background: C.info }} />}
+          <div style={{ flex: othersDom, background: C.neutralSeries }} />
         </div>
       )}
 
       {/* 도미넌스 범례 */}
       {hasDominance && (
-        <div style={{ marginTop: 6, display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: '0.7rem', color: '#94a3b8' }}>
-          <span><span style={{ color: '#3b82f6' }}>●</span> BTC {btcDom.toFixed(1)}%</span>
+        <div style={{ marginTop: 6, display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: '0.7rem', color: 'var(--text-2)' }}>
+          <span><span style={{ color: C.accent }}>●</span> BTC {btcDom.toFixed(1)}%</span>
           {eth_dominance != null && (
-            <span><span style={{ color: '#10b981' }}>●</span> ETH {ethDom.toFixed(1)}%</span>
+            <span><span style={{ color: C.info }}>●</span> ETH {ethDom.toFixed(1)}%</span>
           )}
-          <span><span style={{ color: '#ef4444' }}>●</span> 기타 {othersDom.toFixed(1)}%</span>
+          <span><span style={{ color: C.neutralSeries }}>●</span> 기타 {othersDom.toFixed(1)}%</span>
         </div>
       )}
 
@@ -92,18 +91,18 @@ export function GlobalMarketCard({ data }: GlobalMarketCardProps) {
             <AreaChart data={chartData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.5} />
-                  <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.02} />
+                  <stop offset="5%" stopColor={C.violet} stopOpacity={0.5} />
+                  <stop offset="95%" stopColor={C.violet} stopOpacity={0.02} />
                 </linearGradient>
               </defs>
               <XAxis dataKey="t" hide />
               <YAxis hide domain={['auto', 'auto']} />
               <Tooltip
-                contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 6, fontSize: '0.7rem' }}
+                contentStyle={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 6, fontSize: '0.7rem' }}
                 formatter={(v) => [fmt(Number(v)), '시총']}
                 labelFormatter={() => ''}
               />
-              <Area type="monotone" dataKey="v" stroke="#a78bfa" strokeWidth={2} fill={`url(#${gradId})`} dot={false} />
+              <Area type="monotone" dataKey="v" stroke={C.violet} strokeWidth={2} fill={`url(#${gradId})`} dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>

@@ -6,15 +6,15 @@ interface Props {
 
 export default function ErrorState({ error, onRetry }: Props) {
   return (
-    <div style={{ color: '#f87171', padding: 32, textAlign: 'center' }}>
+    <div style={{ color: 'var(--danger)', padding: 32, textAlign: 'center' }}>
       <p style={{ marginBottom: 12 }}>데이터 로드 실패: {error}</p>
       {onRetry && (
         <button
           onClick={onRetry}
           style={{
             padding: '8px 20px',
-            background: '#334155',
-            color: '#e2e8f0',
+            background: 'var(--seg-active)',
+            color: 'var(--text)',
             border: 'none',
             borderRadius: 8,
             cursor: 'pointer',

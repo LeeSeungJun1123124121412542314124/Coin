@@ -3,7 +3,7 @@
 import type { CSSProperties } from 'react'
 
 const shimmer: CSSProperties = {
-  background: 'linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%)',
+  background: 'linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%)',
   backgroundSize: '200% 100%',
   animation: 'shimmer 1.5s infinite',
   borderRadius: 6,
@@ -17,7 +17,7 @@ export function SkeletonLine({ width = '100%', height = 16 }: { width?: string |
 /** 카드 형태 스켈레톤 */
 export function SkeletonCard({ height = 120 }: { height?: number }) {
   return (
-    <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, padding: 16, height }}>
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', padding: '18px 20px', height }}>
       <SkeletonLine width="60%" height={14} />
       <SkeletonLine width="40%" height={24} />
       <SkeletonLine width="80%" height={12} />

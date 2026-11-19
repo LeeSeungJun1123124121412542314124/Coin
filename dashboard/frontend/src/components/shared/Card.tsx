@@ -11,10 +11,11 @@ export function Card({ children, className = '', onClick, style }: CardProps) {
   return (
     <div
       style={{
-        background: '#1e293b',
-        border: '1px solid #334155',
-        borderRadius: 8,
-        padding: 16,
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-card)',
+        boxShadow: 'var(--shadow-card)',
+        padding: '18px 20px',
         ...style,
       }}
       className={className}

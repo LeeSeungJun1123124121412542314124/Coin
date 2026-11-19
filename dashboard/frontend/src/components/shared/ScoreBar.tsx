@@ -17,7 +17,7 @@ interface ScoreBarProps {
 /**
  * 가로 점수 바 컴포넌트
  * - Research.tsx 용례: <ScoreBar score={cat.score} level={cat.level} />
- * - SPF.tsx 용례:      <ScoreBar label="강세 점수" score={s} color="#4ade80" height={8} scoreFormat="plain" />
+ * - SPF.tsx 용례:      <ScoreBar label="강세 점수" score={s} color="var(--up)" height={8} scoreFormat="plain" />
  */
 export function ScoreBar({
   score,
@@ -27,19 +27,19 @@ export function ScoreBar({
   height = 4,
   scoreFormat = 'fraction',
 }: ScoreBarProps) {
-  const resolvedColor = color ?? (level ? (LEVEL_COLORS[level] ?? '#94a3b8') : '#94a3b8')
+  const resolvedColor = color ?? (level ? (LEVEL_COLORS[level] ?? 'var(--accent)') : 'var(--accent)')
   const scoreLabel = scoreFormat === 'plain' ? String(score) : `${score}/100`
-  const labelColor = scoreFormat === 'plain' ? '#94a3b8' : '#64748b'
+  const labelColor = scoreFormat === 'plain' ? 'var(--text-2)' : 'var(--text-3)'
   const valueFontSize = scoreFormat === 'plain' ? '1.1rem' : '0.75rem'
   const valueFontWeight = scoreFormat === 'plain' ? 700 : 600
-  const trackColor = scoreFormat === 'plain' ? '#334155' : '#1e293b'
-  const borderRadius = scoreFormat === 'plain' ? 4 : 2
+  const trackColor = 'var(--seg-active)'
+  const borderRadius = 999
 
   return (
     <div style={{ marginBottom: scoreFormat === 'plain' ? 10 : 0, marginTop: scoreFormat === 'plain' ? 0 : 8 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
         <span style={{ fontSize: scoreFormat === 'plain' ? '0.8rem' : 11, color: labelColor }}>{label}</span>
-        <span style={{ fontSize: valueFontSize, color: resolvedColor, fontWeight: valueFontWeight }}>{scoreLabel}</span>
+        <span style={{ fontSize: valueFontSize, color: resolvedColor, fontWeight: valueFontWeight, fontFamily: 'var(--font-mono)' }}>{scoreLabel}</span>
       </div>
       <div style={{ height, background: trackColor, borderRadius, overflow: 'hidden' }}>
         <div style={{

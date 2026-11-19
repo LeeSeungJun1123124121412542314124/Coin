@@ -31,15 +31,15 @@ export class ErrorBoundary extends Component<Props, State> {
         minHeight: '60vh', gap: 16, padding: 24, textAlign: 'center',
       }}>
         <div style={{ fontSize: '2rem' }}>⚠️</div>
-        <div style={{ color: '#e2e8f0', fontSize: '1rem' }}>화면을 표시하는 중 오류가 발생했습니다.</div>
-        <div style={{ color: '#64748b', fontSize: '0.8rem', maxWidth: 480, wordBreak: 'break-word' }}>
+        <div style={{ color: 'var(--text)', fontSize: '1rem' }}>화면을 표시하는 중 오류가 발생했습니다.</div>
+        <div style={{ color: 'var(--text-3)', fontSize: '0.8rem', maxWidth: 480, wordBreak: 'break-word' }}>
           {this.state.message}
         </div>
         <button
           onClick={() => window.location.reload()}
           style={{
-            padding: '8px 20px', borderRadius: 8, border: '1px solid #334155',
-            background: '#1e293b', color: '#e2e8f0', cursor: 'pointer', fontSize: '0.85rem',
+            padding: '8px 20px', borderRadius: 8, border: '1px solid var(--border-strong)',
+            background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontSize: '0.85rem',
           }}
         >
           새로고침

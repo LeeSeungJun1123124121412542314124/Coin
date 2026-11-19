@@ -1,6 +1,7 @@
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, ReferenceLine } from 'recharts'
 import { useId } from 'react'
 import { Card } from './Card'
+import { changeColor, changeArrow } from '../../lib/theme'
 
 interface StockIndexCardProps {
   name: string
@@ -17,8 +18,7 @@ export function StockIndexCard({ name, ticker, price, change_pct, sparkline, hig
   const uid = useId()
   const gradId = `stockGrad-${uid.replace(/:/g, '')}`
 
-  const isPositive = (change_pct ?? 0) >= 0
-  const color = isPositive ? '#4ade80' : '#f87171'
+  const color = changeColor(change_pct)
 
   const chartData = sparkline.map((v, i) => ({ i, v }))
 
@@ -36,24 +36,24 @@ export function StockIndexCard({ name, ticker, price, change_pct, sparkline, hig
         </span>
         {change_pct != null && (
           <span className="dashboard-index-change" style={{ color }}>
-            {isPositive ? '+' : ''}{change_pct.toFixed(2)}%
+            {changeArrow(change_pct)} {change_pct > 0 ? '+' : ''}{change_pct.toFixed(2)}%
           </span>
         )}
       </div>
 
       {/* 고가/저가 */}
       {(high != null || low != null) && (
-        <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: '0.72rem' }}>
+        <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: '0.72rem', fontFamily: 'var(--font-mono)' }}>
           {high != null && (
             <span>
-              <span style={{ color: '#f87171' }}>H </span>
-              <span style={{ color: '#94a3b8' }}>{high.toLocaleString()}</span>
+              <span style={{ color: 'var(--up)' }}>H </span>
+              <span style={{ color: 'var(--text-2)' }}>{high.toLocaleString()}</span>
             </span>
           )}
           {low != null && (
             <span>
-              <span style={{ color: '#4ade80' }}>L </span>
-              <span style={{ color: '#94a3b8' }}>{low.toLocaleString()}</span>
+              <span style={{ color: 'var(--down)' }}>L </span>
+              <span style={{ color: 'var(--text-2)' }}>{low.toLocaleString()}</span>
             </span>
           )}
         </div>
