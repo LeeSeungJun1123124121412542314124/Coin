@@ -153,7 +153,7 @@ function InsightCard({ insight }: { insight: Insight }) {
       borderRadius: 10, padding: '12px 14px',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <span style={{ fontSize: '1rem' }}>{insight.icon}</span>
+        <span style={{ fontSize: '1rem', color }}>{insight.icon}</span>
         <span style={{ color, fontWeight: 600, fontSize: '0.88rem' }}>{insight.title}</span>
       </div>
       <div style={{ color: 'var(--text-2)', fontSize: '0.80rem', lineHeight: 1.5 }}>

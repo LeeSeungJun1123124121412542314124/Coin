@@ -58,13 +58,13 @@ def _check_fear_greed(insights: list, data: dict) -> None:
 
     if value <= 20:
         insights.append(_insight(LEVEL_BULLISH, "극도 공포 — 역투자 기회",
-            f"공포탐욕 {value}pt ({label}). 역사적으로 극도 공포 구간은 중기 매수 기회.", "🟢"))
+            f"공포탐욕 {value}pt ({label}). 역사적으로 극도 공포 구간은 중기 매수 기회.", "▲"))
     elif value <= 40:
         insights.append(_insight(LEVEL_NEUTRAL, "공포 구간",
             f"공포탐욕 {value}pt ({label}). 시장 심리 위축 상태.", "⚪"))
     elif value >= 80:
         insights.append(_insight(LEVEL_WARNING, "극도 탐욕 — 과열 경고",
-            f"공포탐욕 {value}pt ({label}). 단기 조정 가능성 증가.", "🔴"))
+            f"공포탐욕 {value}pt ({label}). 단기 조정 가능성 증가.", "▼"))
     elif value >= 65:
         insights.append(_insight(LEVEL_NEUTRAL, "탐욕 구간",
             f"공포탐욕 {value}pt ({label}). 추세 지속 여부 모니터링.", "🟡"))
@@ -84,7 +84,7 @@ def _check_vix(insights: list, data: dict) -> None:
             "미국 증시 변동성 상승. 리스크 자산 전반 주의.", "⚠️"))
     elif vix < 13:
         insights.append(_insight(LEVEL_BULLISH, f"VIX 저점 — {vix:.1f} (안정)",
-            "미국 증시 변동성 극히 낮음. 위험 선호 환경.", "🟢"))
+            "미국 증시 변동성 극히 낮음. 위험 선호 환경.", "▲"))
 
 
 def _check_kimchi_premium(insights: list, data: dict) -> None:
@@ -131,7 +131,7 @@ def _check_funding_rate(insights: list, data: dict) -> None:
             "선물 롱 포지션 과밀집. 숏 스퀴즈 또는 급락 위험.", "⚠️"))
     elif fr_pct <= -0.02:
         insights.append(_insight(LEVEL_BULLISH, f"펀딩비 마이너스 — {fr_pct:.4f}%",
-            "숏 포지션 우위. 반등 시 숏 커버 상승 가능.", "🟢"))
+            "숏 포지션 우위. 반등 시 숏 커버 상승 가능.", "▲"))
 
 
 def _check_oi_change(insights: list, data: dict) -> None:
@@ -177,4 +177,4 @@ def _check_us_market(insights: list, data: dict) -> None:
                 "강달러 환경. 크립토/원자재 전반 약세 압력.", "💵"))
         elif dxy_chg <= -0.5:
             insights.append(_insight(LEVEL_BULLISH, f"달러 약세 — DXY {dxy_price:.1f} ({dxy_chg:+.2f}%)",
-                "달러 약세. 리스크 자산 상승 우호 환경.", "🟢"))
+                "달러 약세. 리스크 자산 상승 우호 환경.", "▲"))
