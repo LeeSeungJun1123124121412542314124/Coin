@@ -114,7 +114,7 @@ export function Learning() {
   )
 }
 
-// 추적 종목 관리 — 목록(백필 상태)·추가·제거, 선택 종목은 차트·매매 탭에 쓰인다
+// 추적 종목 관리 — 목록(백필 상태)·추가·제거, 선택 종목은 상단 차트와 모의 주문 패널에 쓰인다
 function SymbolManager({ list, loading, selected, onSelect, onChanged }: {
   list: LearningSymbol[]
   loading: boolean

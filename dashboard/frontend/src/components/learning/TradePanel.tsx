@@ -14,7 +14,7 @@ const PHASES = Object.keys(PHASE_LABELS) as Phase[]
 
 interface TradePanelProps {
   symbol: string
-  // 근거 미리 채우기·감지 기록에 쓰는 봉 (차트 탭 전환을 따른다)
+  // 근거 미리 채우기·감지 기록에 쓰는 봉 (차트의 봉 전환을 따른다)
   interval: Interval
 }
 
