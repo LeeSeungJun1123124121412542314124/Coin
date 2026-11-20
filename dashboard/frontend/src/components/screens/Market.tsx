@@ -245,7 +245,8 @@ export function Market() {
 
   // 주의 신호 = 서버가 warning·critical로 표시한 인사이트
   const alertCount = insights.filter(i => i.level === 'warning' || i.level === 'critical').length
-  const bannerColor = alertCount > 0 ? C.warn : C.ok
+  const hasCritical = insights.some(i => i.level === 'critical')
+  const bannerColor = hasCritical ? C.danger : alertCount > 0 ? C.warn : C.ok
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

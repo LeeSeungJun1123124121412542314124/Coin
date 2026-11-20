@@ -97,8 +97,14 @@ function VolumeRatio({ upbit, bithumb }: { upbit: number | null; bithumb: number
         <div style={{ width: `${bithumbPct}%`, background: 'var(--neutral-series)' }} />
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-2)' }}>
-        <span>업비트</span>
-        <span>빗썸</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)' }} />
+          업비트
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--neutral-series)' }} />
+          빗썸
+        </span>
       </div>
     </div>
   )

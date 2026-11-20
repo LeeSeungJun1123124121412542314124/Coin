@@ -185,7 +185,8 @@ export function Liquidity() {
                 color: summary.soma['7d_change_b'] < 0 ? 'var(--warn)' : 'var(--ok)',
                 fontSize: 14, marginTop: 4, fontFamily: 'var(--font-mono)',
               }}>
-                {summary.soma['7d_change_b'] < 0 ? '▼ QT' : '▲ QE'} {fmtFixed(Math.abs(summary.soma['7d_change_b']), 1)}B/주
+                {summary.soma['7d_change_b'] < 0 ? '▼ QT' : '▲ QE'} {/* soma['7d_change_b']는 이름과 달리 조(T) 단위 — 십억 단위로 환산 */}
+                {fmtFixed(Math.abs(summary.soma['7d_change_b']) * 1000, 0)}B/주
               </div>
             )}
           </Card>
@@ -269,7 +270,7 @@ export function Liquidity() {
                     <span className="v2-nowrap" style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>{a.auction_date}</span>
                     <span style={{ flex: 1, fontSize: 14, color: 'var(--text-2)' }}>{a.term} {a.type}</span>
                     <span style={{ color: a.offering_amount_b && a.offering_amount_b > 50 ? 'var(--warn)' : 'var(--text-2)', fontSize: 14 }}>
-                      {a.offering_amount_b != null ? `$${fmtFixed(a.offering_amount_b, 0)}B` : '—'}
+                      {a.offering_amount_b != null ? `$${fmtFixed(a.offering_amount_b, 1)}B` : '—'}
                     </span>
                   </div>
                 ))}
