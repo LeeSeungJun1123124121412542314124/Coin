@@ -109,7 +109,7 @@ function AlertTable({ items }: { items: Item[] }) {
             <th style={th}>시각</th>
             <th style={th}>종류</th>
             <th style={th}>심볼</th>
-            <th style={th}>호가 방향</th>
+            <th style={th}>종목 방향</th>
             <th style={th}>시장 방향</th>
             <th style={{ ...th, textAlign: 'right' }}>기술 점수</th>
             <th style={{ ...th, textAlign: 'right' }}>종합 점수</th>
@@ -146,7 +146,7 @@ function AlertRows({ items }: { items: Item[] }) {
               <span style={{ fontSize: 14, fontWeight: 600 }}>{a.symbol}</span>
             </span>
             <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
-              호가 <Dir dir={a.asset_direction} /> · 시장 <Dir dir={a.market_direction} tooltip={marketTip(a)} /> · 기술{' '}
+              종목 <Dir dir={a.asset_direction} /> · 시장 <Dir dir={a.market_direction} tooltip={marketTip(a)} /> · 기술{' '}
               <span className="v2-nowrap" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>{fmtFixed(a.alert_score, 1)}</span>
             </span>
           </div>
@@ -170,8 +170,8 @@ export function Alerts() {
   const url = symbol ? `/api/alerts/history?symbol=${symbol}&limit=100` : '/api/alerts/history?limit=100'
   const { data, error, refetch, lastUpdated } = useApi<AlertsData>(url, 60_000)
 
-  const pickSymbol = (v: string) => { setSymbol(v); setFlipped(new Set()) }
-  const pickLevel = (v: string | null) => { setLevel(v); setFlipped(new Set()) }
+  const pickSymbol = (v: string) => { setSymbol(v); setShown(PAGE); setFlipped(new Set()) }
+  const pickLevel = (v: string | null) => { setLevel(v); setShown(PAGE); setFlipped(new Set()) }
   const flip = (key: string) => setFlipped(prev => {
     const next = new Set(prev)
     if (next.has(key)) next.delete(key)
@@ -185,7 +185,7 @@ export function Alerts() {
       <span style={{ color: 'var(--text-2)', fontSize: 13 }}>
         {data && (
           <>
-            최근 {data.alerts?.length ?? 0}건 중 <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text)', fontWeight: 600 }}>{data.total}</span>건 ·{' '}
+            최근 <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text)', fontWeight: 600 }}>{data.alerts?.length ?? 0}</span>건 ·{' '}
           </>
         )}
         시각 KST
