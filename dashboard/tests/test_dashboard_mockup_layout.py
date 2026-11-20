@@ -117,6 +117,8 @@ def test_dashboard_stock_grid_and_price_strip_avoid_lonely_cards():
     # 가격 띠: 칸 수를 CSS 변수로 넘겨 1280px 이상은 한 줄, 그 아래는 두 줄로 고르게
     assert "'--dash-cols': cells.length" in tsx
     assert "Math.ceil(cells.length / 2)" in tsx
-    strip = css[css.index(".dash-strip-grid {"):css.index(".dash-cell {")]
-    assert "repeat(var(--dash-cols, 11), minmax(0, 1fr))" in strip
-    assert "repeat(var(--dash-cols-half, 6), minmax(0, 1fr))" in strip
+    strip = css[css.index(".dash-strip-grid {"):css.index(".dash-strip-editor {")]
+    # 한 줄 기준은 1366px, 값 글자 규칙은 기본 규칙 뒤에 있어야 덮어쓰이지 않는다
+    assert strip.index(".dash-cell-price {") < strip.index("@media (min-width: 1366px)")
+    assert "repeat(var(--dash-cols, 11), minmax(max-content, 1fr))" in strip
+    assert "repeat(var(--dash-cols-half, 6), minmax(max-content, 1fr))" in strip

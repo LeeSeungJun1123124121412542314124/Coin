@@ -451,9 +451,9 @@ function Us13fView({ data }: { data: Us13fData }) {
   )
 }
 
-// 지갑이 비었는지 — 포지션이 없고 자산이 $1 미만(또는 null)
-function isEmptyWallet(w: Whale): boolean {
-  return w.positions.length === 0 && w.btc_position == null && (w.account_value == null || w.account_value < 1)
+// 포지션 보유 여부 — 포지션 목록이 있거나 BTC 포지션이 있음
+function hasPosition(w: Whale): boolean {
+  return w.positions.length > 0 || w.btc_position != null
 }
 
 // 30일 손익: ▲/▼ + 부호 + 금액, null이면 —
@@ -601,9 +601,9 @@ function CoinWhaleView({
   const { whales } = data
   const mobile = useIsMobile()
   const [foldOpen, setFoldOpen] = useState(false)
-  const activeWhales = whales.filter(w => !isEmptyWallet(w))
-  const emptyWhales = whales.filter(isEmptyWallet)
-  const holdingCount = whales.filter(w => w.positions.length > 0 || w.btc_position != null).length
+  const activeWhales = whales.filter(hasPosition)
+  const emptyWhales = whales.filter(w => !hasPosition(w))
+  const holdingCount = activeWhales.length
   const consensusTail = consensus && consensus.total > 0 ? ` · BTC 롱 ${consensus.long_count} / 숏 ${consensus.short_count}` : ''
 
   const list = (
