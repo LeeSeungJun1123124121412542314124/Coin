@@ -1527,11 +1527,12 @@ body {
 }
 .v2-row > :first-child { font-size: 14px; color: var(--text-2); }
 .v2-row > :last-child {
+  display: flex; align-items: baseline; gap: 10px;
   font-family: var(--font-mono); font-size: 15px; font-weight: 600; white-space: nowrap;
 }
 
 /* 해석 태그 */
-.v2-note { font-size: 12px; font-weight: 600; }
+.v2-note { font-family: var(--font-sans); font-size: 12px; font-weight: 600; }
 
 /* 세그먼트 */
 .v2-seg {
@@ -1551,11 +1552,11 @@ body {
   font: inherit; font-size: 13px; font-weight: 600;
   display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
 }
-.v2-chip[aria-pressed="true"] { background: var(--seg-active); border-color: var(--border-strong); color: var(--text); }
+.v2-chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--bg); }
 
 /* 접힌 날짜 줄 */
 .v2-fold {
-  min-height: 52px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  width: 100%; box-sizing: border-box; min-height: 52px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
   color: var(--text); font: inherit; display: flex; align-items: center; justify-content: space-between;
   gap: 10px; padding: 0 16px; cursor: pointer;
 }
@@ -1564,7 +1565,7 @@ body {
 .v2-asset-tab { height: 30px; }
 
 @media (max-width: 767px) {
-  input, select, textarea { font-size: 16px; }
+  input, select, textarea { font-size: 16px !important; }
   .v2-asset-tab { height: 44px; }
 }
 

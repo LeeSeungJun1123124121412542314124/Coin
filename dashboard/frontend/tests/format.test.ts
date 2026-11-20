@@ -12,4 +12,12 @@ assert.equal(fmtCoinPrice(72.76), '$72.76')
 assert.equal(fmtCoinPrice(0.3432), '$0.343')
 assert.equal(fmtCoinPrice(null), '—')
 
+assert.equal(fmtFixed(-0.001, 2), '0.00')
+assert.equal(fmtFixed(-0.004, 0), '0')
+assert.equal(fmtFixed(NaN, 2), '—')
+assert.equal(fmtFixed(undefined, 2), '—')
+assert.equal(fmtCoinPrice(NaN), '—')
+assert.equal(fmtSignedPct(NaN), '—')
+assert.equal(fmtSignedPct(-0.001), '0.00%')
+
 console.log('format.test.ts 통과')
