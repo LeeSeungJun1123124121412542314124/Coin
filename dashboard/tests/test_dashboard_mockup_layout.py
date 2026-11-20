@@ -112,6 +112,7 @@ def test_dashboard_stock_grid_and_price_strip_avoid_lonely_cards():
     start = css.index(".mock-us-stock-section .mock-compact-grid,")
     block = css[start:css.index(".stock-card-name", start)]
     assert "repeat(4, minmax(0, 1fr))" in block
+    assert "@media (min-width: 1024px)" in css[start - 80:start]
     assert "repeat(7, minmax(0, 1fr))" in block
 
     # 가격 띠: 칸 수를 CSS 변수로 넘겨 1280px 이상은 한 줄, 그 아래는 두 줄로 고르게
@@ -122,3 +123,6 @@ def test_dashboard_stock_grid_and_price_strip_avoid_lonely_cards():
     assert strip.index(".dash-cell-price {") < strip.index("@media (min-width: 1366px)")
     assert "repeat(var(--dash-cols, 11), minmax(max-content, 1fr))" in strip
     assert "repeat(var(--dash-cols-half, 6), minmax(max-content, 1fr))" in strip
+    # 768~1023px은 기존 auto-fit, 두 줄 규칙은 1024px부터
+    assert "repeat(auto-fit, minmax(96px, 1fr))" in strip
+    assert strip.index("@media (min-width: 1024px)") < strip.index("--dash-cols-half, 6")
