@@ -28,8 +28,9 @@ def test_dashboard_uses_exact_spf_mockup_sections():
     source = DASHBOARD_TSX.read_text(encoding="utf-8")
 
     assert "mock-spf-dashboard" in source
-    assert "시장 메인 카드" in source
-    assert "mock-market-overview" in source
+    assert "dash-mood" in source
+    assert "dash-strip" in source
+    assert "dash-top" in source
     assert "mock-news-section" in source
     assert "mock-coin-price-section" in source
     assert "mock-kr-stock-section" in source

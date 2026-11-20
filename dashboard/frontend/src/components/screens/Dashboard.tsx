@@ -2,9 +2,6 @@ import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Area, AreaChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Card } from '../shared/Card'
-import { GaugeChart } from '../shared/GaugeChart'
-import { GlobalMarketCard } from '../shared/GlobalMarketCard'
-import { StockIndexCard } from '../shared/StockIndexCard'
 import { StockIndexModal } from '../shared/StockIndexModal'
 import { StockCard } from '../shared/StockCard'
 import { CoinSlotEditor } from '../shared/CoinSlotEditor'
@@ -21,11 +18,12 @@ import ErrorState from '../shared/ErrorState'
 import LastUpdated from '../shared/LastUpdated'
 import { useApi } from '../../hooks/useApi'
 import { apiFetch } from '../../lib/api'
-import { fmt } from '../../lib/format'
+import { fmt, fmtCoinPrice, fmtFixed, fmtIndex, fmtSignedPct } from '../../lib/format'
 import { toTvSymbol } from '../../lib/tvSymbolMap'
 import { C, changeArrow, changeColor, softBg } from '../../lib/theme'
 import type { ChartResponse } from '../../lib/learningApi'
-import { summarizeBtcPhase, type PhaseTone } from './dashboardPhase'
+import { summarizeBtcPhase, type BtcPhase, type PhaseTone } from './dashboardPhase'
+import { summarizeMood, type Mood } from './dashboardMood'
 
 interface DashboardData {
   coins: Array<{
@@ -111,16 +109,32 @@ interface StockItem {
   low: number | null
 }
 
-function mvrvToGauge(mvrv: number): number {
-  return Math.min(100, Math.round((mvrv / 5) * 100))
+// 분위기 카드에 쓰는 두 API의 필요한 부분만
+interface SpfApi {
+  today_prediction: { direction: string; confidence: number } | null
 }
 
-function mvrvLabel(signal: string | null | undefined, mvrv: number): string {
-  if (signal === 'EXTREME_OVERVALUED') return '극단 과평가'
-  if (signal === 'OVERVALUED') return '과평가'
-  if (signal === 'EXTREME_UNDERVALUED') return '극단 저평가'
-  if (signal === 'UNDERVALUED') return '저평가'
-  return `정상 (${mvrv.toFixed(2)})`
+interface MarketApi {
+  insights: Array<{ level: string; title: string }>
+}
+
+// MVRV 신호 → 해석 라벨·색 (신호값이 없으면 정상)
+function mvrvNote(signal: string | null | undefined): { text: string; color: string } {
+  if (signal === 'EXTREME_OVERVALUED') return { text: '극단 과평가', color: 'var(--danger)' }
+  if (signal === 'OVERVALUED') return { text: '과평가', color: 'var(--warn)' }
+  if (signal === 'EXTREME_UNDERVALUED') return { text: '극단 저평가', color: 'var(--ok)' }
+  if (signal === 'UNDERVALUED') return { text: '저평가', color: 'var(--ok)' }
+  return { text: '정상', color: 'var(--ok)' }
+}
+
+// 가격 띠의 한 칸
+interface StripCell {
+  key: string
+  group: 'coin' | 'index'
+  name: string
+  price: string
+  change: number | null
+  onClick?: () => void
 }
 
 function Section({ className, title, actions, children }: { className: string; title: string; actions?: ReactNode; children: ReactNode }) {
@@ -135,76 +149,16 @@ function Section({ className, title, actions, children }: { className: string; t
   )
 }
 
-function BtcMarketCard({
-  btc,
-  kimchi,
-  kimchiHistory,
-  onOpen,
-}: {
-  btc?: DashboardData['coins'][number]
-  kimchi: DashboardData['kimchi']
-  kimchiHistory: Array<{ t: string; v: number }>
-  onOpen: () => void
-}) {
-  const change = btc?.change_24h ?? null
-  const up = change == null || change >= 0
-  const chartColor = changeColor(kimchi?.kimchi_premium_pct)
-
-  return (
-    <Card className="mock-data-card" onClick={onOpen} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}>
-      <div className="mock-data-title">BTC / USDT</div>
-      <div className="mock-data-value">{btc?.price ? `$${btc.price.toLocaleString()}` : '-'}</div>
-      <div className={up ? 'mock-up' : 'mock-down'}>
-        {change != null ? `${up ? '+' : ''}${change.toFixed(2)}%` : '-'}
-      </div>
-      {kimchi && (
-        <div className="mock-data-meta">
-          김치프리미엄 <b className={kimchi.kimchi_premium_pct >= 0 ? 'mock-up' : 'mock-down'}>
-            {kimchi.kimchi_premium_pct >= 0 ? '+' : ''}{kimchi.kimchi_premium_pct.toFixed(2)}%
-          </b>
-          <span>환율 {kimchi.usd_krw.toLocaleString()}</span>
-        </div>
-      )}
-      {kimchiHistory.length > 1 && (
-        <div className="mock-kimchi-chart">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={kimchiHistory} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-              <defs>
-                <linearGradient id="mockKimchiGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={chartColor} stopOpacity={0.5} />
-                  <stop offset="95%" stopColor={chartColor} stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="t" hide />
-              <YAxis hide domain={['auto', 'auto']} />
-              <ReferenceLine y={0} stroke={C.text3} strokeDasharray="3 3" strokeWidth={1} />
-              <Tooltip
-                contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, fontSize: '0.7rem' }}
-                labelStyle={{ color: C.text2 }}
-                formatter={(v) => [`${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`, '김프']}
-              />
-              <Area type="monotone" dataKey="v" stroke={chartColor} strokeWidth={2} fill="url(#mockKimchiGrad)" dot={false} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-    </Card>
-  )
-}
-
 const TONE_COLOR: Record<PhaseTone, string> = { up: 'var(--up)', down: 'var(--down)', flat: 'var(--text-2)' }
 const TONE_MARK: Record<PhaseTone, string> = { up: '▲', down: '▼', flat: '–' }
 const fmtUsdt = (v: number) => v.toLocaleString('en-US', { maximumFractionDigits: 2 })
 
-// BTC 시장 국면 — 학습 탭 일봉 차트(BTCUSDT)에서 요약. 404·오류·빈 응답은 안내 문구
-function BtcPhaseCard() {
-  const { data, loading } = useApi<ChartResponse>('/api/learning/chart?symbol=BTCUSDT&interval=1d&limit=90', 300_000)
+// BTC 시장 국면 — 학습 탭 일봉 차트(BTCUSDT) 요약을 받아 그린다(차트 조회는 Dashboard에서 한 번만). 404·오류·빈 응답은 안내 문구
+function BtcPhaseCard({ phase, loading }: { phase: BtcPhase | null; loading: boolean }) {
   // 한 번이라도 응답(성공·실패)을 받았으면 폴링 재요청 중에는 Skeleton을 다시 띄우지 않는다
   const [settled, setSettled] = useState(false)
   if (!loading && !settled) setSettled(true)
-  if (loading && !data && !settled) return <SkeletonCard height={260} />
-
-  const phase = summarizeBtcPhase(data)
+  if (loading && !phase && !settled) return <SkeletonCard height={260} />
 
   return (
     <Card className="phase-card">
@@ -248,62 +202,27 @@ function BtcPhaseCard() {
   )
 }
 
-function CoinCard({
-  coin,
-  editMode,
-  isEditing,
-  loading,
-  error,
-  onEdit,
-  onOpen,
-  onSave,
-  onCancel,
-}: {
-  coin: DashboardData['coins'][number]
-  editMode: boolean
-  isEditing: boolean
-  loading: boolean
-  error: string | null
-  onEdit: () => void
-  onOpen: () => void
-  onSave: (query: string) => void
-  onCancel: () => void
-}) {
-  const change = coin.change_24h ?? null
-  const up = change == null || change >= 0
+// 시장 분위기 한 줄 + 근거 카드 (근거마다 해당 화면으로 이동)
+const BASIS_LINK: Record<string, string> = { phase: '/learning', spf: '/spf', warnings: '/market', fearGreed: '/market' }
 
+function MoodCard({ mood }: { mood: Mood }) {
   return (
-    <Card
-      className={`mock-data-card${editMode ? '' : ' coin-card'}`}
-      onClick={editMode ? onEdit : onOpen}
-      style={{ cursor: 'pointer', position: 'relative' }}
-    >
-      {isEditing ? (
-        <CoinSlotEditor
-          position={coin.position}
-          currentSymbol={coin.symbol}
-          onSave={onSave}
-          onCancel={onCancel}
-          loading={loading}
-          error={error}
-        />
-      ) : (
-        <>
-      {editMode && <span className="mock-card-edit-mark">✎</span>}
-      <div className="mock-data-title">{coin.symbol}</div>
-      <div className="mock-data-value">{coin.price ? `$${coin.price.toLocaleString()}` : '-'}</div>
-      <div className={up ? 'mock-up' : 'mock-down'}>
-        {change != null ? `${up ? '+' : ''}${change.toFixed(2)}%` : '-'}
+    <section className="dash-card dash-mood" aria-labelledby="mood-title">
+      <div className="dash-mood-head">
+        <span className="dash-mood-badge" data-tone={mood.ready ? mood.tone : 'wait'}>{mood.badge}</span>
+        <h2 id="mood-title">{mood.sentence}</h2>
+        {mood.ready && mood.tally && <span className="dash-mood-tally">근거 {mood.basis.length}개 중 {mood.tally}</span>}
       </div>
-      {(coin.high_24h != null || coin.low_24h != null) && (
-        <div className="mock-data-meta">
-          {coin.high_24h != null && <span>H ${coin.high_24h.toLocaleString()}</span>}
-          {coin.low_24h != null && <span>L ${coin.low_24h.toLocaleString()}</span>}
-        </div>
-      )}
-        </>
-      )}
-    </Card>
+      <div className="dash-basis-grid">
+        {mood.basis.map(b => (
+          <Link key={b.key} to={BASIS_LINK[b.key]} className="dash-basis">
+            <span className="dash-basis-label">{b.label}</span>
+            <span className="dash-basis-tag" data-vote={b.vote}>{b.tag}</span>
+            <span className="dash-basis-value">{b.value}</span>
+          </Link>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -314,6 +233,11 @@ export function Dashboard() {
   const { data: usSlots, refetch: refetchUsSlots } = useApi<StockSlot[]>('/api/stock-slots/us', 0)
   const { data: krStocks, refetch: refetchKr } = useApi<StockItem[]>('/api/stock-prices/kr', 300_000)
   const { data: krSlots, refetch: refetchKrSlots } = useApi<StockSlot[]>('/api/stock-slots/kr', 0)
+  // 학습 일봉 차트는 여기서 한 번만 조회해 분위기 카드와 국면 카드가 같이 쓴다
+  const { data: chart, loading: chartLoading } = useApi<ChartResponse>('/api/learning/chart?symbol=BTCUSDT&interval=1d&limit=90', 300_000)
+  const { data: spf } = useApi<SpfApi>('/api/spf-data', 300_000)
+  const { data: market } = useApi<MarketApi>('/api/market-analysis', 300_000)
+  const [priceTab, setPriceTab] = useState<'coin' | 'index'>('coin')
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
   const [activeIndex, setActiveIndex] = useState<{ ticker: string; name: string } | null>(null)
   const [activeTvStock, setActiveTvStock] = useState<{ tv_symbol: string; name: string } | null>(null)
@@ -350,6 +274,69 @@ export function Dashboard() {
 
   const btc = data.coins?.find(c => c.symbol === 'BTC')
   const mvrv = data.onchain?.mvrv ?? null
+  const chartColor = changeColor(data.kimchi?.kimchi_premium_pct)
+  const phase = summarizeBtcPhase(chart)
+  const warnings = market ? market.insights.filter(i => i.level === 'warning' || i.level === 'critical') : null
+  const mood = summarizeMood({
+    phaseTones: phase ? phase.states.map(st => st.tone) : null,
+    phaseValue: phase?.states.slice(0, 2).map(st => st.v).join(' · '),
+    spf: spf ? { direction: spf.today_prediction?.direction ?? '', confidence: spf.today_prediction?.confidence ?? 0 } : null,
+    warningCount: warnings ? warnings.length : null,
+    warningTitles: warnings?.map(w => w.title),
+    fearGreed: data.fear_greed?.value ?? null,
+    fearGreedLabel: data.fear_greed?.label,
+  })
+
+  // 가격 띠: 코인 슬롯 전부 + 지수 3개 + 원/달러. 편집 중에는 코인 칸이 슬롯 편집을 연다
+  const cells: StripCell[] = [
+    ...(data.coins ?? []).map((coin): StripCell => ({
+      key: `coin-${coin.position ?? coin.symbol}`,
+      group: 'coin',
+      name: coin.symbol,
+      price: fmtCoinPrice(coin.price),
+      change: coin.change_24h ?? null,
+      onClick: editMode
+        ? () => { setEditingPosition(coin.position); setEditError(null) }
+        : () => setSelectedSymbol(coin.symbol),
+    })),
+    ...(stockIndices ?? []).slice(0, 3).map((idx): StripCell => ({
+      key: `idx-${idx.ticker}`,
+      group: 'index',
+      name: idx.name,
+      price: fmtIndex(idx.price),
+      change: idx.change_pct,
+      onClick: () => setActiveIndex({ ticker: idx.ticker, name: idx.name }),
+    })),
+    ...(data.kimchi ? [{ key: 'usdkrw', group: 'index', name: '원/달러', price: fmtFixed(data.kimchi.usd_krw, 2), change: null } satisfies StripCell] : []),
+  ]
+  const editingCoin = editMode ? data.coins?.find(c => c.position === editingPosition) : undefined
+
+  // 핵심 지표: 해석(note)은 기존 라벨·신호값만 쓰고, 없는 항목은 비워 둔다
+  const pct = (v: number | null | undefined, digits: number) => (v == null ? '—' : `${fmtFixed(v, digits)}%`)
+  const changeNote = (v: number | null | undefined) => ({
+    text: v == null ? '' : `${changeArrow(v)} ${fmtFixed(Math.abs(v), 2)}%`,
+    color: changeColor(v),
+  })
+  const oiChange = data.derivatives.oi_change?.change_24h_pct
+  const mcapChange = changeNote(data.global?.market_cap_change_24h)
+  const kpis: Array<{ label: string; value: string; note: string; color: string }> = [
+    ...(data.fear_greed ? [{
+      label: '공포탐욕', value: String(data.fear_greed.value), note: data.fear_greed.label,
+      color: data.fear_greed.value <= 25 ? 'var(--danger)' : data.fear_greed.value >= 75 ? 'var(--warn)' : 'var(--text-2)',
+    }] : []),
+    ...(mvrv !== null ? [{ label: 'MVRV', value: fmtFixed(mvrv, 2), note: mvrvNote(data.onchain?.mvrv_signal).text, color: mvrvNote(data.onchain?.mvrv_signal).color }] : []),
+    ...(data.kimchi ? [{ label: '김치프리미엄', value: fmtSignedPct(data.kimchi.kimchi_premium_pct), note: '', color: 'var(--text-2)' }] : []),
+    { label: '펀딩비', value: pct(data.derivatives.funding_rate?.funding_rate_pct, 4), note: '', color: 'var(--text-2)' },
+    {
+      label: '미결제약정', value: fmt(data.derivatives.open_interest?.open_interest),
+      note: oiChange != null ? `24h ${changeNote(oiChange).text}` : '', color: changeColor(oiChange),
+    },
+    ...(data.global ? [
+      { label: 'BTC 도미넌스', value: pct(data.global.btc_dominance, 1), note: '', color: 'var(--text-2)' },
+      { label: '암호화폐 시총', value: fmt(data.global.total_market_cap_usd), note: mcapChange.text, color: mcapChange.color },
+    ] : []),
+  ]
+
   const usMarkets = data.us_market?.filter(m => m.category !== 'korea') ?? []
   const koreaMarkets = data.us_market?.filter(m => m.category === 'korea') ?? []
   const kimchiHistory = (data.kimchi_history ?? []).map(d => ({
@@ -361,12 +348,18 @@ export function Dashboard() {
     <div className="mock-spf-dashboard mock-real-dashboard">
       <LastUpdated timestamp={lastUpdated} failed={!!error} />
       <div className="mock-real-stack">
-        <Section
-          className="mock-coin-price-section"
-          title="코인가격"
-          actions={(
+        <MoodCard mood={mood} />
+
+        <section className="dash-card dash-strip mock-coin-price-section" aria-label="가격" data-tab={priceTab}>
+          <div className="dash-strip-head">
+            <h2>가격</h2>
+            <div className="v2-seg" role="group" aria-label="가격 묶음">
+              <button type="button" className="v2-seg-btn" aria-pressed={priceTab === 'coin'} onClick={() => setPriceTab('coin')}>코인</button>
+              <button type="button" className="v2-seg-btn" aria-pressed={priceTab === 'index'} onClick={() => setPriceTab('index')}>지수</button>
+            </div>
             <button
               type="button"
+              className="dash-strip-edit"
               onClick={() => {
                 setEditMode(prev => !prev)
                 setEditingPosition(null)
@@ -375,75 +368,85 @@ export function Dashboard() {
             >
               {editMode ? '완료' : '편집'}
             </button>
-          )}
-        >
-          <div className="mock-overview-grid mock-compact-grid">
-            {data.coins?.map(coin => (
-              <CoinCard
-                key={coin.position ?? coin.symbol}
-                coin={coin}
-                editMode={editMode}
-                isEditing={editMode && editingPosition === coin.position}
-                loading={editLoading}
-                error={editError}
-                onEdit={() => {
-                  setEditingPosition(coin.position)
-                  setEditError(null)
-                }}
-                onOpen={() => setSelectedSymbol(coin.symbol)}
-                onSave={(query) => handleSlotSave(coin.position, query)}
+          </div>
+          <div className="dash-strip-grid">
+            {cells.map(cell => {
+              const body = (
+                <>
+                  <span className="dash-cell-name">{cell.name}</span>
+                  <span className="dash-cell-price">{cell.price}</span>
+                  <span className="dash-cell-change" style={{ color: changeColor(cell.change) }}>
+                    {cell.change == null ? '—' : `${changeArrow(cell.change)} ${fmtFixed(Math.abs(cell.change), 2)}%`}
+                  </span>
+                </>
+              )
+              return cell.onClick ? (
+                <button key={cell.key} type="button" className="dash-cell" data-group={cell.group} data-edit={editMode && cell.group === 'coin' ? 'true' : undefined} onClick={cell.onClick}>{body}</button>
+              ) : (
+                <div key={cell.key} className="dash-cell" data-group={cell.group}>{body}</div>
+              )
+            })}
+          </div>
+          {editingCoin && (
+            <div className="dash-strip-editor">
+              <CoinSlotEditor
+                position={editingCoin.position}
+                currentSymbol={editingCoin.symbol}
+                onSave={(query) => handleSlotSave(editingCoin.position, query)}
                 onCancel={() => {
                   setEditingPosition(null)
                   setEditError(null)
                 }}
+                loading={editLoading}
+                error={editError}
               />
-            ))}
-          </div>
-        </Section>
+            </div>
+          )}
+        </section>
 
         <div className="dash-top">
-          <BtcPhaseCard />
-          <div className="dash-kpi">
-            {data.fear_greed && (
-              <Card className="mock-data-card mock-gauge-data-card">
-                <div className="mock-data-title">공포탐욕지수</div>
-                <GaugeChart value={data.fear_greed.value} label={data.fear_greed.label} size={110} />
-              </Card>
+          <BtcPhaseCard phase={phase} loading={chartLoading} />
+          <Card className="dash-kpi-card">
+            <h2 className="dash-card-title">핵심 지표</h2>
+            <div className="v2-list">
+              {kpis.map(k => (
+                <div key={k.label} className="v2-row">
+                  <span>{k.label}</span>
+                  <span className="dash-kpi-val">
+                    {k.note && <span className="v2-note" style={{ color: k.color }}>{k.note}</span>}
+                    <span>{k.value}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+            {kimchiHistory.length > 1 && (
+              <>
+                <div className="dash-kimchi-caption">김치프리미엄 추이</div>
+                <div className="mock-kimchi-chart">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={kimchiHistory} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                      <defs>
+                        <linearGradient id="mockKimchiGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={chartColor} stopOpacity={0.5} />
+                          <stop offset="95%" stopColor={chartColor} stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="t" hide />
+                      <YAxis hide domain={['auto', 'auto']} />
+                      <ReferenceLine y={0} stroke={C.text3} strokeDasharray="3 3" strokeWidth={1} />
+                      <Tooltip
+                        contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, fontSize: '12px' }}
+                        labelStyle={{ color: C.text2 }}
+                        formatter={(v) => [fmtSignedPct(Number(v)), '김프']}
+                      />
+                      <Area type="monotone" dataKey="v" stroke={chartColor} strokeWidth={2} fill="url(#mockKimchiGrad)" dot={false} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
             )}
-            {mvrv !== null && (
-              <Card className="mock-data-card mock-gauge-data-card">
-                <div className="mock-data-title">MVRV Ratio</div>
-                <GaugeChart value={mvrvToGauge(mvrv)} label={mvrvLabel(data.onchain?.mvrv_signal, mvrv)} size={110} />
-              </Card>
-            )}
-          </div>
+          </Card>
         </div>
-
-        <section className="mock-market-overview">
-          <div className="mock-card-head">
-            <h2>시장 메인 카드</h2>
-          </div>
-          <div className="mock-overview-grid">
-            <BtcMarketCard btc={btc} kimchi={data.kimchi} kimchiHistory={kimchiHistory} onOpen={() => setSelectedSymbol('BTC')} />
-            {data.global && <GlobalMarketCard data={data.global} />}
-            {stockIndices?.slice(0, 3).map(idx => (
-              <StockIndexCard
-                key={idx.ticker}
-                name={idx.name}
-                ticker={idx.ticker}
-                price={idx.price}
-                change_pct={idx.change_pct}
-                sparkline={idx.sparkline ?? []}
-                high={idx.high ?? null}
-                low={idx.low ?? null}
-                onOpenModal={(ticker) => {
-                  const found = stockIndices.find(item => item.ticker === ticker)
-                  setActiveIndex(found ? { ticker: found.ticker, name: found.name } : null)
-                }}
-              />
-            ))}
-          </div>
-        </section>
 
         <section className="mock-news-section">
           <EconomicNewsSection />

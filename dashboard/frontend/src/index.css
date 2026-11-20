@@ -1302,16 +1302,6 @@ body {
   gap: 12px;
 }
 
-.dash-kpi {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.dash-kpi > * {
-  flex: 1;
-}
-
 .phase-head {
   display: flex;
   align-items: flex-start;
@@ -1332,13 +1322,15 @@ body {
   border: 1px solid var(--border-strong);
   border-radius: 999px;
   color: var(--text-3);
-  font-size: 0.72rem;
+  font-size: 12px;
   white-space: nowrap;
 }
 
 .phase-link {
+  display: inline-flex;
+  align-items: center;
   color: var(--link);
-  font-size: 0.8rem;
+  font-size: 13px;
   text-decoration: none;
   white-space: nowrap;
 }
@@ -1364,7 +1356,7 @@ body {
 
 .phase-unit {
   color: var(--text-3);
-  font-size: 0.85rem;
+  font-size: 13px;
 }
 
 .phase-sub {
@@ -1374,7 +1366,7 @@ body {
   margin-top: 6px;
   color: var(--text-2);
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 13px;
 }
 
 .phase-range {
@@ -1385,7 +1377,7 @@ body {
 .phase-spark {
   display: block;
   width: 100%;
-  height: 64px;
+  height: 180px;
   margin-top: 14px;
 }
 
@@ -1417,16 +1409,12 @@ body {
 .phase-empty {
   margin-top: 18px;
   color: var(--text-3);
-  font-size: 0.85rem;
+  font-size: 13px;
 }
 
 @media (max-width: 1100px) {
   .dash-top {
     grid-template-columns: 1fr;
-  }
-
-  .dash-kpi {
-    flex-direction: row;
   }
 
   .mock-content-grid {
@@ -1459,10 +1447,6 @@ body {
 
   .phase-states {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .dash-kpi {
-    flex-direction: column;
   }
 
   .mock-spf-hero {
@@ -1582,4 +1566,113 @@ body {
 @media (max-width: 767px) {
   input, select, textarea { font-size: 16px; }
   .v2-asset-tab { height: 44px; }
+}
+
+/* ===== 대시보드 상단 (분위기 한 줄 · 가격 띠 · 핵심 지표 · 뉴스) ===== */
+.dash-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+}
+.dash-card-title { margin: 0 0 6px; color: var(--text); font-size: 15px; font-weight: 600; }
+
+/* 분위기 한 줄 */
+.dash-mood { padding: 22px 24px; display: flex; flex-direction: column; gap: 18px; }
+.dash-mood-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+.dash-mood-head h2 { margin: 0; color: var(--text); font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.35; }
+.dash-mood-badge {
+  font-size: 13px; font-weight: 600; border-radius: 999px; padding: 5px 12px;
+  color: var(--text-2); background: color-mix(in srgb, var(--text-2) 14%, transparent);
+}
+.dash-mood-badge[data-tone="caution"] { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+.dash-mood-badge[data-tone="favorable"] { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.dash-mood-tally { margin-left: auto; font-size: 13px; color: var(--text-2); }
+.dash-basis-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.dash-basis {
+  min-height: 76px; box-sizing: border-box; background: var(--bg-inset); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px; color: var(--text); text-decoration: none;
+  display: grid; grid-template-columns: 1fr auto; grid-template-areas: "label tag" "value value";
+  align-content: start; gap: 6px 8px;
+}
+.dash-basis-label { grid-area: label; font-size: 13px; color: var(--text-2); }
+.dash-basis-tag { grid-area: tag; font-size: 12px; font-weight: 600; white-space: nowrap; color: var(--text-2); }
+.dash-basis-value { grid-area: value; font-size: 15px; font-weight: 600; line-height: 1.4; }
+.dash-basis-tag[data-vote="down"] { color: var(--down); }
+.dash-basis-tag[data-vote="up"] { color: var(--up); }
+.dash-basis-tag[data-vote="caution"] { color: var(--warn); }
+.dash-basis-tag[data-vote="rebound"] { color: var(--ok); }
+
+/* 가격 띠: 데스크톱은 한 줄 격자, 모바일은 코인 | 지수 목록 */
+.dash-strip { display: grid; grid-template-columns: minmax(0, 1fr) auto; overflow: hidden; }
+.dash-strip-head { display: contents; }
+.dash-strip-head h2, .dash-strip-head .v2-seg { display: none; }
+.dash-strip-edit {
+  grid-column: 2; grid-row: 1; min-width: 56px; border: 0; border-left: 1px solid var(--line);
+  background: transparent; color: var(--text-2); font: inherit; font-size: 13px; cursor: pointer;
+}
+.dash-strip-grid { grid-column: 1; grid-row: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+.dash-cell {
+  min-height: 64px; box-sizing: border-box; padding: 10px 12px; margin: 0 0 -1px;
+  border: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: transparent;
+  color: var(--text); font: inherit; text-align: left; cursor: pointer;
+  display: flex; flex-direction: column; justify-content: center; gap: 3px;
+}
+div.dash-cell { cursor: default; }
+button.dash-cell:hover { background: var(--bg-inset); }
+.dash-cell[data-edit="true"] { outline: 1px dashed var(--warn); outline-offset: -3px; }
+.dash-cell-name { font-size: 12px; font-weight: 600; color: var(--accent); }
+.dash-cell[data-group="index"] .dash-cell-name { color: var(--text-2); }
+.dash-cell-price { font-family: var(--font-mono); font-size: 15px; font-weight: 600; white-space: nowrap; }
+.dash-cell-change { font-family: var(--font-mono); font-size: 12px; white-space: nowrap; }
+.dash-strip-editor { grid-column: 1 / -1; padding: 12px; border-top: 1px solid var(--line); }
+
+/* 핵심 지표 · 뉴스 */
+.dash-kpi-card { display: flex; flex-direction: column; }
+.dash-kpi-val { display: flex; align-items: baseline; gap: 10px; }
+.dash-kimchi-caption { margin-top: 10px; font-size: 12px; color: var(--text-3); }
+.dash-news-head { margin-bottom: 6px; }
+.dash-news-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  min-height: 44px; border-top: 1px solid var(--line); color: var(--text); text-decoration: none;
+}
+.dash-news-item:hover { color: var(--link-hover); }
+.dash-news-title { font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-news-meta { flex-shrink: 0; font-size: 12px; color: var(--text-3); font-family: var(--font-mono); white-space: nowrap; }
+
+@media (max-width: 767px) {
+  .dash-mood { padding: 16px; gap: 12px; }
+  .dash-mood-head { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "badge tally" "title title"; align-items: center; gap: 12px 8px; }
+  .dash-mood-badge { grid-area: badge; justify-self: start; padding: 4px 12px; }
+  .dash-mood-tally { grid-area: tally; margin-left: 0; justify-self: end; font-size: 12px; }
+  .dash-mood-head h2 { grid-area: title; font-size: 19px; line-height: 1.4; }
+  .dash-basis-grid { display: flex; flex-direction: column; gap: 0; }
+  .dash-basis {
+    min-height: 52px; background: transparent; border: 0; border-top: 1px solid var(--line); border-radius: 0;
+    padding: 6px 0; grid-template-areas: "label tag" "value tag"; align-content: center; align-items: center; gap: 2px 10px;
+  }
+  .dash-basis-label { font-size: 12px; }
+  .dash-basis-value { font-size: 14px; }
+
+  .dash-strip { display: flex; flex-direction: column; padding: 14px 16px 6px; gap: 10px; }
+  .dash-strip-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .dash-strip-head h2 { display: block; margin: 0 auto 0 0; font-size: 15px; font-weight: 600; color: var(--text); }
+  .dash-strip-head .v2-seg { display: inline-grid; grid-template-columns: repeat(2, 72px); }
+  .dash-strip-edit { min-height: 44px; min-width: 56px; border: 1px solid var(--border); border-radius: 10px; }
+  .dash-strip-grid { display: flex; flex-direction: column; }
+  .dash-strip[data-tab="coin"] .dash-cell[data-group="index"],
+  .dash-strip[data-tab="index"] .dash-cell[data-group="coin"] { display: none; }
+  .dash-cell {
+    min-height: 46px; padding: 0; margin: 0; border-right: 0; border-bottom: 0; border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: 64px 1fr 84px; align-items: center; gap: 8px;
+  }
+  .dash-cell-name { font-size: 14px; }
+  .dash-cell[data-group="index"] .dash-cell-name { color: var(--accent); }
+  .dash-cell-price { text-align: right; }
+  .dash-cell-change { font-size: 13px; text-align: right; }
+  .dash-strip-editor { padding: 8px 0 12px; }
+  .dash-strip-editor button { min-width: 44px; min-height: 44px; }
+
+  .phase-spark { height: 110px; }
+  .phase-link { min-height: 44px; }
+  .dash-news-item { flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; min-height: 56px; }
+  .dash-news-title { white-space: normal; line-height: 1.4; }
 }

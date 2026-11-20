@@ -64,8 +64,11 @@ def test_dashboard_uses_original_data_sections_in_mock_shell():
     assert "useApi<StockIndexItem[]>('/api/stock-indices'" in source
     assert "useApi<StockItem[]>('/api/stock-prices/us'" in source
     assert "useApi<StockItem[]>('/api/stock-prices/kr'" in source
-    assert "GlobalMarketCard" in source
-    assert "StockIndexCard" in source
+    assert "useApi<SpfApi>('/api/spf-data'" in source
+    assert "useApi<MarketApi>('/api/market-analysis'" in source
+    assert "useApi<ChartResponse>('/api/learning/chart?symbol=BTCUSDT" in source
+    assert "summarizeMood" in source
+    assert "MoodCard" in source
     assert "EconomicNewsSection" in source
     assert "AltcoinSeasonCard" in source
     assert "MacroHealthCard" in source
@@ -74,7 +77,8 @@ def test_dashboard_uses_original_data_sections_in_mock_shell():
 def test_dashboard_restores_card_interactions_and_editors():
     source = DASHBOARD_TSX.read_text(encoding="utf-8")
 
-    assert "setSelectedSymbol('BTC')" in source
+    assert "StockIndexModal" in source
+    assert "setActiveIndex({" in source
     assert "TradingViewChart" in source
     assert "toTvSymbol" in source
     assert "kimchi_history" in source
@@ -90,7 +94,7 @@ def test_dashboard_restores_card_interactions_and_editors():
 def test_dashboard_section_titles_match_requested_labels():
     source = DASHBOARD_TSX.read_text(encoding="utf-8")
 
-    assert 'title="코인가격"' in source
+    assert 'aria-label="가격"' in source
     assert 'title="미국주식"' in source
     assert 'title="한국주식"' in source
     assert "<h1>대시보드</h1>" not in source
@@ -102,9 +106,9 @@ def test_dashboard_order_matches_requested_sections():
     source = DASHBOARD_TSX.read_text(encoding="utf-8")
 
     ordered = [
+        "<MoodCard",
         "mock-coin-price-section",
         "dash-top",
-        "mock-market-overview",
         "mock-news-section",
         "mock-us-stock-section",
         "mock-kr-stock-section",

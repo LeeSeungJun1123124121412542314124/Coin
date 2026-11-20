@@ -15,7 +15,9 @@ def test_dashboard_uses_mockup_card_layout_classes():
 
     assert "mock-spf-dashboard" in source
     assert "mock-real-stack" in source
-    assert "mock-market-overview" in source
+    assert "dash-mood" in source
+    assert "dash-strip" in source
+    assert "dash-top" in source
     assert "mock-news-section" in source
     assert "mock-coin-price-section" in source
     assert "mock-us-stock-section" in source
