@@ -252,46 +252,49 @@ export function Alerts() {
           {shownGroups.map(group => {
             const open = (group.key === firstKey) !== flipped.has(group.key)
             const titleId = `alerts-day-${group.key}`
-            if (!open) {
-              return (
-                <button key={group.key} type="button" className="v2-fold" aria-expanded={false} onClick={() => flip(group.key)}>
-                  <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 600 }}>{group.date}</span>
-                    <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{summarizeDay(group.items)}</span>
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    <span className="v2-nowrap" style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-2)' }}>{group.items.length}건</span>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
-                  </span>
-                </button>
-              )
-            }
+            // 접힘·펼침 모두 같은 section·button 요소로 그려 키보드 포커스가 유지되게 하고 내용만 조건부로 그린다
             return (
               <section
                 key={group.key}
-                aria-labelledby={titleId}
-                style={{
+                aria-labelledby={open ? titleId : undefined}
+                style={open ? {
                   background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)',
                   boxShadow: 'var(--shadow-card)', padding: '4px 16px 6px', display: 'flex', flexDirection: 'column',
-                }}
+                } : undefined}
               >
                 <button
                   type="button"
-                  aria-expanded={true}
+                  className={open ? undefined : 'v2-fold'}
+                  aria-expanded={open}
                   onClick={() => flip(group.key)}
-                  style={{
+                  style={open ? {
                     minHeight: 48, border: 0, background: 'transparent', color: 'var(--text)', font: 'inherit',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 0, cursor: 'pointer',
-                  }}
+                  } : undefined}
                 >
-                  <span id={titleId} style={{ fontSize: 15, fontWeight: 600 }}>
-                    <span style={{ fontFamily: 'var(--font-mono)' }}>{group.date}</span>
-                    {group.label !== group.date && <span style={{ marginLeft: 6 }}>{group.label}</span>}
-                    <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-2)' }}> · {group.items.length}건</span>
-                  </span>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
+                  {open ? (
+                    <>
+                      <span id={titleId} style={{ fontSize: 15, fontWeight: 600 }}>
+                        <span style={{ fontFamily: 'var(--font-mono)' }}>{group.date}</span>
+                        {group.label !== group.date && <span style={{ marginLeft: 6 }}>{group.label}</span>}
+                        <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-2)' }}> · {group.items.length}건</span>
+                      </span>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 600 }}>{group.date}</span>
+                        <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{summarizeDay(group.items)}</span>
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <span className="v2-nowrap" style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-2)' }}>{group.items.length}건</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                      </span>
+                    </>
+                  )}
                 </button>
-                {isMobile ? <AlertRows items={group.items} /> : <AlertTable items={group.items} />}
+                {open && (isMobile ? <AlertRows items={group.items} /> : <AlertTable items={group.items} />)}
               </section>
             )
           })}

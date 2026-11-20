@@ -68,7 +68,9 @@ type Timeframe = '1h' | '4h' | '1d'
 function SqueezeDot({ color, label }: { color: string; label?: string }) {
   return (
     <span
+      role={label ? 'img' : undefined}
       aria-label={label}
+      title={label}
       style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: color, verticalAlign: 'baseline' }}
     />
   )

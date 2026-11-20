@@ -56,7 +56,8 @@ def test_recent_prediction_history_states_do_not_wrap_mid_label_on_mobile():
     # 라벨은 12px 이상 — 옛 9/11px 미니 배지는 없다
     assert "fontSize: 9" not in section
     assert "fontSize: 11" not in section
-    assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in css
+    cells_start = css.index(".spf-log-cells {")
+    assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in css[cells_start:css.index("}", cells_start)]
 
 
 def test_recent_prediction_history_status_mapping_is_complete():

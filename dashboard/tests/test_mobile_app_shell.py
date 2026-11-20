@@ -157,4 +157,5 @@ def test_mobile_leaderboard_reset_button_sits_below_list():
     assert leaderboard_source.index("leaderboard-cards") < leaderboard_source.index("leaderboard-reset-button")
     assert "모든 지표의 성과 기록이 지워집니다." in leaderboard_source
     assert ".leaderboard-reset-button" in css_source
-    assert "min-height: 48px" in css_source
+    reset_start = css_source.index(".leaderboard-reset-button {", css_source.index("@media (max-width: 767px)", css_source.index(".leaderboard-reset-button:disabled")))
+    assert "min-height: 48px" in css_source[reset_start:css_source.index("}", reset_start)]
