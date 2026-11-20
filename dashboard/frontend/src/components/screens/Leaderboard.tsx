@@ -4,6 +4,8 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { apiFetch } from '../../lib/api'
 import LastUpdated from '../shared/LastUpdated'
 import { C, changeColor, softBg } from '../../lib/theme'
+import { fmtFixed, fmtSignedPct } from '../../lib/format'
+import { directionText } from './leaderboardView'
 
 // 지표 리더보드 — 각 지표가 가상 시드로 자동매매한 포워드 성과 순위
 interface LeaderRow {
@@ -59,32 +61,28 @@ function pct(v: number | null): string {
 // 숫자 칸 공통 — Mono
 const MONO: CSSProperties = { fontFamily: 'var(--font-mono)' }
 
-// 자산별 방향 배지 (BTC·ETH·SOL) — 롱=--up·숏=--down·현금=--surface-2 바탕 대시
-const ASSETS = ['BTC', 'ETH', 'SOL'] as const
-function DirectionBadges({ directions = {} }: { directions?: Record<string, 'long' | 'short'> }) {
+// 방향 칸 — 자산별 포지션을 글로 요약. 상승·하락 색은 ▲▼와 함께 쓴다
+function DirectionText({ directions }: { directions?: Record<string, 'long' | 'short'> }) {
+  const { text, tone } = directionText(directions ?? {})
+  const color = tone === 'up' ? 'var(--up)' : tone === 'down' ? 'var(--down)' : 'var(--text)'
   return (
-    <span style={{ display: 'inline-flex', gap: 4 }}>
-      {ASSETS.map((a) => {
-        const d = directions[a]
-        const color = d === 'long' ? C.up : d === 'short' ? C.down : C.text3
-        const bg = d === 'long' ? softBg(C.up, 0.14) : d === 'short' ? softBg(C.down, 0.14) : C.surface2
-        const label = d === 'long' ? '롱' : d === 'short' ? '숏' : '–'
-        return (
-          <span
-            key={a}
-            title={`${a} ${d === 'long' ? '롱' : d === 'short' ? '숏' : '현금'}`}
-            style={{
-              display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
-              minWidth: 24, fontSize: '0.6rem', lineHeight: 1.3,
-            }}
-          >
-            <span style={{ color: 'var(--text-3)' }}>{a[0]}</span>
-            <span style={{ color, background: bg, borderRadius: 6, padding: '1px 6px', fontWeight: 600 }}>{label}</span>
-          </span>
-        )
-      })}
+    <span style={{ color, fontWeight: 600 }}>
+      {tone !== 'flat' && <span aria-hidden="true">{tone === 'up' ? '▲' : '▼'} </span>}
+      {text}
     </span>
   )
+}
+
+// 모바일(<768px)이면 카드 목록, 아니면 기존 표
+function useIsMobile(): boolean {
+  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const onChange = () => setMobile(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  return mobile
 }
 
 export function Leaderboard() {
@@ -95,6 +93,8 @@ export function Leaderboard() {
   const [selected, setSelected] = useState<string | null>(null)
   const [detail, setDetail] = useState<Detail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const isMobile = useIsMobile()
 
   const fetchBoard = useCallback(async () => {
     setLoading(true)
@@ -129,6 +129,7 @@ export function Leaderboard() {
 
   const handleReset = async () => {
     if (!window.confirm('모든 지표 포트폴리오를 시드로 리셋합니다. 계속할까요?')) return
+    setResetting(true)
     try {
       await apiFetch('/api/sim/leaderboard/reset', { method: 'POST' })
       setSelected(null)
@@ -136,24 +137,17 @@ export function Leaderboard() {
       await fetchBoard()
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : '리셋 실패')
+    } finally {
+      setResetting(false)
     }
   }
 
   return (
     <div>
       <LastUpdated timestamp={loadedAt} />
-      <div className="leaderboard-toolbar">
-        <p className="leaderboard-toolbar-copy">
-          💰 <b>지표 수익 검증</b> — 각 지표가 동일 시드로 자기 신호대로 자동매매, 포워드 성과(수익)로 어느 지표가 실제 돈이 되나 비교.
-          <span style={{ color: 'var(--text-3)' }}> 시장 방향 전망은 SPF 탭에서.</span>
-        </p>
-        <button
-          className="leaderboard-reset-button"
-          onClick={handleReset}
-        >
-          시드 리셋
-        </button>
-      </div>
+      <p className="leaderboard-toolbar-copy">
+        지표마다 같은 가상 자금으로 자기 신호대로 자동매매한 성과입니다. 수익률이 높은 순으로 정렬됩니다.
+      </p>
 
       {loading ? (
         <div style={PANEL}>로딩 중...</div>
@@ -162,6 +156,38 @@ export function Leaderboard() {
       ) : rows.length === 0 ? (
         <div style={{ ...PANEL, color: 'var(--text-2)' }}>
           아직 데이터가 없습니다. 일일 리밸런스 잡(UTC 00:05)이 1회 이상 실행되면 표시됩니다.
+        </div>
+      ) : isMobile ? (
+        <div className="leaderboard-cards">
+          {rows.map((r, i) => (
+            <button
+              key={r.indicator}
+              type="button"
+              className="leaderboard-card"
+              aria-pressed={selected === r.indicator}
+              onClick={() => fetchDetail(r.indicator)}
+            >
+              <span className="leaderboard-card-head">
+                <span className="leaderboard-card-name">
+                  <span className="leaderboard-card-rank" style={{ color: i < 3 ? 'var(--accent)' : 'var(--text-3)' }}>{i + 1}</span>
+                  <span>{r.indicator}</span>
+                </span>
+                <span className="leaderboard-card-ret" style={{ color: changeColor(r.total_return_pct) }}>
+                  {fmtSignedPct(r.total_return_pct)}
+                </span>
+              </span>
+              <span className="leaderboard-card-sub">
+                <span>지금 방향 <DirectionText directions={r.directions} /></span>
+                <span>매수보유 대비 <span className="leaderboard-card-num" style={{ color: changeColor(r.vs_buyhold_pct) }}>{fmtSignedPct(r.vs_buyhold_pct)}</span></span>
+              </span>
+              <span className="leaderboard-card-stats">
+                <span><span>승률</span><span>{r.win_rate == null ? '—' : `${fmtFixed(r.win_rate, 0)}%`}</span></span>
+                <span><span>최대 낙폭</span><span style={{ color: 'var(--down)' }}>{fmtSignedPct(r.mdd_pct, 1)}</span></span>
+                <span><span>샤프</span><span>{fmtFixed(r.sharpe, 2)}</span></span>
+                <span><span>거래</span><span>{r.n_trades}</span></span>
+              </span>
+            </button>
+          ))}
         </div>
       ) : (
         <div style={PANEL}>
@@ -194,7 +220,7 @@ export function Leaderboard() {
                 >
                   <td style={{ textAlign: 'left', padding: '8px 6px', color: i < 3 ? 'var(--accent)' : 'var(--text-3)', fontWeight: i < 3 ? 700 : 400, ...MONO }}>{i + 1}</td>
                   <td style={{ textAlign: 'left', padding: '8px 6px', color: 'var(--text)', fontWeight: 600 }}>{r.indicator}</td>
-                  <td style={{ textAlign: 'center', padding: '8px 6px' }}><DirectionBadges directions={r.directions} /></td>
+                  <td style={{ textAlign: 'center', padding: '8px 6px' }}><DirectionText directions={r.directions} /></td>
                   <td style={{ padding: '8px 6px', color: changeColor(r.total_return_pct), fontWeight: 600, ...MONO }}>{pct(r.total_return_pct)}</td>
                   <td style={{ padding: '8px 6px', color: changeColor(r.vs_buyhold_pct), ...MONO }}>{pct(r.vs_buyhold_pct)}</td>
                   <td style={{ padding: '8px 6px', color: 'var(--text-2)', ...MONO }}>{r.win_rate == null ? '–' : `${r.win_rate.toFixed(0)}%`}</td>
@@ -268,6 +294,13 @@ export function Leaderboard() {
           )}
         </div>
       )}
+
+      <div className="leaderboard-reset">
+        <button type="button" className="leaderboard-reset-button" onClick={handleReset} disabled={resetting}>
+          처음 자금으로 리셋
+        </button>
+        <span className="leaderboard-reset-note">모든 지표의 성과 기록이 지워집니다. 누르면 한 번 더 확인합니다.</span>
+      </div>
     </div>
   )
 }

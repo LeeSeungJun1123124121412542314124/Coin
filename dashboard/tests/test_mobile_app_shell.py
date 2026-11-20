@@ -148,12 +148,13 @@ def test_header_receives_last_updated_from_screen_component():
     assert "return null" in last_updated_source
 
 
-def test_mobile_leaderboard_reset_button_stacks_below_copy():
+def test_mobile_leaderboard_reset_button_sits_below_list():
     leaderboard_source = Path("dashboard/frontend/src/components/screens/Leaderboard.tsx").read_text(encoding="utf-8")
     css_source = INDEX_CSS.read_text(encoding="utf-8")
 
-    assert "leaderboard-toolbar" in leaderboard_source
+    # 리셋 버튼은 목록·상세 아래(맨 아래)에 있고 설명이 붙는다
     assert "leaderboard-reset-button" in leaderboard_source
-    assert ".leaderboard-toolbar" in css_source
+    assert leaderboard_source.index("leaderboard-cards") < leaderboard_source.index("leaderboard-reset-button")
+    assert "모든 지표의 성과 기록이 지워집니다." in leaderboard_source
     assert ".leaderboard-reset-button" in css_source
-    assert "width: 100%" in css_source
+    assert "min-height: 48px" in css_source
