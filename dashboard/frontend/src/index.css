@@ -158,55 +158,10 @@ body {
   gap: 16px;
 }
 
-.dashboard-market-card {
-  min-height: 220px;
-  overflow: hidden;
-  box-shadow: var(--shadow-card);
-}
-
-.dashboard-card-title {
-  color: var(--text-2);
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.35;
-  text-transform: uppercase;
-}
-
-.dashboard-main-value {
-  min-width: 0;
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 1.9rem;
-  font-weight: 700;
-  line-height: 1.15;
-  overflow-wrap: anywhere;
-}
-
-.dashboard-index-value-row {
-  min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 8px;
-}
-
-.dashboard-index-change {
-  flex-shrink: 0;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  font-weight: 600;
-  line-height: 1.15;
-}
-
 .dashboard-meta-row {
   color: var(--text-2);
   font-size: 0.75rem;
   line-height: 1.4;
-}
-
-.dashboard-sparkline {
-  height: 86px;
 }
 
 .dashboard-gauge-card {
@@ -380,18 +335,6 @@ body {
   .dashboard-hero-grid {
     grid-template-columns: 1fr;
     gap: 12px;
-  }
-
-  .dashboard-market-card {
-    min-height: 190px;
-  }
-
-  .dashboard-main-value {
-    font-size: 1.65rem;
-  }
-
-  .dashboard-sparkline {
-    height: 70px;
   }
 
   .dashboard-gauge-card {
@@ -1239,10 +1182,6 @@ body {
   gap: 12px;
 }
 
-.mock-market-overview {
-  padding: 0;
-}
-
 /* 대시보드 섹션 카드(코인가격·미국주식·한국주식 등) — 제목과 안쪽 카드가 테두리에 붙지 않게 카드 규격 여백 */
 .mock-data-section {
   padding: 16px clamp(14px, 2.5vw, 20px);
@@ -1281,67 +1220,14 @@ body {
   .stock-card-price { font-size: 1.05rem; }
 }
 
-.mock-data-card {
-  min-height: 132px;
-}
-
-.mock-data-title {
-  color: var(--text-2);
-  font-size: 0.76rem;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.mock-data-value {
-  margin-top: 12px;
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 1.7rem;
-  font-weight: 600;
-}
-
-.mock-data-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-  color: var(--text-3);
-  font-size: 0.72rem;
-}
-
-.mock-gauge-data-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
 .mock-kimchi-chart {
   height: 46px;
   margin-top: auto;
   padding-top: 8px;
 }
 
-.mock-card-edit-mark {
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  color: var(--warn);
-  font-size: 0.75rem;
-  pointer-events: none;
-}
-
-.coin-card:hover,
 .stock-card:hover {
   border-color: var(--accent) !important;
-}
-
-.mock-market-overview .dashboard-market-card {
-  min-height: 132px;
-}
-
-.mock-market-overview .dashboard-sparkline {
-  height: 46px;
 }
 
 .mock-news-section > div,
@@ -1545,12 +1431,6 @@ body {
     grid-template-columns: 1fr;
   }
 
-  .mock-market-overview .mock-overview-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .mock-coin-price-section .mock-compact-grid,
   .mock-us-stock-section .mock-compact-grid,
   .mock-kr-stock-section .mock-compact-grid {
     grid-auto-flow: column;
@@ -1560,13 +1440,6 @@ body {
     -webkit-overflow-scrolling: touch;
     gap: 8px;
     padding-bottom: 6px;
-  }
-
-  .mock-coin-price-section .mock-data-card,
-  .mock-us-stock-section .mock-data-card,
-  .mock-kr-stock-section .mock-data-card {
-    min-width: 170px;
-    scroll-snap-align: start;
   }
 
   .mock-record-card,

@@ -48,13 +48,11 @@ def test_dashboard_css_has_mobile_mockup_stack():
     assert ".mock-spf-hero" in source
 
 
-def test_market_main_cards_are_compact_in_mock_shell():
+def test_overview_grid_uses_auto_fit_columns():
+    # "시장 메인 카드" 묶음은 가격 띠·핵심 지표로 바뀌어 없어졌다. 남은 개요 격자(미국시장·한국시장 등)의 열 규칙만 지킨다
     source = INDEX_CSS.read_text(encoding="utf-8")
     overview_grid = source[source.index(".mock-overview-grid {"):source.index(".mock-compact-grid {")]
 
-    assert ".mock-data-card" in source
-    assert "min-height: 132px" in source
-    assert ".mock-market-overview .dashboard-market-card" in source
     assert "grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))" in overview_grid
     assert "grid-template-columns: repeat(4, minmax(0, 1fr))" not in overview_grid
 
@@ -69,40 +67,21 @@ def test_research_screen_uses_common_page_spacing():
     assert "flexDirection: 'column'" in source
 
 
-def test_mobile_coin_and_stock_cards_scroll_horizontally_at_desktop_card_width():
+def test_mobile_stock_cards_scroll_horizontally_at_desktop_card_width():
+    # 코인 가격은 가격 띠(dash-strip)로 옮겨져 이 규칙에서 빠졌다 — 주식 카드의 모바일 가로 스크롤만 지킨다
     source = INDEX_CSS.read_text(encoding="utf-8")
 
-    assert ".mock-market-overview .mock-overview-grid" in source
-    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in source
-    assert ".mock-coin-price-section .mock-compact-grid" in source
-    assert ".mock-us-stock-section .mock-compact-grid" in source
-    assert ".mock-kr-stock-section .mock-compact-grid" in source
-    card_grid_start = source.index(".mock-coin-price-section .mock-compact-grid")
+    flow = source.index("grid-auto-flow: column")
+    card_grid_start = source.rindex(".mock-us-stock-section .mock-compact-grid", 0, flow)
     mobile_card_grid = source[card_grid_start:source.index(".mock-record-card", card_grid_start)]
+    assert ".mock-kr-stock-section .mock-compact-grid" in mobile_card_grid
+    assert "@media (max-width: 760px)" in source[:card_grid_start]
     assert "grid-auto-flow: column" in mobile_card_grid
     assert "grid-auto-columns: 170px" in mobile_card_grid
     assert "overflow-x: auto" in mobile_card_grid
     assert "grid-template-columns: repeat(3, minmax(0, 1fr))" not in mobile_card_grid
 
 
-def test_mobile_index_card_value_row_wraps_without_clipping_change_percent():
-    source = INDEX_CSS.read_text(encoding="utf-8")
-
-    assert ".dashboard-index-value-row" in source
-    row_start = source.index(".dashboard-index-value-row {")
-    row_block = source[row_start:source.index("}", row_start)]
-    assert "flex-wrap: wrap" in row_block
-    assert "min-width: 0" in row_block
-
-    value_start = source.index(".dashboard-main-value {")
-    value_block = source[value_start:source.index("}", value_start)]
-    assert "overflow-wrap: anywhere" in value_block
-
-
-def test_stock_index_card_does_not_render_touch_sticky_sparkline_tooltip():
-    source = Path("dashboard/frontend/src/components/shared/StockIndexCard.tsx").read_text(encoding="utf-8")
-
-    assert "<Tooltip" not in source
 
 def test_dashboard_stock_grid_and_price_strip_avoid_lonely_cards():
     css = INDEX_CSS.read_text(encoding="utf-8")
