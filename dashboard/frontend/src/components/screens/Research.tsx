@@ -384,6 +384,17 @@ export function Research() {
     activeCategory === '전체' ? categories : categories.filter(c => c.name === activeCategory),
   )
 
+  // 갱신 줄 요약: 위험·경계 건수 (0인 것은 뺀다)
+  const criticalCount = categories.filter(c => c.level === 'critical').length
+  const warningCount = categories.filter(c => c.level === 'warning').length
+  const alertParts = [
+    ...(criticalCount > 0 ? [`위험 ${criticalCount}`] : []),
+    ...(warningCount > 0 ? [`경계 ${warningCount}`] : []),
+  ]
+  const summaryText = categories.length === 0 ? '' : alertParts.length > 0
+    ? ` · ${categories.length}개 분석 중 ${alertParts.join(' · ')}`
+    : ` · ${categories.length}개 분석 · 특이 신호 없음`
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <LastUpdated timestamp={lastUpdated} failed={!!error} />
@@ -392,7 +403,7 @@ export function Research() {
         <div style={{ fontSize: 13, color: 'var(--text-3)' }}>
           <span style={{ fontFamily: 'var(--font-mono)' }}>
             {new Date(data.generated_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-          </span> 갱신
+          </span> 갱신{summaryText}
         </div>
       )}
 

@@ -209,6 +209,12 @@ export function Alt() {
             <SqueezeDot color="var(--warn)" /> 볼린저밴드 스퀴즈 감지 · <SqueezeDot color="var(--neutral-series)" /> 보통
           </div>
         </div>
+        {screener.results.length > 0 && (
+          <div style={{ color: 'var(--text)', fontSize: 15, fontWeight: 600, lineHeight: 1.5, marginBottom: 10 }}>
+            1위 {screener.results[0].symbol.replace('/USDT', '')} {screener.results[0].score.toFixed(0)}점
+            {' · '}{screener.results.length}개 중 {screener.results.filter(r => ['S', 'A', 'B'].includes(r.grade)).length}개가 B 이상
+          </div>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           {screener.results.map((r, i) => (
             <button

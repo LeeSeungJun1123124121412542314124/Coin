@@ -603,6 +603,8 @@ function CoinWhaleView({
   const [foldOpen, setFoldOpen] = useState(false)
   const activeWhales = whales.filter(w => !isEmptyWallet(w))
   const emptyWhales = whales.filter(isEmptyWallet)
+  const holdingCount = whales.filter(w => w.positions.length > 0 || w.btc_position != null).length
+  const consensusTail = consensus && consensus.total > 0 ? ` · BTC 롱 ${consensus.long_count} / 숏 ${consensus.short_count}` : ''
 
   const list = (
     <>
@@ -646,6 +648,11 @@ function CoinWhaleView({
   return (
     <>
       <LastUpdated timestamp={lastUpdated} failed={failed} />
+      {whales.length > 0 && (
+        <div style={{ color: 'var(--text)', fontSize: 15, fontWeight: 600, lineHeight: 1.5 }}>
+          추적 중인 {whales.length}개 지갑 중 {holdingCount}개가 포지션 보유{consensusTail}
+        </div>
+      )}
       {consensus && consensus.total > 0 && (
         <Card>
           <ConsensusMeter data={consensus} />
