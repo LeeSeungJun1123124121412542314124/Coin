@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useApi } from '../../hooks/useApi'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { Card } from '../shared/Card'
 import {
   XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -11,7 +12,8 @@ import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
 import { AssetTabs } from '../shared/AssetTabs'
 import { readAssetTab, replaceAssetTab, type AssetTab } from '../shared/assetTabUtils'
-import { C, LEVEL_COLORS, LEVEL_BG, LEVEL_BORDER, changeColor, changeArrow, softBg } from '../../lib/theme'
+import { C, LEVEL_COLORS, LEVEL_BG, changeColor, changeArrow, softBg } from '../../lib/theme'
+import { fmtFixed, fmtSignedPct } from '../../lib/format'
 
 interface Insight {
   level: string
@@ -65,9 +67,9 @@ interface MacroApiState {
 }
 
 function formatMacroPrice(ticker: string, price: number) {
-  if (ticker === '^TNX') return `${price.toFixed(2)}%`
-  if (ticker === 'KRW=X') return `${price.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}원`
-  return price.toFixed(2)
+  if (ticker === '^TNX') return `${fmtFixed(price, 2)}%`
+  if (ticker === 'KRW=X') return `${fmtFixed(price, 2)}원`
+  return fmtFixed(price, 2)
 }
 
 function MacroCard({ title, data, color }: { title: string; data: MacroHistoryData; color: string }) {
@@ -83,15 +85,15 @@ function MacroCard({ title, data, color }: { title: string; data: MacroHistoryDa
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
         <div>
           <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 4 }}>{title}</div>
-          <div style={{ color: 'var(--text-3)', fontSize: '0.7rem' }}>{data.ticker}</div>
+          <div style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>{data.ticker}</div>
         </div>
         {data.current && (
           <div style={{ textAlign: 'right' }}>
             <div style={{ color: 'var(--text)', fontSize: '1.1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
               {formatMacroPrice(data.ticker, data.current.price)}
             </div>
-            <div style={{ color: changeClr, fontSize: '0.8rem', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
-              {changeArrow(change)} {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+            <div className="v2-nowrap" style={{ color: changeClr, fontSize: '0.8rem', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+              {changeArrow(change)} {fmtSignedPct(change)}
             </div>
           </div>
         )}
@@ -99,16 +101,16 @@ function MacroCard({ title, data, color }: { title: string; data: MacroHistoryDa
       {chartData.length > 0 ? (
         <ResponsiveContainer width="100%" height={180}>
           <LineChart data={chartData} margin={{ top: 6, right: 12, left: 0, bottom: 0 }}>
-            <XAxis dataKey="date" tick={{ fill: C.text3, fontSize: 9 }} interval="preserveStartEnd" />
+            <XAxis dataKey="date" tick={{ fill: C.text3, fontSize: 11 }} interval="preserveStartEnd" />
             <YAxis
               domain={['auto', 'auto']}
-              tick={{ fill: C.text2, fontSize: 10 }}
-              width={44}
+              tick={{ fill: C.text2, fontSize: 11 }}
+              width={48}
             />
             <Tooltip
               contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8 }}
               labelStyle={{ color: C.text2 }}
-              formatter={(v) => [Number(v).toFixed(4), title]}
+              formatter={(v) => [fmtFixed(Number(v), 4), title]}
             />
             <Line type="monotone" dataKey="close" dot={false} stroke={color} strokeWidth={2} name={title} />
           </LineChart>
@@ -141,43 +143,45 @@ function MacroMarketView({ markets }: { markets: { title: string; color: string;
 }
 
 
+// 서버 level 값을 읽는 말로 — 방향 레벨은 ▲▼를 함께 붙인다
+const LEVEL_TAG: Record<string, string> = {
+  critical: '위험',
+  warning: '주의',
+  bearish: '▼ 약세',
+  bullish: '▲ 강세',
+  neutral: '중립',
+}
+
 function InsightCard({ insight }: { insight: Insight }) {
   const color = LEVEL_COLORS[insight.level] ?? C.text2
-  const bg    = LEVEL_BG[insight.level]    ?? softBg(C.text2, 0.08)
-  const border = LEVEL_BORDER[insight.level] ?? softBg(C.text2, 0.2)
+  const bg = LEVEL_BG[insight.level] ?? softBg(C.text2, 0.08)
 
   return (
-    <div style={{
-      background: bg,
-      border: `1px solid ${border}`,
-      borderRadius: 10, padding: '12px 14px',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <span style={{ fontSize: '1rem', color }}>{insight.icon}</span>
-        <span style={{ color, fontWeight: 600, fontSize: '0.88rem' }}>{insight.title}</span>
+    <div style={{ borderTop: '1px solid var(--line)', padding: '12px 0 8px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span className="v2-nowrap" style={{ flex: 'none', fontSize: 12, fontWeight: 600, borderRadius: 6, padding: '3px 8px', background: bg, color }}>
+          {LEVEL_TAG[insight.level] ?? insight.level}
+        </span>
+        <span style={{ color: 'var(--text)', fontWeight: 600, fontSize: 15 }}>{insight.title}</span>
       </div>
-      <div style={{ color: 'var(--text-2)', fontSize: '0.80rem', lineHeight: 1.5 }}>
-        {insight.body}
-      </div>
+      <div style={{ color: 'var(--text-2)', fontSize: 13, lineHeight: 1.5 }}>{insight.body}</div>
     </div>
   )
 }
 
-function IndicatorChip({ ind }: { ind: KeyIndicator }) {
-  return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
-      <div style={{ color: 'var(--text-3)', fontSize: '0.7rem', marginBottom: 4 }}>{ind.label}</div>
-      <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
-        {ind.value}{ind.unit}
-      </div>
-      {ind.label2 && (
-        <div style={{ color: 'var(--text-3)', fontSize: '0.7rem', marginTop: 2 }}>{ind.label2}</div>
-      )}
-    </div>
-  )
+// 방향이 있는 지표(변화율)는 ▲▼와 방향 색을 쓴다
+const SIGNED_INDICATORS = ['김프', 'OI 3일']
+
+function indicatorValue(ind: KeyIndicator): { text: string; color: string } {
+  if (SIGNED_INDICATORS.includes(ind.label)) {
+    return { text: `${changeArrow(ind.value)} ${fmtSignedPct(ind.value)}`, color: changeColor(ind.value) }
+  }
+  const digits = ind.unit === 'pt' ? 0 : ind.label === '펀딩비' ? 4 : ind.label === 'BTC 도미넌스' ? 1 : 2
+  return { text: `${fmtFixed(ind.value, digits)}${ind.unit}`, color: 'var(--text)' }
 }
 
 export function Market() {
+  const isMobile = useIsMobile()
   const [asset, setAsset] = useState<AssetTab>(() => readAssetTab(['coin', 'us']))
   const coinApi = useApi<MarketData>(asset === 'coin' ? '/api/market-analysis' : null, 300_000)
   const dxyApi = useApi<MacroHistoryData>(asset === 'us' ? `/api/market/macro-history?ticker=${encodeURIComponent('DX-Y.NYB')}` : null, 300_000)
@@ -239,53 +243,63 @@ export function Market() {
     btc: btcBase && r.btc != null ? +((r.btc / btcBase - 1) * 100).toFixed(1) : null,
   }))
 
-  const criticalCount = insights.filter(i => i.level === 'critical').length
-  const warningCount  = insights.filter(i => i.level === 'warning').length
+  // 주의 신호 = 서버가 warning·critical로 표시한 인사이트
+  const alertCount = insights.filter(i => i.level === 'warning' || i.level === 'critical').length
+  const bannerColor = alertCount > 0 ? C.warn : C.ok
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {tabs}
       <LastUpdated timestamp={lastUpdated} failed={!!error} />
       {/* 상태 요약 배너 */}
-      {(criticalCount > 0 || warningCount > 0) && (
-        <div style={{
-          background: softBg(criticalCount > 0 ? C.danger : C.warn, 0.07),
-          border: `1px solid ${softBg(criticalCount > 0 ? C.danger : C.warn, 0.28)}`,
-          borderRadius: 8, padding: '10px 16px',
-          color: criticalCount > 0 ? 'var(--danger)' : 'var(--warn)',
-          fontWeight: 600, fontSize: '0.88rem',
-          display: 'flex', gap: 12, alignItems: 'center',
-        }}>
-          <span>{criticalCount > 0 ? '🚨' : '⚠️'}</span>
-          <span>
-            {criticalCount > 0 && `긴급 시그널 ${criticalCount}개`}
-            {criticalCount > 0 && warningCount > 0 && ', '}
-            {warningCount > 0 && `주의 시그널 ${warningCount}개`}
-          </span>
-          {bot_level && (
-            <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-2)' }}>
-              봇 레벨: {bot_level}
-            </span>
+      <div role="status" style={{
+        minHeight: 56, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+        padding: '10px 14px', borderRadius: 14,
+        background: softBg(bannerColor, 0.08), border: `1px solid ${softBg(bannerColor, 0.3)}`,
+      }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text)', fontSize: 16, fontWeight: 700 }}>
+          {alertCount > 0 ? (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={bannerColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l9 16H3zM12 10v4M12 17h.01" /></svg>
+          ) : (
+            <span aria-hidden="true" style={{ color: bannerColor, fontSize: 18 }}>✓</span>
           )}
-        </div>
-      )}
+          {alertCount > 0 ? `주의 신호 ${alertCount}건` : '주의 신호 없음'}
+        </span>
+        {bot_level && (
+          <span className="v2-nowrap" style={{ fontSize: 13, color: 'var(--text-2)' }}>
+            봇 레벨 <span style={{ fontWeight: 700, color: 'var(--text)' }}>{bot_level}</span>
+          </span>
+        )}
+      </div>
 
-      {/* 주요 지표 그리드 */}
+      {/* 핵심 지표 목록 — PC는 2열 */}
       {key_indicators.length > 0 && (
-        <div className="grid-4" style={{ gap: 10 }}>
-          {key_indicators.map((ind, i) => (
-            <IndicatorChip key={i} ind={ind} />
-          ))}
-        </div>
+        <Card>
+          <div style={{ color: 'var(--text)', fontSize: 15, fontWeight: 600, marginBottom: 4 }}>핵심 지표</div>
+          <div className="v2-list" style={isMobile ? undefined : { display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 32 }}>
+            {key_indicators.map((ind, i) => {
+              const v = indicatorValue(ind)
+              return (
+                <div key={i} className="v2-row">
+                  <span className="v2-nowrap">{ind.label}</span>
+                  <span>
+                    {ind.label2 && <span className="v2-note" style={{ color: 'var(--text-2)' }}>{ind.label2}</span>}
+                    <span style={{ color: v.color }}>{v.text}</span>
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
       )}
 
       {/* 인사이트 목록 */}
       {insights.length > 0 && (
         <Card>
-          <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 12 }}>
-            시장 인사이트 ({insights.length}개)
+          <div style={{ color: 'var(--text)', fontSize: 15, fontWeight: 600, marginBottom: 4 }}>
+            시장 인사이트 <span style={{ color: 'var(--text-3)', fontWeight: 500, fontSize: 13 }}>{insights.length}개</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {insights.map((ins, i) => (
               <InsightCard key={i} insight={ins} />
             ))}
@@ -309,19 +323,19 @@ export function Market() {
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <ComposedChart data={vixBtcChart}>
-              <XAxis dataKey="date" tick={{ fill: C.text3, fontSize: 9 }} interval="preserveStartEnd" />
+              <XAxis dataKey="date" tick={{ fill: C.text3, fontSize: 11 }} interval="preserveStartEnd" />
               <YAxis
                 domain={['auto', 'auto']}
-                tick={{ fill: C.text2, fontSize: 10 }}
+                tick={{ fill: C.text2, fontSize: 11 }}
                 tickFormatter={v => `${v}%`}
-                width={40}
+                width={44}
               />
               <Tooltip
                 contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8 }}
                 labelStyle={{ color: C.text2 }}
                 formatter={(v, name) => {
                   const n = v as number
-                  return [`${n >= 0 ? '+' : ''}${n}%`, name as string]
+                  return [fmtSignedPct(n, 1), name as string]
                 }}
               />
               <ReferenceLine y={0} stroke={C.borderStrong} strokeDasharray="3 3" />
