@@ -65,7 +65,7 @@ def test_dashboard_uses_original_data_sections_in_mock_shell():
     assert "useApi<StockItem[]>('/api/stock-prices/us'" in source
     assert "useApi<StockItem[]>('/api/stock-prices/kr'" in source
     assert "useApi<SpfApi>('/api/spf-data'" in source
-    assert "useApi<MarketApi>('/api/market-analysis'" in source
+    assert "useApi<MarketApi>('/api/insights'" in source
     assert "useApi<ChartResponse>('/api/learning/chart?symbol=BTCUSDT" in source
     assert "summarizeMood" in source
     assert "MoodCard" in source

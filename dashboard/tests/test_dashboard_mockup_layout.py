@@ -103,3 +103,20 @@ def test_stock_index_card_does_not_render_touch_sticky_sparkline_tooltip():
     source = Path("dashboard/frontend/src/components/shared/StockIndexCard.tsx").read_text(encoding="utf-8")
 
     assert "<Tooltip" not in source
+
+def test_dashboard_stock_grid_and_price_strip_avoid_lonely_cards():
+    css = INDEX_CSS.read_text(encoding="utf-8")
+    tsx = DASHBOARD_TSX.read_text(encoding="utf-8")
+
+    # 주식 슬롯 7개: 768~1279px 4열(4+3), 1280px 이상 7열
+    start = css.index(".mock-us-stock-section .mock-compact-grid,")
+    block = css[start:css.index(".stock-card-name", start)]
+    assert "repeat(4, minmax(0, 1fr))" in block
+    assert "repeat(7, minmax(0, 1fr))" in block
+
+    # 가격 띠: 칸 수를 CSS 변수로 넘겨 1280px 이상은 한 줄, 그 아래는 두 줄로 고르게
+    assert "'--dash-cols': cells.length" in tsx
+    assert "Math.ceil(cells.length / 2)" in tsx
+    strip = css[css.index(".dash-strip-grid {"):css.index(".dash-cell {")]
+    assert "repeat(var(--dash-cols, 11), minmax(0, 1fr))" in strip
+    assert "repeat(var(--dash-cols-half, 6), minmax(0, 1fr))" in strip

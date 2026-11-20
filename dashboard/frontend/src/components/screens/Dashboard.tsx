@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Area, AreaChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Card } from '../shared/Card'
@@ -205,7 +205,7 @@ function BtcPhaseCard({ phase, loading }: { phase: BtcPhase | null; loading: boo
 // 시장 분위기 한 줄 + 근거 카드 (근거마다 해당 화면으로 이동)
 const BASIS_LINK: Record<string, string> = { phase: '/learning', spf: '/spf', warnings: '/market', fearGreed: '/market' }
 
-function MoodCard({ mood }: { mood: Mood }) {
+function MoodCard({ mood, failedBasis }: { mood: Mood; failedBasis: string[] }) {
   return (
     <section className="dash-card dash-mood" aria-labelledby="mood-title">
       <div className="dash-mood-head">
@@ -222,6 +222,7 @@ function MoodCard({ mood }: { mood: Mood }) {
           </Link>
         ))}
       </div>
+      {failedBasis.length > 0 && <p className="dash-mood-fail">일부 근거를 불러오지 못했습니다: {failedBasis.join(' / ')}</p>}
     </section>
   )
 }
@@ -234,9 +235,10 @@ export function Dashboard() {
   const { data: krStocks, refetch: refetchKr } = useApi<StockItem[]>('/api/stock-prices/kr', 300_000)
   const { data: krSlots, refetch: refetchKrSlots } = useApi<StockSlot[]>('/api/stock-slots/kr', 0)
   // 학습 일봉 차트는 여기서 한 번만 조회해 분위기 카드와 국면 카드가 같이 쓴다
-  const { data: chart, loading: chartLoading } = useApi<ChartResponse>('/api/learning/chart?symbol=BTCUSDT&interval=1d&limit=90', 300_000)
-  const { data: spf } = useApi<SpfApi>('/api/spf-data', 300_000)
-  const { data: market } = useApi<MarketApi>('/api/market-analysis', 300_000)
+  const { data: chart, loading: chartLoading, error: chartError } = useApi<ChartResponse>('/api/learning/chart?symbol=BTCUSDT&interval=1d&limit=90', 300_000)
+  const { data: spf, error: spfError } = useApi<SpfApi>('/api/spf-data', 300_000)
+  // 인사이트만 돌려주는 경량 엔드포인트(market-analysis와 같은 generate_insights 결과)
+  const { data: market, error: marketError } = useApi<MarketApi>('/api/insights', 300_000)
   const [priceTab, setPriceTab] = useState<'coin' | 'index'>('coin')
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
   const [activeIndex, setActiveIndex] = useState<{ ticker: string; name: string } | null>(null)
@@ -277,7 +279,7 @@ export function Dashboard() {
   const chartColor = changeColor(data.kimchi?.kimchi_premium_pct)
   const phase = summarizeBtcPhase(chart)
   const warnings = market ? market.insights.filter(i => i.level === 'warning' || i.level === 'critical') : null
-  const mood = summarizeMood({
+  const moodBase = summarizeMood({
     phaseTones: phase ? phase.states.map(st => st.tone) : null,
     phaseValue: phase?.states.slice(0, 2).map(st => st.v).join(' · '),
     spf: spf ? { direction: spf.today_prediction?.direction ?? '', confidence: spf.today_prediction?.confidence ?? 0 } : null,
@@ -286,6 +288,16 @@ export function Dashboard() {
     fearGreed: data.fear_greed?.value ?? null,
     fearGreedLabel: data.fear_greed?.label,
   })
+  // 조회에 실패했고 근거 데이터가 없는 항목 — 판정 규칙은 건드리지 않고 화면에서만 알린다
+  const failedBasis = [
+    ...(chartError && !chart ? ['BTC 국면'] : []),
+    ...(spfError && !spf ? ['SPF 전망'] : []),
+    ...(marketError && !market ? ['주의 신호'] : []),
+  ]
+  const basisPending = (!chart && !chartError) || (!spf && !spfError) || (!market && !marketError)
+  const mood: Mood = !moodBase.ready && failedBasis.length > 0 && !basisPending
+    ? { ...moodBase, sentence: '근거를 충분히 받지 못했습니다' }
+    : moodBase
 
   // 가격 띠: 코인 슬롯 전부 + 지수 3개 + 원/달러. 편집 중에는 코인 칸이 슬롯 편집을 연다
   const cells: StripCell[] = [
@@ -348,7 +360,7 @@ export function Dashboard() {
     <div className="mock-spf-dashboard mock-real-dashboard">
       <LastUpdated timestamp={lastUpdated} failed={!!error} />
       <div className="mock-real-stack">
-        <MoodCard mood={mood} />
+        <MoodCard mood={mood} failedBasis={failedBasis} />
 
         <section className="dash-card dash-strip mock-coin-price-section" aria-label="가격" data-tab={priceTab}>
           <div className="dash-strip-head">
@@ -361,6 +373,8 @@ export function Dashboard() {
               type="button"
               className="dash-strip-edit"
               onClick={() => {
+                // 편집할 코인 칸은 코인 탭에만 보이므로 편집을 켜면 코인 탭으로 돌린다
+                if (!editMode) setPriceTab('coin')
                 setEditMode(prev => !prev)
                 setEditingPosition(null)
                 setEditError(null)
@@ -369,7 +383,10 @@ export function Dashboard() {
               {editMode ? '완료' : '편집'}
             </button>
           </div>
-          <div className="dash-strip-grid">
+          <div
+            className="dash-strip-grid"
+            style={{ '--dash-cols': cells.length, '--dash-cols-half': Math.ceil(cells.length / 2) } as CSSProperties}
+          >
             {cells.map(cell => {
               const body = (
                 <>
@@ -537,13 +554,13 @@ export function Dashboard() {
             <Card>
               <h3 className="mock-detail-title">미국시장</h3>
               {usMarkets.map(market => (
-                <StatRow key={market.name} label={market.name} value={market.price.toLocaleString()} change={market.change_pct} />
+                <StatRow key={market.name} label={market.name} value={fmtIndex(market.price)} change={market.change_pct} />
               ))}
             </Card>
             <Card>
               <h3 className="mock-detail-title">한국시장</h3>
               {koreaMarkets.map(market => (
-                <StatRow key={market.name} label={market.name} value={market.price.toLocaleString()} change={market.change_pct} />
+                <StatRow key={market.name} label={market.name} value={fmtIndex(market.price)} change={market.change_pct} />
               ))}
             </Card>
             <Card>

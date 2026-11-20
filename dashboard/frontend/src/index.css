@@ -1261,6 +1261,28 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
 }
 
+/* 주식 슬롯은 항상 7개 — 데스크톱은 7열, 태블릿은 4열(4+3)로 혼자 남는 카드를 막는다 */
+@media (min-width: 768px) {
+  .mock-us-stock-section .mock-compact-grid,
+  .mock-kr-stock-section .mock-compact-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .mock-us-stock-section .mock-compact-grid,
+  .mock-kr-stock-section .mock-compact-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+}
+
+/* 주식 카드: 7열 폭에서도 넘치지 않게 이름은 줄바꿈, 가격·등락·고저는 줄을 나눠 쌓는다 */
+.stock-card-name { overflow-wrap: anywhere; }
+.stock-card-price { font-size: 1.4rem; }
+@media (min-width: 1280px) {
+  .stock-card-price { font-size: 1.05rem; }
+}
+
 .mock-data-card {
   min-height: 132px;
 }
@@ -1641,6 +1663,7 @@ body {
 .dash-mood-badge[data-tone="caution"] { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
 .dash-mood-badge[data-tone="favorable"] { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
 .dash-mood-tally { margin-left: auto; font-size: 13px; color: var(--text-2); }
+.dash-mood-fail { margin: 0; font-size: 12px; color: var(--text-3); }
 .dash-basis-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
 .dash-basis {
   min-height: 76px; box-sizing: border-box; background: var(--bg-inset); border: 1px solid var(--border);
@@ -1664,7 +1687,12 @@ body {
   grid-column: 2; grid-row: 1; min-width: 56px; border: 0; border-left: 1px solid var(--line);
   background: transparent; color: var(--text-2); font: inherit; font-size: 13px; cursor: pointer;
 }
-.dash-strip-grid { grid-column: 1; grid-row: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+.dash-strip-grid { grid-column: 1; grid-row: 1; min-width: 0; display: grid; grid-template-columns: repeat(var(--dash-cols-half, 6), minmax(0, 1fr)); }
+@media (min-width: 1280px) {
+  .dash-strip-grid { grid-template-columns: repeat(var(--dash-cols, 11), minmax(0, 1fr)); }
+  .dash-cell { padding: 10px 6px; }
+  .dash-cell-price { font-size: 13px; }
+}
 .dash-cell {
   min-height: 64px; box-sizing: border-box; padding: 10px 12px; margin: 0 0 -1px;
   border: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: transparent;

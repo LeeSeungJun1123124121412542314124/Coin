@@ -1,4 +1,5 @@
 import { changeColor, changeArrow } from '../../lib/theme'
+import { fmtFixed } from '../../lib/format'
 
 interface StatRowProps {
   label: string
@@ -23,7 +24,7 @@ export function StatRow({ label, value, change, unit = '', highlight }: StatRowP
         {value ?? '—'}{unit}
         {change != null && (
           <span style={{ color: changeColor(change), marginLeft: 6, fontSize: 13 }}>
-            {changeArrow(change)} {change > 0 ? '+' : ''}{change.toFixed(2)}%
+            {changeArrow(change)} {fmtFixed(Math.abs(change), 2)}%
           </span>
         )}
       </span>
