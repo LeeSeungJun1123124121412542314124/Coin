@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 
-import { countByLevel, formatKst, groupAlertsByDay } from '../src/components/screens/alertsView.ts'
+import { countByLevel, filterByLevel, formatKst, groupAlertsByDay, summarizeDay, visibleGroups } from '../src/components/screens/alertsView.ts'
 
 // 기준 시각: 2026-11-19T03:00:00Z = KST 12:00
 const now = new Date('2026-11-19T03:00:00Z')
@@ -69,3 +69,19 @@ assert.equal(formatKst('2026-11-19T00:30:00+09:00'), '11-19 00:30')
 assert.equal(formatKst('2026-11-18 15:30:00'), '11-19 00:30')
 const spaced = groupAlertsByDay([mk('2026-11-18 15:30:00'), mk('2026-11-19 00:10:00')], now)
 assert.deepEqual(spaced.map((g) => [g.label, g.items.length]), [['오늘', 2]])
+
+// 종류 걸러 보기: null은 전부, 일치만, 일치 없으면 빈 배열
+const lv = [{ level: 'HIGH' }, { level: 'WHALE' }, { level: 'HIGH' }]
+assert.equal(filterByLevel(lv, null).length, 3)
+assert.equal(filterByLevel(lv, 'HIGH').length, 2)
+assert.deepEqual(filterByLevel(lv, 'MACRO_EVENT'), [])
+
+// 날짜 요약: LEVEL_LABEL 순서로 "라벨 건수 · 라벨 건수"
+assert.equal(summarizeDay([{ level: 'HIGH' }, { level: 'CONFIRMED_HIGH' }]), '확인 경보 1 · 경보 1')
+assert.equal(summarizeDay([{ level: 'WHALE' }, { level: 'WHALE' }, { level: 'HIGH' }]), '경보 1 · 고래 감지 2')
+assert.equal(summarizeDay([]), '')
+
+// 묶음 자르기
+assert.deepEqual(visibleGroups([1, 2, 3], 2), { groups: [1, 2], hasMore: true })
+assert.deepEqual(visibleGroups([1], 8), { groups: [1], hasMore: false })
+assert.deepEqual(visibleGroups([], 8), { groups: [], hasMore: false })

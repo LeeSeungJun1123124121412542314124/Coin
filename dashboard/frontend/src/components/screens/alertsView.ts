@@ -78,3 +78,22 @@ export function countByLevel(
     count: alerts.filter((a) => a.alert_level === level).length,
   }))
 }
+
+// 종류로 걸러 보기 — null이면 전부
+export function filterByLevel<T extends { level: string }>(alerts: T[], level: string | null): T[] {
+  return level === null ? alerts : alerts.filter((a) => a.level === level)
+}
+
+// 날짜 한 줄 요약 — LEVEL_LABEL 순서로 "확인 경보 1 · 경보 1"
+export function summarizeDay(alerts: { level: string }[]): string {
+  return Object.entries(LEVEL_LABEL)
+    .map(([level, label]) => ({ label, count: alerts.filter((a) => a.level === level).length }))
+    .filter((x) => x.count > 0)
+    .map((x) => `${x.label} ${x.count}`)
+    .join(' · ')
+}
+
+// 앞에서 shown개만 보이고, 남은 게 있으면 hasMore
+export function visibleGroups<T>(groups: T[], shown: number): { groups: T[]; hasMore: boolean } {
+  return { groups: groups.slice(0, shown), hasMore: groups.length > shown }
+}
