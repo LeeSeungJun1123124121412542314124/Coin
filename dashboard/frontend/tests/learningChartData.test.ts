@@ -10,6 +10,7 @@ import {
   toWyckoffMarkers,
 } from '../src/components/learning/learningChartData.ts'
 import { INTERVALS, INTERVAL_LABELS, isIntraday } from '../src/components/learning/learningShared.ts'
+import { C } from '../src/lib/theme.ts'
 
 // 캔들: ms -> 초
 assert.deepEqual(
@@ -48,9 +49,11 @@ assert.deepEqual(markers.map(m => m.time), [2, 5, 5])
 assert.equal(markers[0].text, '강 스프링')
 assert.equal(markers[0].position, 'belowBar')
 assert.equal(markers[0].shape, 'arrowUp')
+assert.equal(markers[0].color, C.up)
 const ut = markers.find(m => m.text === '업스러스트')!
 assert.equal(ut.position, 'aboveBar')
 assert.equal(ut.shape, 'arrowDown')
+assert.equal(ut.color, C.down)
 assert.equal(toWyckoffMarkers({ volume_spikes: [], current_box: null, candidates: [] }).length, 0)
 
 // 지그재그 피벗

@@ -1,5 +1,6 @@
 import type { SeriesMarker, UTCTimestamp } from 'lightweight-charts'
 import type { Candle, IchimokuLineKey, IchimokuRow, Phase, Pivot, Wyckoff } from '../../lib/learningApi.ts'
+import { C } from '../../lib/theme.ts'
 
 // 와이코프 국면 한국어 표기
 export const PHASE_LABELS: Record<Phase, string> = {
@@ -10,8 +11,8 @@ export const PHASE_LABELS: Record<Phase, string> = {
   unclear: '불명확',
 }
 
-const SPRING_COLOR = '#22c55e'
-const UPTHRUST_COLOR = '#ef4444'
+const SPRING_COLOR = C.up
+const UPTHRUST_COLOR = C.down
 
 // 백엔드 epoch ms -> lightweight-charts 초 단위 시각
 export const toSec = (ms: number) => Math.floor(ms / 1000) as UTCTimestamp
