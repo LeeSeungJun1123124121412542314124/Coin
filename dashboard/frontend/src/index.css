@@ -1531,3 +1531,55 @@ body {
     width: 100%;
   }
 }
+
+/* ===== v2 공통 모양 (UI 개선안 v2) ===== */
+.v2-nowrap { white-space: nowrap; }
+
+/* 줄 목록: 라벨(왼쪽) + 값(오른쪽) */
+.v2-list { display: flex; flex-direction: column; }
+.v2-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-height: 44px; border-top: 1px solid var(--line);
+}
+.v2-row > :first-child { font-size: 14px; color: var(--text-2); }
+.v2-row > :last-child {
+  font-family: var(--font-mono); font-size: 15px; font-weight: 600; white-space: nowrap;
+}
+
+/* 해석 태그 */
+.v2-note { font-size: 12px; font-weight: 600; }
+
+/* 세그먼트 */
+.v2-seg {
+  display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  background: var(--bg-inset); border: 1px solid var(--border); border-radius: 10px; padding: 3px;
+}
+.v2-seg-btn {
+  min-height: 38px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent;
+  color: var(--text-2); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer;
+}
+.v2-seg-btn[aria-pressed="true"] { background: var(--seg-active); color: var(--text); font-weight: 600; }
+
+/* 걸러 보기 칩 */
+.v2-chip {
+  min-height: 40px; padding: 0 12px; border-radius: 999px;
+  border: 1px solid var(--border); background: transparent; color: var(--text-2);
+  font: inherit; font-size: 13px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+}
+.v2-chip[aria-pressed="true"] { background: var(--seg-active); border-color: var(--border-strong); color: var(--text); }
+
+/* 접힌 날짜 줄 */
+.v2-fold {
+  min-height: 52px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  color: var(--text); font: inherit; display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 0 16px; cursor: pointer;
+}
+
+/* 자산 탭(AssetTabs) 높이: 데스크톱 30px, 모바일 44px */
+.v2-asset-tab { height: 30px; }
+
+@media (max-width: 767px) {
+  input, select, textarea { font-size: 16px; }
+  .v2-asset-tab { height: 44px; }
+}

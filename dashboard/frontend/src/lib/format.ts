@@ -19,3 +19,30 @@ export function fmt(v: number | null | undefined, decimals = 2): string {
   if (abs >= 1e3)  return `$${(v / 1e3).toFixed(decimals)}K`
   return `$${v.toFixed(decimals)}`
 }
+
+/** 천 단위 쉼표와 정확히 digits 자리 소수. null/undefined이면 '—' */
+export function fmtFixed(v: number | null | undefined, digits: number): string {
+  if (v == null) return '—'
+  return v.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+}
+
+/** 부호 붙은 퍼센트: +1.30% / −2.27%(U+2212) / 0.00% */
+export function fmtSignedPct(v: number | null | undefined, digits = 2): string {
+  if (v == null) return '—'
+  const body = `${fmtFixed(Math.abs(v), digits)}%`
+  if (Number(Math.abs(v).toFixed(digits)) === 0) return body
+  return `${v > 0 ? '+' : '−'}${body}`
+}
+
+/** 지수: 소수 2자리 고정 */
+export function fmtIndex(v: number | null | undefined): string {
+  return fmtFixed(v, 2)
+}
+
+/** 코인 달러 가격: 1000 이상 0자리, 1 이상 2자리, 1 미만 3자리 */
+export function fmtCoinPrice(v: number | null | undefined): string {
+  if (v == null) return '—'
+  const abs = Math.abs(v)
+  const digits = abs >= 1000 ? 0 : abs >= 1 ? 2 : 3
+  return `$${fmtFixed(v, digits)}`
+}

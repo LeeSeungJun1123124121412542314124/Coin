@@ -24,6 +24,7 @@ export function AssetTabs({
             key={tab}
             type="button"
             role="tab"
+            className="v2-asset-tab"
             aria-selected={active}
             onClick={() => onChange(tab)}
             style={{
@@ -31,7 +32,6 @@ export function AssetTabs({
               background: active ? 'var(--seg-active)' : 'transparent',
               color: active ? 'var(--text)' : 'var(--text-2)',
               borderRadius: 9,
-              height: 30,
               padding: '0 14px',
               fontSize: 14,
               fontWeight: active ? 600 : 500,
