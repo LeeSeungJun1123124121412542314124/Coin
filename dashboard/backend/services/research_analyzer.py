@@ -231,7 +231,7 @@ async def _analyze_stock_sentiment() -> dict:
         "level": level,
         "score": score,
         "title": f"주식심리 {score}/100",
-        "summary": f"F&G {fg_score} | Put/Call {float(used_pc):.2f}",
+        "summary": f"F&G {fg_score:.1f} | Put/Call {float(used_pc):.2f}",
         "details": {
             "stock_fear_greed": {
                 "date": fg["date"],

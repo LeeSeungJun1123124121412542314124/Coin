@@ -105,6 +105,35 @@ async def test_analyze_stock_sentiment_rounds_only_final_weighted_score(monkeypa
 
 
 @pytest.mark.asyncio
+async def test_analyze_stock_sentiment_summary_formats_fear_greed_to_one_decimal(monkeypatch) -> None:
+    from dashboard.backend.db import connection
+    from dashboard.backend.services import research_analyzer
+
+    conn = _memory_conn()
+    conn.execute(
+        """INSERT INTO stock_fear_greed (date, value, rating, updated_at)
+           VALUES (?, ?, ?, ?)""",
+        ("2026-07-03", 25.2297455968689, "Fear", "2026-07-03T20:15:00+00:00"),
+    )
+    conn.execute(
+        """INSERT INTO cboe_putcall (date, total_pc, equity_pc, index_pc, updated_at)
+           VALUES (?, ?, ?, ?, ?)""",
+        ("2026-07-02", 0.9, 0.6, 0.97, "2026-07-02T22:40:00+00:00"),
+    )
+
+    @contextmanager
+    def fake_get_db():
+        yield conn
+
+    monkeypatch.setattr(connection, "get_db", fake_get_db)
+
+    result = await research_analyzer._analyze_stock_sentiment()
+
+    # 요약 문자열에는 원시 float 대신 소수 1자리만 보인다
+    assert result["summary"] == "F&G 25.2 | Put/Call 0.60"
+
+
+@pytest.mark.asyncio
 async def test_analyze_stock_sentiment_clamps_putcall_component_before_weighting(monkeypatch) -> None:
     from dashboard.backend.db import connection
     from dashboard.backend.services import research_analyzer
