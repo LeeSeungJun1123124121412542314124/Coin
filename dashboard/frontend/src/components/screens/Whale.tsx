@@ -153,7 +153,7 @@ function PositionList({ positions }: { positions: Position[] }) {
           background: softBg(p.side === 'long' ? C.up : C.down, 0.12),
           color: p.side === 'long' ? 'var(--up)' : 'var(--down)',
         }}>
-          {p.coin} {p.side === 'long' ? '↑' : '↓'}
+          {p.coin} {p.side === 'long' ? '▲' : '▼'}
         </span>
       ))}
       {positions.length > 5 && (
@@ -468,7 +468,7 @@ function roiText(v: number | null): string {
   return `${changeArrow(v)} ${fmtSignedPct(v * 100, 1)}`
 }
 
-// 모바일 지갑 카드: 이름·주소·BTC 포지션 + 자산·30일 손익·30일 ROI
+// 모바일 지갑 카드: 이름·주소·BTC 포지션 + 보유 포지션 목록 + 자산·30일 손익·30일 ROI
 function WhaleCard({ w }: { w: Whale }) {
   const shortAddr = `${w.address.slice(0, 6)}…${w.address.slice(-4)}`
   return (
@@ -488,6 +488,7 @@ function WhaleCard({ w }: { w: Whale }) {
         </div>
         <BtcBadge pos={w.btc_position} />
       </div>
+      {w.positions.length > 0 && <PositionList positions={w.positions} />}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
         {([
           ['자산', fmt(w.account_value), 'var(--text)'],

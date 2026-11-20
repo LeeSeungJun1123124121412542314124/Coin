@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { apiFetch } from '../../lib/api'
@@ -86,6 +86,8 @@ export function Leaderboard() {
   const [detail, setDetail] = useState<Detail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [resetting, setResetting] = useState(false)
+  // 마지막으로 요청한 지표 — 늦게 도착한 이전 지표 응답이 현재 제목 아래에 그려지지 않게 한다
+  const latestIndicatorRef = useRef<string | null>(null)
   const isMobile = useIsMobile()
 
   const fetchBoard = useCallback(async () => {
@@ -103,15 +105,16 @@ export function Leaderboard() {
   }, [])
 
   const fetchDetail = useCallback(async (indicator: string) => {
+    latestIndicatorRef.current = indicator
     setSelected(indicator)
     setDetailLoading(true)
     try {
       const d: Detail = await apiFetch(`/api/sim/leaderboard/${encodeURIComponent(indicator)}`)
-      setDetail(d)
+      if (latestIndicatorRef.current === indicator) setDetail(d)
     } catch {
-      setDetail(null)
+      if (latestIndicatorRef.current === indicator) setDetail(null)
     } finally {
-      setDetailLoading(false)
+      if (latestIndicatorRef.current === indicator) setDetailLoading(false)
     }
   }, [])
 
@@ -124,6 +127,7 @@ export function Leaderboard() {
     setResetting(true)
     try {
       await apiFetch('/api/sim/leaderboard/reset', { method: 'POST' })
+      latestIndicatorRef.current = null
       setSelected(null)
       setDetail(null)
       await fetchBoard()
@@ -217,9 +221,15 @@ export function Leaderboard() {
             <button
               type="button"
               className="leaderboard-card"
-              aria-pressed={selected === r.indicator}
               aria-expanded={selected === r.indicator}
-              onClick={() => (selected === r.indicator ? setSelected(null) : fetchDetail(r.indicator))}
+              onClick={() => {
+                if (selected === r.indicator) {
+                  latestIndicatorRef.current = null
+                  setSelected(null)
+                } else {
+                  fetchDetail(r.indicator)
+                }
+              }}
             >
               <span className="leaderboard-card-head">
                 <span className="leaderboard-card-name">

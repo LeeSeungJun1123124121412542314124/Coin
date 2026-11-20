@@ -1204,7 +1204,7 @@ body {
   cursor: pointer;
 }
 
-.leaderboard-card[aria-pressed="true"] { border-color: var(--accent); }
+.leaderboard-card[aria-expanded="true"] { border-color: var(--accent); }
 
 .leaderboard-card-head,
 .leaderboard-card-sub {
@@ -1580,6 +1580,10 @@ body {
     max-width: none;
   }
 
+}
+
+/* 리더보드 모바일 리셋 — 다른 모바일 규칙과 같은 767px 기준 */
+@media (max-width: 767px) {
   .leaderboard-reset { align-items: stretch; }
 
   .leaderboard-reset-note { text-align: center; }
