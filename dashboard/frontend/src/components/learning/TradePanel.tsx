@@ -191,6 +191,7 @@ function OrderForm({ symbol, interval, context, held, cash, onFilled }: OrderFor
           <input
             style={{ ...inputStyle, flex: 1, minWidth: 0, fontFamily: 'var(--font-mono)' }}
             aria-label={isBuy ? '매수 금액 (USDT)' : '매도 수량'}
+            className="tap-input"
             type="number" min="0" step="any" value={amount}
             onChange={e => setAmount(e.target.value)}
           />

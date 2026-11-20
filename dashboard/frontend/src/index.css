@@ -958,7 +958,7 @@ body {
   border-radius: 8px;
   color: var(--text-2);
   background: var(--surface-2);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   cursor: pointer;
 }
 
@@ -1796,5 +1796,7 @@ button.dash-cell:hover { background: var(--bg-inset); }
   button, select { min-height: 44px; }
   .tap-seg button { min-height: 38px; }
   .tap-icon { min-width: 44px; }
+  .tap-input { min-height: 44px; box-sizing: border-box; }
+  .v2-chip { min-height: 44px; }
   .mock-card-head button { min-height: 44px; min-width: 56px; }
 }

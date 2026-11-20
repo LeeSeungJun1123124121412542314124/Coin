@@ -417,7 +417,7 @@ export function CompositeSimulator() {
                   whiteSpace: 'nowrap',
                 }}
               >
-                ⏹ 종료
+                종료
               </button>
             )}
           </div>
