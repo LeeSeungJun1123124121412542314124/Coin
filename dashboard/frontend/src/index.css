@@ -1218,7 +1218,8 @@ body {
 .leaderboard-card-rank { font-family: var(--font-mono); font-size: 14px; font-weight: 600; }
 .leaderboard-card-ret { font-family: var(--font-mono); font-size: 20px; font-weight: 600; white-space: nowrap; }
 .leaderboard-card-sub { font-size: 13px; color: var(--text-2); }
-.leaderboard-card-sub > span { white-space: nowrap; }
+.leaderboard-card-sub { flex-wrap: wrap; row-gap: 4px; }
+.leaderboard-card-num { white-space: nowrap; }
 .leaderboard-card-num { font-family: var(--font-mono); }
 
 .leaderboard-card-stats {
