@@ -116,7 +116,7 @@ export function Liquidity() {
               color: summary.m2.yoy_pct > 3 ? 'var(--ok)' : summary.m2.yoy_pct < 1 ? 'var(--warn)' : 'var(--text-2)',
               fontWeight: 600, fontSize: 26, fontFamily: 'var(--font-mono)',
             }}>
-              {fmtFixed(summary.m2.yoy_pct, 1)}%
+              {fmtSignedPct(summary.m2.yoy_pct)}
             </span>
           </div>
         )}

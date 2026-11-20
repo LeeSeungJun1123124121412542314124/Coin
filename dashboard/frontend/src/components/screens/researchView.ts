@@ -1,4 +1,5 @@
 import { C } from '../../lib/theme.ts'
+import { fmtFixed } from '../../lib/format.ts'
 
 // 카테고리 구분 색 — 상승/하락 의미 없는 구분용이라 의미 토큰 hex를 그대로 사용
 export const RESEARCH_CATEGORY_COLORS: Record<string, string> = {
@@ -66,11 +67,6 @@ export function getResearchCategoryColor(category: string) {
   return category === '전체' ? C.accent : (RESEARCH_CATEGORY_COLORS[category] ?? C.text2)
 }
 
-// 소수 1자리까지만 — 정수는 그대로 (25.2297 → 25.2, 42 → 42)
-function oneDecimal(value: number): string {
-  return String(Number(value.toFixed(1)))
-}
-
 export function toStockSentimentDetailRows(details: StockSentimentDetails): Array<[string, string]> {
   const rows: Array<[string, string]> = []
   const fearGreed = details.stock_fear_greed
@@ -79,7 +75,7 @@ export function toStockSentimentDetailRows(details: StockSentimentDetails): Arra
 
   if (fearGreed?.value != null) {
     const rating = fearGreed.rating ? ` (${fearGreed.rating})` : ''
-    rows.push(['F&G', `${oneDecimal(fearGreed.value)}${rating}`])
+    rows.push(['F&G', `${fmtFixed(fearGreed.value, 1)}${rating}`])
   }
 
   if (putcall?.equity_pc != null) {
@@ -92,7 +88,7 @@ export function toStockSentimentDetailRows(details: StockSentimentDetails): Arra
   }
 
   if (scores?.fear_greed != null) {
-    rows.push(['F&G 점수', `${oneDecimal(scores.fear_greed)}/100`])
+    rows.push(['F&G 점수', `${fmtFixed(scores.fear_greed, 1)}/100`])
   }
   if (scores?.putcall != null) {
     rows.push(['P/C 점수', `${scores.putcall}/100`])

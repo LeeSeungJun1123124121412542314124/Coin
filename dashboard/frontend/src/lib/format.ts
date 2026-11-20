@@ -20,12 +20,13 @@ export function fmt(v: number | null | undefined, decimals = 2): string {
   return `$${v.toFixed(decimals)}`
 }
 
-/** 천 단위 쉼표와 정확히 digits 자리 소수. null/undefined이면 '—' */
+/** 천 단위 쉼표와 정확히 digits 자리 소수. 음수는 U+2212(−) 부호. null/undefined이면 '—' */
 export function fmtFixed(v: number | null | undefined, digits: number): string {
   if (v == null || !Number.isFinite(v)) return '—'
   // 반올림하면 0이 되는 값은 부호 없이 표시
   const n = Number(v.toFixed(digits)) === 0 ? 0 : v
-  return n.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+  const body = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+  return n < 0 ? `−${body}` : body
 }
 
 /** 부호 붙은 퍼센트: +1.30% / −2.27%(U+2212) / 0.00% */

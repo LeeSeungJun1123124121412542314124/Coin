@@ -3,6 +3,10 @@ import { fmtFixed, fmtSignedPct, fmtIndex, fmtCoinPrice } from '../src/lib/forma
 
 assert.equal(fmtFixed(23879.199, 2), '23,879.20')
 assert.equal(fmtFixed(null, 2), '—')
+assert.equal(fmtFixed(-1.5, 2), '−1.50')
+assert.equal(fmtFixed(-1234.5, 1), '−1,234.5')
+assert.equal(fmtIndex(-12.3), '−12.30')
+assert.equal(fmtCoinPrice(-5), '$−5.00')
 assert.equal(fmtSignedPct(1.3), '+1.30%')
 assert.equal(fmtSignedPct(-2.27), '\u22122.27%')
 assert.equal(fmtSignedPct(0), '0.00%')

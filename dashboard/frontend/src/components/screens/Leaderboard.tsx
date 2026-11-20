@@ -54,16 +54,8 @@ const PANEL: CSSProperties = {
   marginBottom: 20,
 }
 
-function pct(v: number | null): string {
-  if (v == null) return '–'
-  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
-}
-
 // 숫자 칸 공통 — Mono
 const MONO: CSSProperties = { fontFamily: 'var(--font-mono)' }
-
-// 샤프 — 음수 부호를 다른 수치(fmtSignedPct)와 같은 U+2212로
-const sharpeText = (v: number) => fmtFixed(v, 2).replace('-', '\u2212')
 
 // 방향 칸 — 자산별 포지션을 글로 요약. 상승·하락 색은 ▲▼와 함께 쓴다
 function DirectionText({ directions }: { directions?: Record<string, 'long' | 'short'> }) {
@@ -184,10 +176,10 @@ export function Leaderboard() {
                     <td style={{ textAlign: 'left', padding: '6px', color: p.direction === 'long' ? 'var(--up)' : 'var(--down)' }}>
                       {p.direction === 'long' ? '롱' : '숏'}
                     </td>
-                    <td style={{ padding: '6px', color: 'var(--text-2)', ...MONO }}>{p.leverage.toFixed(1)}x</td>
-                    <td style={{ padding: '6px', color: 'var(--text-2)', ...MONO }}>{p.entry_price.toFixed(2)}</td>
-                    <td style={{ padding: '6px', color: 'var(--text-2)', ...MONO }}>{p.exit_price == null ? '–' : p.exit_price.toFixed(2)}</td>
-                    <td style={{ padding: '6px', color: changeColor(p.pnl), ...MONO }}>{p.pnl == null ? '–' : p.pnl.toFixed(2)}</td>
+                    <td style={{ padding: '6px', color: 'var(--text-2)', ...MONO }}>{fmtFixed(p.leverage, 1)}x</td>
+                    <td style={{ padding: '6px', color: 'var(--text-2)', ...MONO }}>{fmtFixed(p.entry_price, 2)}</td>
+                    <td style={{ padding: '6px', color: 'var(--text-2)', ...MONO }}>{fmtFixed(p.exit_price, 2)}</td>
+                    <td style={{ padding: '6px', color: changeColor(p.pnl), ...MONO }}>{fmtFixed(p.pnl, 2)}</td>
                     <td style={{ padding: '6px', color: 'var(--text-3)' }}>{p.status === 'open' ? '보유' : '청산'}</td>
                   </tr>
                 ))}
@@ -247,7 +239,7 @@ export function Leaderboard() {
               <span className="leaderboard-card-stats">
                 <span><span>승률</span><span>{r.win_rate == null ? '—' : `${fmtFixed(r.win_rate, 0)}%`}</span></span>
                 <span><span>최대 낙폭</span><span style={{ color: 'var(--down)' }}>{fmtSignedPct(r.mdd_pct, 1)}</span></span>
-                <span><span>샤프</span><span>{sharpeText(r.sharpe)}</span></span>
+                <span><span>샤프</span><span>{fmtFixed(r.sharpe, 2)}</span></span>
                 <span><span>거래</span><span>{r.n_trades}</span></span>
               </span>
             </button>
@@ -287,11 +279,11 @@ export function Leaderboard() {
                   <td style={{ textAlign: 'left', padding: '8px 6px', color: i < 3 ? 'var(--accent)' : 'var(--text-3)', fontWeight: i < 3 ? 700 : 400, ...MONO }}>{i + 1}</td>
                   <td style={{ textAlign: 'left', padding: '8px 6px', color: 'var(--text)', fontWeight: 600 }}>{r.indicator}</td>
                   <td style={{ textAlign: 'center', padding: '8px 6px' }}><DirectionText directions={r.directions} /></td>
-                  <td style={{ padding: '8px 6px', color: changeColor(r.total_return_pct), fontWeight: 600, ...MONO }}>{pct(r.total_return_pct)}</td>
-                  <td style={{ padding: '8px 6px', color: changeColor(r.vs_buyhold_pct), ...MONO }}>{pct(r.vs_buyhold_pct)}</td>
-                  <td style={{ padding: '8px 6px', color: 'var(--text-2)', ...MONO }}>{r.win_rate == null ? '–' : `${r.win_rate.toFixed(0)}%`}</td>
-                  <td style={{ padding: '8px 6px', color: 'var(--down)', ...MONO }}>{r.mdd_pct.toFixed(1)}%</td>
-                  <td style={{ padding: '8px 6px', color: 'var(--text-2)', ...MONO }}>{sharpeText(r.sharpe)}</td>
+                  <td style={{ padding: '8px 6px', color: changeColor(r.total_return_pct), fontWeight: 600, ...MONO }}>{fmtSignedPct(r.total_return_pct)}</td>
+                  <td style={{ padding: '8px 6px', color: changeColor(r.vs_buyhold_pct), ...MONO }}>{fmtSignedPct(r.vs_buyhold_pct)}</td>
+                  <td style={{ padding: '8px 6px', color: 'var(--text-2)', ...MONO }}>{r.win_rate == null ? '—' : `${fmtFixed(r.win_rate, 0)}%`}</td>
+                  <td style={{ padding: '8px 6px', color: 'var(--down)', ...MONO }}>{fmtSignedPct(r.mdd_pct, 1)}</td>
+                  <td style={{ padding: '8px 6px', color: 'var(--text-2)', ...MONO }}>{fmtFixed(r.sharpe, 2)}</td>
                   <td style={{ padding: '8px 6px', color: 'var(--text-3)', ...MONO }}>{r.n_trades}</td>
                 </tr>
               ))}

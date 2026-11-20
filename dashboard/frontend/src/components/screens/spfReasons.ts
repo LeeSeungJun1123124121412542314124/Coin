@@ -3,6 +3,8 @@
 // 팩터 이름은 crypto-volatility-bot/app/macro/direction_composite.py의 FACTORS(9개)와
 // build_factors의 tga_13w에서 가져왔다.
 
+import { fmtFixed } from '../../lib/format.ts'
+
 export interface ParsedReason {
   label: string
   tone: 'up' | 'down' | 'flat'
@@ -32,6 +34,7 @@ export function parseReason(raw: string): ParsedReason {
   const n = Number(num)
   const label = FACTOR_LABELS[name] ?? name
   if (n === 0) return { label, tone: 'flat', value: num.slice(1) }
-  // 음수는 U+2212로 표시
-  return { label, tone: n > 0 ? 'up' : 'down', value: n > 0 ? num : `−${num.slice(1)}` }
+  // 음수는 fmtFixed가 U+2212로 표시(원문 소수 자릿수 유지)
+  const digits = num.split('.')[1]?.length ?? 0
+  return { label, tone: n > 0 ? 'up' : 'down', value: n > 0 ? num : fmtFixed(n, digits) }
 }
