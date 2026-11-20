@@ -1775,3 +1775,18 @@ button.dash-cell:hover { background: var(--bg-inset); }
   .spf-reason { min-height: 52px; grid-template-columns: 1fr auto minmax(44px, auto); gap: 10px; }
   .spf-reason-head { display: none; }
 }
+
+/* ===== CVD 스크리너·고래추적·리서치 (UI 개선안 v2) ===== */
+/* CVD 목록 행: 모바일에서 52px 이상 */
+.cvd-row { min-height: 40px; }
+/* 리서치 카드 "상세" 펼침 버튼 */
+.research-detail-btn {
+  display: block; width: 100%; margin-top: 8px; padding: 0; border: 0; background: transparent;
+  color: var(--text-3); font: inherit; font-size: 12px; text-align: right; cursor: pointer;
+}
+@media (max-width: 767px) {
+  .cvd-row { min-height: 52px; }
+  .research-detail-btn { min-height: 44px; }
+  /* 고래추적 KOSPI/KOSDAQ 전환 */
+  .whale-kr-toggle-btn { min-height: 44px; }
+}

@@ -6,6 +6,7 @@ import {
   RESEARCH_CATEGORIES,
   STOCK_SENTIMENT_INDEX_NOTES,
   getResearchCategoryColor,
+  sortByUrgency,
   toKrStockFlowDetailRows,
   toStockSentimentDetailRows,
 } from '../src/components/screens/researchView.ts'
@@ -107,5 +108,40 @@ assert.deepEqual(
     ['Total P/C', '0.91'],
     ['F&G 점수', '42/100'],
     ['P/C 점수', '67/100'],
+  ],
+)
+
+// 급한 순 정렬 — 위험(critical) → 경계(warning) → 약세(bearish) → 중립(neutral) → 그 외
+{
+  const cards = [
+    { id: 'a', level: 'neutral', score: 90 },
+    { id: 'b', level: 'critical', score: 10 },
+    { id: 'c', level: 'unknown', score: 99 },
+    { id: 'd', level: 'warning', score: 40 },
+    { id: 'e', level: 'warning', score: 70 },
+    { id: 'f', level: 'bearish', score: 55 },
+    { id: 'g', level: 'bullish', score: 20 },
+    { id: 'h', level: 'critical', score: 80 },
+  ]
+  const snapshot = JSON.stringify(cards)
+  const sorted = sortByUrgency(cards)
+  // 등급 순서 + 같은 등급은 점수 내림차순, 모르는 등급·강세는 맨 뒤(점수 내림차순)
+  assert.deepEqual(sorted.map(c => c.id), ['h', 'b', 'e', 'd', 'f', 'a', 'c', 'g'])
+  // 원본 불변
+  assert.equal(JSON.stringify(cards), snapshot)
+  assert.notEqual(sorted, cards)
+  // 빈 배열
+  assert.deepEqual(sortByUrgency([]), [])
+}
+
+// 주식심리 상세 행 — 긴 소수는 1자리로(정수는 그대로)
+assert.deepEqual(
+  toStockSentimentDetailRows({
+    stock_fear_greed: { value: 25.2297455968689, rating: 'Fear' },
+    component_scores: { fear_greed: 25.2297455968689 },
+  }),
+  [
+    ['F&G', '25.2 (Fear)'],
+    ['F&G 점수', '25.2/100'],
   ],
 )

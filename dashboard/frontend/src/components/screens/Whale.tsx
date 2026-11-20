@@ -16,7 +16,8 @@ import { Card } from '../shared/Card'
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
 import LastUpdated from '../shared/LastUpdated'
-import { fmt } from '../../lib/format'
+import { fmt, fmtSignedPct } from '../../lib/format'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { C, changeColor, changeArrow, softBg } from '../../lib/theme'
 import { AssetTabs } from '../shared/AssetTabs'
 import { readAssetTab, replaceAssetTab, type AssetTab } from '../shared/assetTabUtils'
@@ -130,11 +131,11 @@ function BtcBadge({ pos }: { pos: Position | null }) {
   const label = pos.side === 'long' ? '롱' : '숏'
   return (
     <span style={{
-      padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600,
+      padding: '2px 8px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600,
       background: softBg(pos.side === 'long' ? C.up : C.down, 0.14),
       color,
     }}>
-      BTC {label}
+      BTC {pos.side === 'long' ? '▲' : '▼'} {label}
       {pos.leverage != null && ` ${pos.leverage.toFixed(0)}x`}
     </span>
   )
@@ -148,7 +149,7 @@ function PositionList({ positions }: { positions: Position[] }) {
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
       {positions.slice(0, 5).map((p, i) => (
         <span key={i} style={{
-          padding: '1px 7px', borderRadius: 5, fontSize: '0.7rem',
+          padding: '1px 7px', borderRadius: 5, fontSize: '0.75rem',
           background: softBg(p.side === 'long' ? C.up : C.down, 0.12),
           color: p.side === 'long' ? 'var(--up)' : 'var(--down)',
         }}>
@@ -156,7 +157,7 @@ function PositionList({ positions }: { positions: Position[] }) {
         </span>
       ))}
       {positions.length > 5 && (
-        <span style={{ color: 'var(--text-3)', fontSize: '0.7rem' }}>+{positions.length - 5}</span>
+        <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>+{positions.length - 5}</span>
       )}
     </div>
   )
@@ -177,7 +178,7 @@ function ConsensusMeter({ data }: { data: Consensus }) {
         <div style={{ width: `${data.short_pct}%`, background: 'var(--down)' }} />
         <div style={{ flex: 1, background: 'var(--neutral-series)' }} />
       </div>
-      <div style={{ display: 'flex', gap: 16, fontSize: '0.72rem' }}>
+      <div style={{ display: 'flex', gap: 16, fontSize: '0.75rem' }}>
         <span style={{ color: 'var(--up)' }}>롱 {data.long_count}명 ({data.long_pct}%)</span>
         <span style={{ color: 'var(--down)' }}>숏 {data.short_count}명 ({data.short_pct}%)</span>
         <span style={{ color: 'var(--text-3)' }}>중립 {data.neutral_count}명</span>
@@ -187,14 +188,14 @@ function ConsensusMeter({ data }: { data: Consensus }) {
 }
 
 function formatEok(value: number | null | undefined) {
-  if (value == null) return '-'
+  if (value == null) return '—'
   return `${value.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}억`
 }
 
 function FlowChip({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div style={{ background: 'var(--bg-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
-      <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginBottom: 4 }}>{label}</div>
+      <div style={{ color: 'var(--text-3)', fontSize: '0.75rem', marginBottom: 4 }}>{label}</div>
       <div style={{ color, fontFamily: 'var(--font-mono)', fontSize: '1rem', fontWeight: 700 }}>{changeArrow(value)} {formatEok(value)}</div>
     </div>
   )
@@ -210,6 +211,7 @@ function KrMarketToggle({ market, onMarketChange }: { market: KrMarket; onMarket
           <button
             key={item}
             type="button"
+            className="whale-kr-toggle-btn"
             onClick={() => onMarketChange(item)}
             style={{
               border: `1px solid ${active ? 'var(--accent)' : 'var(--border-strong)'}`,
@@ -278,9 +280,9 @@ function KrInvestorFlowView({
           <ResponsiveContainer width="100%" height={260}>
             <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
               <CartesianGrid stroke={C.line} vertical={false} />
-              <XAxis dataKey="dateLabel" tick={{ fill: C.text3, fontSize: 10 }} interval="preserveStartEnd" />
-              <YAxis yAxisId="flow" tick={{ fill: C.text2, fontSize: 10 }} tickFormatter={v => `${v}`} width={48} />
-              <YAxis yAxisId="cum" orientation="right" tick={{ fill: C.text2, fontSize: 10 }} tickFormatter={v => `${v}`} width={48} />
+              <XAxis dataKey="dateLabel" tick={{ fill: C.text3, fontSize: 11 }} interval="preserveStartEnd" />
+              <YAxis yAxisId="flow" tick={{ fill: C.text2, fontSize: 11 }} tickFormatter={v => `${v}`} width={48} />
+              <YAxis yAxisId="cum" orientation="right" tick={{ fill: C.text2, fontSize: 11 }} tickFormatter={v => `${v}`} width={48} />
               <Tooltip
                 contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8 }}
                 labelStyle={{ color: C.text2 }}
@@ -314,7 +316,7 @@ function UsInsiderView({ data }: { data: UsInsiderData }) {
       <div className="grid-4" style={{ gap: 10 }}>
         {data.summaries.map(s => (
           <div key={s.ticker} style={{ background: 'var(--bg-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
-            <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginBottom: 4 }}>
+            <div style={{ color: 'var(--text-3)', fontSize: '0.75rem', marginBottom: 4 }}>
               {s.name} <span style={{ color: 'var(--text-3)' }}>({s.trade_count}건)</span>
             </div>
             <div style={{ color: changeColor(s.net_value), fontFamily: 'var(--font-mono)', fontSize: '1rem', fontWeight: 700 }}>
@@ -334,7 +336,7 @@ function UsInsiderView({ data }: { data: UsInsiderData }) {
               display: 'grid',
               gridTemplateColumns: '80px 70px 1fr 70px 90px 90px',
               gap: 8, padding: '4px 8px',
-              color: 'var(--text-3)', fontSize: '0.7rem', marginBottom: 6,
+              color: 'var(--text-3)', fontSize: '0.75rem', marginBottom: 6,
               borderBottom: '1px solid var(--line)',
               minWidth: 560,
             }}>
@@ -362,7 +364,7 @@ function UsInsiderView({ data }: { data: UsInsiderData }) {
                   <div>
                     <div style={{ color: 'var(--text)' }}>{t.insider_name}</div>
                     {t.insider_title && (
-                      <div style={{ color: 'var(--text-3)', fontSize: '0.7rem' }}>{t.insider_title}</div>
+                      <div style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>{t.insider_title}</div>
                     )}
                   </div>
                   <span style={{
@@ -404,13 +406,13 @@ function Us13fView({ data }: { data: Us13fData }) {
       <div className="grid-4" style={{ gap: 10 }}>
         {data.summaries.map(summary => (
           <div key={summary.ticker} style={{ background: 'var(--bg-inset)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
-            <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginBottom: 4 }}>
+            <div style={{ color: 'var(--text-3)', fontSize: '0.75rem', marginBottom: 4 }}>
               {summary.ticker} · {summary.latest_quarter ?? '분기 없음'}
             </div>
             <div style={{ color: 'var(--text)', fontSize: '1rem', fontWeight: 700 }}>
               {fmt(summary.latest_value)}
             </div>
-            <div style={{ color: summary.qoq_change == null ? 'var(--text-3)' : changeColor(summary.qoq_change), fontFamily: 'var(--font-mono)', fontSize: '0.7rem', marginTop: 3 }}>
+            <div style={{ color: summary.qoq_change == null ? 'var(--text-3)' : changeColor(summary.qoq_change), fontFamily: 'var(--font-mono)', fontSize: '0.75rem', marginTop: 3 }}>
               QoQ {summary.qoq_change == null ? '—' : `${changeArrow(summary.qoq_change)} ${summary.qoq_change >= 0 ? '+' : ''}${summary.qoq_change.toFixed(1)}%`}
             </div>
           </div>
@@ -423,7 +425,7 @@ function Us13fView({ data }: { data: Us13fData }) {
         </div>
         {data.holdings.length > 0 ? (
           <div className="table-scroll">
-            <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 70px 100px 110px', gap: 8, padding: '4px 8px', color: 'var(--text-3)', fontSize: '0.7rem', marginBottom: 6, borderBottom: '1px solid var(--line)', minWidth: 560 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 70px 100px 110px', gap: 8, padding: '4px 8px', color: 'var(--text-3)', fontSize: '0.75rem', marginBottom: 6, borderBottom: '1px solid var(--line)', minWidth: 560 }}>
               <span>분기</span><span>기관</span><span>종목</span>
               <span style={{ textAlign: 'right' }}>수량</span><span style={{ textAlign: 'right' }}>가치</span>
             </div>
@@ -449,6 +451,141 @@ function Us13fView({ data }: { data: Us13fData }) {
   )
 }
 
+// 지갑이 비었는지 — 포지션이 없고 자산이 $1 미만(또는 null)
+function isEmptyWallet(w: Whale): boolean {
+  return w.positions.length === 0 && w.btc_position == null && (w.account_value == null || w.account_value < 1)
+}
+
+// 30일 손익: ▲/▼ + 부호 + 금액, null이면 —
+function pnlText(v: number | null): string {
+  if (v == null) return '—'
+  return `${changeArrow(v)} ${v < 0 ? '−' : '+'}${fmt(Math.abs(v))}`
+}
+
+// 30일 ROI(소수 비율 → %): ▲/▼ + 부호 + 소수 1자리, null이면 —
+function roiText(v: number | null): string {
+  if (v == null) return '—'
+  return `${changeArrow(v)} ${fmtSignedPct(v * 100, 1)}`
+}
+
+// 모바일 지갑 카드: 이름·주소·BTC 포지션 + 자산·30일 손익·30일 ROI
+function WhaleCard({ w }: { w: Whale }) {
+  const shortAddr = `${w.address.slice(0, 6)}…${w.address.slice(-4)}`
+  return (
+    <div style={{
+      background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
+      boxShadow: 'var(--shadow-card)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 600, color: 'var(--accent)' }}>{w.rank}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+            <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{w.display_name ?? shortAddr}</span>
+            <span className="v2-nowrap" style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-3)' }}>
+              {shortAddr}
+            </span>
+          </div>
+        </div>
+        <BtcBadge pos={w.btc_position} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+        {([
+          ['자산', fmt(w.account_value), 'var(--text)'],
+          ['30일 손익', pnlText(w.pnl_30d), changeColor(w.pnl_30d)],
+          ['30일 ROI', roiText(w.roi_30d), changeColor(w.roi_30d)],
+        ] as const).map(([label, value, color]) => (
+          <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{label}</span>
+            <span className="v2-nowrap" style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 600, color }}>{value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// 지갑 목록: 모바일은 카드, PC는 표 (둘 중 하나만 그린다)
+function WhaleList({ whales, mobile }: { whales: Whale[]; mobile: boolean }) {
+  if (mobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {whales.map(w => <WhaleCard key={w.address} w={w} />)}
+      </div>
+    )
+  }
+  return (
+    <div className="table-scroll">
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '32px 1fr 90px 90px 80px 90px 1fr',
+        gap: 8, padding: '4px 8px',
+        color: 'var(--text-3)', fontSize: '0.75rem', marginBottom: 6,
+        borderBottom: '1px solid var(--line)',
+        minWidth: 580,
+      }}>
+        <span>#</span>
+        <span>주소 / 닉네임</span>
+        <span style={{ textAlign: 'right' }}>자산</span>
+        <span style={{ textAlign: 'right' }}>30d PnL</span>
+        <span style={{ textAlign: 'right' }}>30d ROI</span>
+        <span style={{ textAlign: 'center' }}>BTC</span>
+        <span>포지션</span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 580 }}>
+        {whales.map((w) => (
+          <div
+            key={w.address}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '32px 1fr 90px 90px 80px 90px 1fr',
+              gap: 8, padding: '8px 8px', borderRadius: 8,
+              background: 'var(--bg-inset)', alignItems: 'center',
+            }}
+          >
+            <span style={{ color: w.rank <= 3 ? 'var(--accent)' : 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 700 }}>
+              {w.rank}
+            </span>
+
+            <div>
+              {w.display_name ? (
+                <div style={{ color: 'var(--text)', fontSize: '0.82rem', fontWeight: 600 }}>{w.display_name}</div>
+              ) : null}
+              <div style={{ color: 'var(--text-3)', fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>
+                {w.address.slice(0, 6)}…{w.address.slice(-4)}
+              </div>
+            </div>
+
+            <span className="v2-nowrap" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', textAlign: 'right' }}>
+              {fmt(w.account_value)}
+            </span>
+
+            <span className="v2-nowrap" style={{
+              color: changeColor(w.pnl_30d), fontFamily: 'var(--font-mono)',
+              fontSize: '0.8rem', textAlign: 'right', fontWeight: 600,
+            }}>
+              {pnlText(w.pnl_30d)}
+            </span>
+
+            <span className="v2-nowrap" style={{
+              color: changeColor(w.roi_30d), fontFamily: 'var(--font-mono)',
+              fontSize: '0.78rem', textAlign: 'right',
+            }}>
+              {roiText(w.roi_30d)}
+            </span>
+
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <BtcBadge pos={w.btc_position} />
+            </div>
+
+            <PositionList positions={w.positions} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function CoinWhaleView({
   data,
   consensus,
@@ -461,6 +598,49 @@ function CoinWhaleView({
   failed: boolean
 }) {
   const { whales } = data
+  const mobile = useIsMobile()
+  const [foldOpen, setFoldOpen] = useState(false)
+  const activeWhales = whales.filter(w => !isEmptyWallet(w))
+  const emptyWhales = whales.filter(isEmptyWallet)
+
+  const list = (
+    <>
+      <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 12 }}>
+        Hyperliquid 고래 TOP {whales.length} (실시간)
+      </div>
+
+      {activeWhales.length > 0 && <WhaleList whales={activeWhales} mobile={mobile} />}
+
+      {whales.length > 0 && activeWhales.length === 0 && (
+        <div style={{ color: 'var(--text-2)', fontSize: 14, marginBottom: 10 }}>
+          지금 포지션을 가진 지갑이 없습니다
+        </div>
+      )}
+
+      {emptyWhales.length > 0 && (
+        <>
+          <button
+            type="button"
+            className="v2-fold"
+            aria-expanded={foldOpen}
+            onClick={() => setFoldOpen(open => !open)}
+            style={{ marginTop: activeWhales.length > 0 ? 10 : 0 }}
+          >
+            <span style={{ fontSize: 15, fontWeight: 600 }}>포지션 없는 지갑 {emptyWhales.length}개</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"
+              style={{ transform: foldOpen ? 'rotate(180deg)' : undefined }}>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+          {foldOpen && (
+            <div style={{ marginTop: 10 }}>
+              <WhaleList whales={emptyWhales} mobile={mobile} />
+            </div>
+          )}
+        </>
+      )}
+    </>
+  )
 
   return (
     <>
@@ -471,81 +651,7 @@ function CoinWhaleView({
         </Card>
       )}
 
-      <Card>
-        <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 12 }}>
-          Hyperliquid 고래 TOP {whales.length} (실시간)
-        </div>
-
-        <div className="table-scroll">
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '32px 1fr 90px 90px 80px 90px 1fr',
-            gap: 8, padding: '4px 8px',
-            color: 'var(--text-3)', fontSize: '0.7rem', marginBottom: 6,
-            borderBottom: '1px solid var(--line)',
-            minWidth: 580,
-          }}>
-            <span>#</span>
-            <span>주소 / 닉네임</span>
-            <span style={{ textAlign: 'right' }}>자산</span>
-            <span style={{ textAlign: 'right' }}>30d PnL</span>
-            <span style={{ textAlign: 'right' }}>30d ROI</span>
-            <span style={{ textAlign: 'center' }}>BTC</span>
-            <span>포지션</span>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 580 }}>
-            {whales.map((w) => (
-              <div
-                key={w.address}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '32px 1fr 90px 90px 80px 90px 1fr',
-                  gap: 8, padding: '8px 8px', borderRadius: 8,
-                  background: 'var(--bg-inset)', alignItems: 'center',
-                }}
-              >
-                <span style={{ color: w.rank <= 3 ? 'var(--accent)' : 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 700 }}>
-                  {w.rank}
-                </span>
-
-                <div>
-                  {w.display_name ? (
-                    <div style={{ color: 'var(--text)', fontSize: '0.82rem', fontWeight: 600 }}>{w.display_name}</div>
-                  ) : null}
-                  <div style={{ color: 'var(--text-3)', fontSize: '0.7rem', fontFamily: 'var(--font-mono)' }}>
-                    {w.address.slice(0, 6)}…{w.address.slice(-4)}
-                  </div>
-                </div>
-
-                <span style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', textAlign: 'right' }}>
-                  {fmt(w.account_value)}
-                </span>
-
-                <span style={{
-                  color: changeColor(w.pnl_30d ?? 0), fontFamily: 'var(--font-mono)',
-                  fontSize: '0.8rem', textAlign: 'right', fontWeight: 600,
-                }}>
-                  {fmt(w.pnl_30d)}
-                </span>
-
-                <span style={{
-                  color: changeColor(w.roi_30d ?? 0), fontFamily: 'var(--font-mono)',
-                  fontSize: '0.78rem', textAlign: 'right',
-                }}>
-                  {w.roi_30d != null ? `${(w.roi_30d * 100).toFixed(1)}%` : '—'}
-                </span>
-
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <BtcBadge pos={w.btc_position} />
-                </div>
-
-                <PositionList positions={w.positions} />
-              </div>
-            ))}
-          </div>
-        </div>
-      </Card>
+      {mobile ? <div>{list}</div> : <Card>{list}</Card>}
 
       {whales.length === 0 && (
         <div style={{ color: 'var(--text-3)', textAlign: 'center', padding: 24 }}>

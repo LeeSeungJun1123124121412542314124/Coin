@@ -64,24 +64,34 @@ const FACTOR_LABELS: Record<string, string> = {
 
 type Timeframe = '1h' | '4h' | '1d'
 
+// 스퀴즈 점 — 범례와 목록 행이 같이 쓴다
+function SqueezeDot({ color, label }: { color: string; label?: string }) {
+  return (
+    <span
+      aria-label={label}
+      style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: color, verticalAlign: 'baseline' }}
+    />
+  )
+}
+
 function FactorBar({ label, score, factorKey }: { label: string; score: number; factorKey?: string }) {
   const color = score >= 70 ? 'var(--ok)' : score >= 50 ? 'var(--accent)' : score >= 30 ? 'var(--warn)' : 'var(--neutral-series)'
   const showSqueezeBadge = factorKey === 'bb_squeeze' && score >= 70
   return (
     <div style={{ marginBottom: 6 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-        <span style={{ color: 'var(--text-2)', fontSize: '0.72rem' }}>
+        <span style={{ color: 'var(--text-2)', fontSize: '0.75rem' }}>
           {label}
           {showSqueezeBadge && (
             <span style={{
-              marginLeft: 6, padding: '1px 6px', borderRadius: 4, fontSize: '0.65rem',
+              marginLeft: 6, padding: '1px 6px', borderRadius: 4, fontSize: '0.75rem',
               background: softBg(C.warn, 0.2), color: 'var(--warn)', fontWeight: 700,
             }}>
               스퀴즈!
             </span>
           )}
         </span>
-        <span style={{ color, fontFamily: 'var(--font-mono)', fontSize: '0.72rem', fontWeight: 600 }}>{score.toFixed(0)}</span>
+        <span style={{ color, fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 600 }}>{score.toFixed(0)}</span>
       </div>
       <div style={{ height: 4, background: 'var(--seg-active)', borderRadius: 2 }}>
         <div style={{ height: '100%', width: `${score}%`, background: color, borderRadius: 2, transition: 'width 0.4s' }} />
@@ -108,23 +118,20 @@ export function Alt() {
   // 타임프레임 선택 — 뼈대·오류 화면에서도 보여 실패한 주기에서 빠져나올 수 있게 한다
   const timeframeBar = (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      <span style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>주기:</span>
-      <div style={{ display: 'flex', gap: 2, padding: 3, background: 'var(--bg-inset)', border: '1px solid var(--border)', borderRadius: 10 }}>
-      {(['1h', '4h', '1d'] as Timeframe[]).map(tf => (
-        <button
-          key={tf}
-          onClick={() => setTimeframe(tf)}
-          style={{
-            padding: '5px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
-            fontSize: '0.8rem', fontFamily: 'var(--font-mono)',
-            fontWeight: timeframe === tf ? 600 : 400,
-            background: timeframe === tf ? 'var(--seg-active)' : 'transparent',
-            color: timeframe === tf ? 'var(--text)' : 'var(--text-2)',
-          }}
-        >
-          {tf}
-        </button>
-      ))}
+      <span style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>주기</span>
+      <div className="v2-seg" role="group" aria-label="주기">
+        {(['1h', '4h', '1d'] as Timeframe[]).map(tf => (
+          <button
+            key={tf}
+            type="button"
+            className="v2-seg-btn"
+            aria-pressed={timeframe === tf}
+            onClick={() => setTimeframe(tf)}
+            style={{ fontFamily: 'var(--font-mono)' }}
+          >
+            {tf}
+          </button>
+        ))}
       </div>
       {screener && (
         <span style={{ marginLeft: 'auto', color: 'var(--text-3)', fontSize: '0.75rem' }}>
@@ -193,14 +200,25 @@ export function Alt() {
         <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 10 }}>
           CVD 11팩터 스크리너 — {timeframe} 기준
         </div>
+        {/* 범례: 등급 기준(cvd_service GRADE_THRESHOLDS)과 점의 뜻(bb_squeeze 70+/50+) */}
+        <div style={{ color: 'var(--text-2)', fontSize: 12, lineHeight: 1.6, marginBottom: 10 }}>
+          <div>등급: S 80+ · A 65+ · B 50+ · C 35+ · D 35 미만</div>
+          <div>
+            <SqueezeDot color="var(--warn)" /> 볼린저밴드 스퀴즈 감지 · <SqueezeDot color="var(--neutral-series)" /> 보통
+          </div>
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           {screener.results.map((r, i) => (
-            <div
+            <button
               key={r.symbol}
+              type="button"
+              className="cvd-row"
+              aria-pressed={selectedSymbol === r.symbol}
               onClick={() => setSelectedSymbol(r.symbol === selectedSymbol ? null : r.symbol)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
+                color: 'inherit', font: 'inherit', textAlign: 'left', width: '100%',
                 background: selectedSymbol === r.symbol ? 'var(--surface-2)' : 'transparent',
                 border: `1px solid ${selectedSymbol === r.symbol ? 'var(--border-strong)' : 'transparent'}`,
                 transition: 'background 0.15s',
@@ -229,15 +247,9 @@ export function Alt() {
               {/* BB 스퀴즈 아이콘 */}
               <span style={{ width: 16, textAlign: 'center' }}>
                 {r.factors?.bb_squeeze >= 70 ? (
-                  <span style={{
-                    display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
-                    background: 'var(--warn)',
-                  }} title="BB 스퀴즈 감지" />
+                  <SqueezeDot color="var(--warn)" label="볼린저밴드 스퀴즈 감지" />
                 ) : r.factors?.bb_squeeze >= 50 ? (
-                  <span style={{
-                    display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
-                    background: 'var(--neutral-series)',
-                  }} title="BB 보통" />
+                  <SqueezeDot color="var(--neutral-series)" label="볼린저밴드 보통" />
                 ) : null}
               </span>
 
@@ -254,7 +266,7 @@ export function Alt() {
               <span style={{ color: GRADE_COLOR[r.grade] ?? C.text2, fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, width: 36, textAlign: 'right' }}>
                 {r.score.toFixed(0)}
               </span>
-            </div>
+            </button>
           ))}
         </div>
       </Card>
@@ -270,9 +282,9 @@ export function Alt() {
               </div>
               <ResponsiveContainer width="100%" height={200}>
                 <ComposedChart data={cvdChart}>
-                  <XAxis dataKey="xKey" tick={{ fill: C.text3, fontSize: 9 }} interval="preserveStartEnd" tickFormatter={formatCvdAxisLabel} />
-                  <YAxis yAxisId="cvd" orientation="left" tick={{ fill: C.info, fontSize: 10 }} width={45} />
-                  <YAxis yAxisId="price" orientation="right" domain={['auto', 'auto']} tick={{ fill: C.accent, fontSize: 10 }} width={50} />
+                  <XAxis dataKey="xKey" tick={{ fill: C.text3, fontSize: 11 }} interval="preserveStartEnd" tickFormatter={formatCvdAxisLabel} />
+                  <YAxis yAxisId="cvd" orientation="left" tick={{ fill: C.info, fontSize: 11 }} width={45} />
+                  <YAxis yAxisId="price" orientation="right" domain={['auto', 'auto']} tick={{ fill: C.accent, fontSize: 11 }} width={50} />
                   <Tooltip
                     contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8 }}
                     labelStyle={{ color: C.text2 }}
@@ -294,13 +306,13 @@ export function Alt() {
                 </ComposedChart>
               </ResponsiveContainer>
               {/* CVD Delta (매수/매도 전환) */}
-              <div style={{ color: 'var(--text-3)', fontSize: '0.7rem', marginTop: 8, marginBottom: 4 }}>
+              <div style={{ color: 'var(--text-3)', fontSize: '0.75rem', marginTop: 8, marginBottom: 4 }}>
                 CVD Delta (봉간 변화량)
               </div>
               <ResponsiveContainer width="100%" height={80}>
                 <ComposedChart data={cvdChart}>
                   <XAxis dataKey="xKey" tick={false} axisLine={false} />
-                  <YAxis tick={{ fill: C.text3, fontSize: 9 }} width={45} />
+                  <YAxis tick={{ fill: C.text3, fontSize: 11 }} width={45} />
                   <Tooltip
                     contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8 }}
                     labelStyle={{ color: C.text2 }}

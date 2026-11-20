@@ -49,8 +49,26 @@ interface StockSentimentDetails {
   } | null
 }
 
+// 급한 정도 순서: 위험 → 경계 → 약세 → 중립 → 그 외(강세·모르는 값)
+const URGENCY_ORDER = ['critical', 'warning', 'bearish', 'neutral']
+
+function urgencyRank(level: string): number {
+  const i = URGENCY_ORDER.indexOf(level)
+  return i === -1 ? URGENCY_ORDER.length : i
+}
+
+// 급한 순 정렬 — 같은 등급은 점수 내림차순, 원본 배열은 바꾸지 않는다
+export function sortByUrgency<T extends { level: string; score: number }>(cards: T[]): T[] {
+  return [...cards].sort((a, b) => urgencyRank(a.level) - urgencyRank(b.level) || b.score - a.score)
+}
+
 export function getResearchCategoryColor(category: string) {
   return category === '전체' ? C.accent : (RESEARCH_CATEGORY_COLORS[category] ?? C.text2)
+}
+
+// 소수 1자리까지만 — 정수는 그대로 (25.2297 → 25.2, 42 → 42)
+function oneDecimal(value: number): string {
+  return String(Number(value.toFixed(1)))
 }
 
 export function toStockSentimentDetailRows(details: StockSentimentDetails): Array<[string, string]> {
@@ -61,7 +79,7 @@ export function toStockSentimentDetailRows(details: StockSentimentDetails): Arra
 
   if (fearGreed?.value != null) {
     const rating = fearGreed.rating ? ` (${fearGreed.rating})` : ''
-    rows.push(['F&G', `${fearGreed.value}${rating}`])
+    rows.push(['F&G', `${oneDecimal(fearGreed.value)}${rating}`])
   }
 
   if (putcall?.equity_pc != null) {
@@ -74,7 +92,7 @@ export function toStockSentimentDetailRows(details: StockSentimentDetails): Arra
   }
 
   if (scores?.fear_greed != null) {
-    rows.push(['F&G 점수', `${scores.fear_greed}/100`])
+    rows.push(['F&G 점수', `${oneDecimal(scores.fear_greed)}/100`])
   }
   if (scores?.putcall != null) {
     rows.push(['P/C 점수', `${scores.putcall}/100`])

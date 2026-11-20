@@ -8,6 +8,7 @@ import {
   RESEARCH_CATEGORIES,
   RESEARCH_CATEGORY_COLORS,
   STOCK_SENTIMENT_INDEX_NOTES,
+  sortByUrgency,
   toKrStockFlowDetailRows,
   toStockSentimentDetailRows,
 } from './researchView'
@@ -51,8 +52,8 @@ const LEVEL_LABELS: Record<string, string> = {
 }
 
 const LEVEL_ICONS: Record<string, string> = {
-  critical: '🚨',
-  warning:  '⚠️',
+  critical: '!',
+  warning:  '!',
   bearish:  '▼',
   bullish:  '▲',
   neutral:  '●',
@@ -102,7 +103,7 @@ function AnalysisCard({ cat, expanded, onToggle }: {
             border: `1px solid ${softBg(catColor, 0.28)}`,
             borderRadius: 6,
             padding: '2px 8px',
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 600,
           }}>{cat.name}</span>
           <span style={{
@@ -111,11 +112,11 @@ function AnalysisCard({ cat, expanded, onToggle }: {
             border: `1px solid ${softBg(levelColor, 0.28)}`,
             borderRadius: 6,
             padding: '2px 8px',
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 600,
           }}>{icon} {levelLabel}</span>
         </div>
-        <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{time}</span>
+        <span style={{ fontSize: 12, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{time}</span>
       </div>
 
       {/* 제목 */}
@@ -142,9 +143,10 @@ function AnalysisCard({ cat, expanded, onToggle }: {
         </div>
       )}
 
-      <div style={{ marginTop: 8, textAlign: 'right', fontSize: 11, color: 'var(--text-3)' }}>
+      {/* 클릭은 카드의 onClick이 받는다 — 키보드·보조기기용 버튼 */}
+      <button type="button" aria-expanded={expanded} className="research-detail-btn">
         {expanded ? '▲ 접기' : '▼ 상세'}
-      </div>
+      </button>
     </div>
   )
 }
@@ -223,7 +225,7 @@ function _renderDetails(key: string, details: Record<string, unknown>) {
     }
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4 }}>향후 국채 경매 (일부)</div>
+        <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 4 }}>향후 국채 경매 (일부)</div>
         {auctions.slice(0, 8).map((a, i) => (
           <div key={i} style={{ fontSize: 12, color: 'var(--text-2)' }}>
             <span style={{ color: 'var(--text-2)' }}>{a.auction_date?.slice(0, 10)}</span>
@@ -264,10 +266,10 @@ function _renderDetails(key: string, details: Record<string, unknown>) {
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           {peakCount >= 1 ? (
-            <span style={{ fontSize: 11, color: 'var(--warn-text)', fontWeight: 600 }}>⚠️ 정점 임박 {peakCount}/{total}</span>
+            <span style={{ fontSize: 12, color: 'var(--warn-text)', fontWeight: 600 }}>! 정점 임박 {peakCount}/{total}</span>
           ) : <span />}
           {asOf && (
-            <span style={{ fontSize: 11, color: typeof daysSince === 'number' && daysSince > 21 ? 'var(--warn-text)' : 'var(--text-3)' }}>
+            <span style={{ fontSize: 12, color: typeof daysSince === 'number' && daysSince > 21 ? 'var(--warn-text)' : 'var(--text-3)' }}>
               최종 확인: {asOf}{typeof daysSince === 'number' ? ` (${daysSince}일 전)` : ''}
             </span>
           )}
@@ -275,7 +277,7 @@ function _renderDetails(key: string, details: Record<string, unknown>) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {sections.map((section) => (
             <div key={section.key}>
-              <div style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 700, marginBottom: 6 }}>{section.name}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 700, marginBottom: 6 }}>{section.name}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {section.signals.map((signal) => {
                   const statusColor = STATUS_COLORS[signal.status] ?? C.text2
@@ -283,13 +285,13 @@ function _renderDetails(key: string, details: Record<string, unknown>) {
                     <div key={signal.id}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 10, color: statusColor }}>●</span>
+                          <span style={{ fontSize: 12, color: statusColor }}>●</span>
                           <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{signal.name}</span>
                         </div>
-                        <span style={{ fontSize: 11, color: statusColor, fontWeight: 600 }}>{signal.label}</span>
+                        <span style={{ fontSize: 12, color: statusColor, fontWeight: 600 }}>{signal.label}</span>
                       </div>
                       {signal.note && (
-                        <div style={{ fontSize: 11, color: 'var(--text-3)', marginLeft: 16, marginTop: 2 }}>
+                        <div style={{ fontSize: 12, color: 'var(--text-3)', marginLeft: 16, marginTop: 2 }}>
                           {signal.note}
                         </div>
                       )}
@@ -317,7 +319,7 @@ function _renderDetails(key: string, details: Record<string, unknown>) {
         </div>
         <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {STOCK_SENTIMENT_INDEX_NOTES.map(([name, note]) => (
-            <div key={name} style={{ fontSize: 11, color: 'var(--text-3)', lineHeight: 1.5 }}>
+            <div key={name} style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.5 }}>
               <span style={{ color: 'var(--text-2)', fontWeight: 600 }}>{name}</span> — {note}
             </div>
           ))}
@@ -378,9 +380,9 @@ export function Research() {
   const { data, loading, error, refetch, lastUpdated } = useApi<ResearchData>('/api/research-analysis', 600_000)
 
   const categories = data?.categories ?? []
-  const filtered = activeCategory === '전체'
-    ? categories
-    : categories.filter(c => c.name === activeCategory)
+  const filtered = sortByUrgency(
+    activeCategory === '전체' ? categories : categories.filter(c => c.name === activeCategory),
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -395,27 +397,19 @@ export function Research() {
       )}
 
       {/* 카테고리 필터 */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+      <div role="group" aria-label="카테고리" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
         {RESEARCH_CATEGORIES.map(cat => {
           const isActive = activeCategory === cat
           const count = cat === '전체' ? categories.length : categories.filter(c => c.name === cat).length
           return (
             <button
               key={cat}
+              type="button"
+              className="v2-chip"
+              aria-pressed={isActive}
               onClick={() => setActiveCategory(cat)}
-              style={{
-                background: isActive ? softBg(C.accent, 0.12) : 'transparent',
-                border: `1px solid ${isActive ? 'var(--accent)' : 'var(--border-strong)'}`,
-                borderRadius: 999,
-                padding: '5px 14px',
-                fontSize: 12,
-                color: isActive ? 'var(--accent)' : 'var(--text-2)',
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-                fontWeight: isActive ? 600 : 400,
-              }}
             >
-              {cat} {count > 0 && <span style={{ opacity: 0.7, fontFamily: 'var(--font-mono)' }}>({count})</span>}
+              {cat} {count > 0 && <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}>({count})</span>}
             </button>
           )
         })}
