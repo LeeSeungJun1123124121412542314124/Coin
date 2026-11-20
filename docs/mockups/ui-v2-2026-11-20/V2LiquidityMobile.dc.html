@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>유동성 개선안 모바일</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#09090B}
+a{color:#D9BE86;text-decoration:none}a:hover{color:#EBD9B3}
+</style>
+</helmet>
+<div style="width: 390px; height: 1960px; box-sizing: border-box; background: #09090B; color: #F1F1F3; font-family: 'IBM Plex Sans KR', system-ui, sans-serif; display: flex; flex-direction: column">
+
+  <header style="padding: 18px 16px 12px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: baseline; justify-content: space-between">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em">유동성</h1>
+      <span style="font-size: 12px; color: #86868F; font-family: 'IBM Plex Mono', monospace">최종 갱신 10:32</span>
+    </div>
+  </header>
+
+  <div style="flex: 1; padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px">
+
+    <section aria-label="유동성 판정" style="padding: 16px; border-radius: 16px; background: rgba(63,203,139,0.06); border: 1px solid rgba(63,203,139,0.3); display: flex; align-items: center; justify-content: space-between; gap: 12px">
+      <div style="display: flex; align-items: center; gap: 12px; min-width: 0">
+        <span aria-hidden="true" style="flex: none; width: 12px; height: 12px; border-radius: 50%; background: #3FCB8B; box-shadow: 0 0 0 6px rgba(63,203,139,0.12)"></span>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; color: #ABABB4">매크로 유동성 판정</span>
+          <span style="font-size: 22px; font-weight: 700; letter-spacing: -0.02em">유동성 공급</span>
+          <span style="font-size: 12px; color: #86868F">TGA · M2 · SOMA 종합</span>
+        </div>
+      </div>
+      <div style="flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px">
+        <span style="font-size: 12px; color: #86868F">M2 YoY</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 600; color: #3FCB8B; white-space: nowrap">3.4%</span>
+      </div>
+    </section>
+
+    <section aria-labelledby="tga-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+        <h2 id="tga-title" style="margin: 0; font-size: 14px; font-weight: 600; color: #ABABB4">TGA 잔고</h2>
+        <span style="font-size: 12px; font-weight: 600; border-radius: 6px; padding: 3px 8px; background: {{tgaTagBg}}; color: {{tgaTagFg}}; white-space: nowrap">{{tgaTag}}</span>
+      </div>
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600; white-space: nowrap">{{tgaVal}}</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: {{tgaSubColor}}; white-space: nowrap">{{tgaSub}}</span>
+      </div>
+      <svg viewBox="0 0 326 56" preserveAspectRatio="none" style="width: 100%; height: 56px; display: block" role="img" aria-label="TGA 잔고가 줄어드는 추이 (예시)">
+        <polyline points="0,10 40,14 80,12 120,20 160,26 200,24 240,34 280,40 326,46" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+      </svg>
+      <span style="font-size: 13px; color: #ABABB4; line-height: 1.5">재무부 계좌 잔고가 줄면 시중 유동성이 늘어납니다.</span>
+    </section>
+
+    <section aria-labelledby="m2-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+        <h2 id="m2-title" style="margin: 0; font-size: 14px; font-weight: 600; color: #ABABB4">M2 통화량 (YoY)</h2>
+        <span style="font-size: 12px; font-weight: 600; border-radius: 6px; padding: 3px 8px; background: {{m2TagBg}}; color: {{m2TagFg}}; white-space: nowrap">{{m2Tag}}</span>
+      </div>
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600; white-space: nowrap">{{m2Val}}</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: {{m2SubColor}}; white-space: nowrap">{{m2Sub}}</span>
+      </div>
+      <svg viewBox="0 0 326 56" preserveAspectRatio="none" style="width: 100%; height: 56px; display: block" role="img" aria-label="M2 전년 대비 증가율이 오르는 추이 (예시)">
+        <polyline points="0,50 40,48 80,44 120,40 160,34 200,30 240,24 280,16 326,10" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+      </svg>
+      <span style="font-size: 13px; color: #ABABB4; line-height: 1.5">전년 대비 증가율이 3%를 넘어 회복하는 구간입니다.</span>
+    </section>
+
+    <section aria-labelledby="soma-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+        <h2 id="soma-title" style="margin: 0; font-size: 14px; font-weight: 600; color: #ABABB4">연준 대차대조표 (SOMA)</h2>
+        <span style="font-size: 12px; font-weight: 600; border-radius: 6px; padding: 3px 8px; background: {{somaTagBg}}; color: {{somaTagFg}}; white-space: nowrap">{{somaTag}}</span>
+      </div>
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600; white-space: nowrap">{{somaVal}}</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: {{somaSubColor}}; white-space: nowrap">{{somaSub}}</span>
+      </div>
+      <svg viewBox="0 0 326 56" preserveAspectRatio="none" style="width: 100%; height: 56px; display: block" role="img" aria-label="연준 보유 자산이 줄어드는 추이 (예시)">
+        <polyline points="0,8 40,10 80,14 120,18 160,24 200,28 240,34 280,40 326,44" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+      </svg>
+      <span style="font-size: 13px; color: #ABABB4; line-height: 1.5">연준이 보유 자산을 줄이는 중(QT). 유동성을 거두는 요인입니다.</span>
+    </section>
+
+    <section aria-labelledby="auc-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 6px; display: flex; flex-direction: column">
+      <div style="display: flex; align-items: baseline; justify-content: space-between">
+        <h2 id="auc-title" style="margin: 0; font-size: 15px; font-weight: 600">향후 국채 경매 <span style="color: #86868F; font-weight: 500; font-size: 13px">8건</span></h2>
+        <span style="font-size: 12px; color: #E8913A">$50B 초과 강조</span>
+      </div>
+      <sc-for list="{{auctions}}" as="a" hint-placeholder-count="8">
+        <div style="min-height: 44px; box-sizing: border-box; margin-top: 4px; border-top: 1px solid #1C1C21; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px">
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #ABABB4">{{a.date}}</span>
+          <span style="flex: 1; color: #ABABB4">{{a.term}}</span>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: {{a.color}}; white-space: nowrap">{{a.amt}}</span>
+        </div>
+      </sc-for>
+    </section>
+
+    <section aria-labelledby="res-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 6px; display: flex; flex-direction: column">
+      <h2 id="res-title" style="margin: 0; font-size: 15px; font-weight: 600">최근 경매 결과</h2>
+      <sc-for list="{{results}}" as="r" hint-placeholder-count="6">
+        <div style="min-height: 44px; box-sizing: border-box; margin-top: 4px; border-top: 1px solid #1C1C21; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px">
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #ABABB4">{{r.date}}</span>
+          <span style="flex: 1; color: #ABABB4">{{r.term}}</span>
+          <span style="font-size: 13px; color: #86868F; white-space: nowrap">응찰률 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #F1F1F3">{{r.btc}}x</span></span>
+        </div>
+      </sc-for>
+    </section>
+
+    <section aria-labelledby="empty-title" style="background: #101013; border: 1px dashed #313138; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px">
+        <h2 id="empty-title" style="margin: 0; font-size: 15px; font-weight: 600">데이터를 받지 못했을 때</h2>
+        <span style="font-size: 12px; color: #86868F">안내 화면 예시</span>
+      </div>
+      <div role="alert" style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 0 4px; text-align: center">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#E8913A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 16H3zM12 10v4M12 17h.01"></path></svg>
+        <span style="font-size: 16px; font-weight: 600">유동성 데이터를 받지 못했습니다</span>
+        <span style="font-size: 13px; color: #ABABB4">FRED 응답 없음 · 마지막 성공 <span style="font-family: 'IBM Plex Mono', monospace">[시각]</span></span>
+      </div>
+      <button type="button" style="min-height: 44px; border-radius: 12px; border: 1px solid #313138; background: #19191D; color: #F1F1F3; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer">다시 시도</button>
+    </section>
+  </div>
+
+  <nav aria-label="주요 화면" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #222227; background: #0D0D10; padding: 6px 4px 14px">
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+      <a href="{{t.href}}" style="min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; color: {{t.fg}}; font-weight: {{t.weight}}">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.icon}}"></path></svg>
+        {{t.name}}
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C8A86B","options":["#C8A86B","#3FB6A8","#E3B341","#B58CFF"],"section":"테마"},"updown":{"editor":"enum","default":"kr","options":["kr","global"],"section":"테마"},"$preview":{"width":390,"height":1960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#C8A86B';
+    const kr = (this.props.updown ?? 'kr') === 'kr';
+    const UP = kr ? '#F2606A' : '#3FCB8B';
+    const DN = kr ? '#5AA9FF' : '#F2606A';
+    const WARN = '#E8913A';
+    const DANGER = '#FF7A5C';
+    const OK = '#3FCB8B';
+    const soft = (hex, a) => {
+      const n = parseInt(hex.replace('#', ''), 16);
+      return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+    };
+    const tab = (name, icon, href, on) => ({ name, icon, href, fg: on ? accent : '#ABABB4', weight: on ? 600 : 500 });
+    return {
+      accent,
+      tgaTag: '유동성 공급', tgaTagBg: soft(OK, 0.14), tgaTagFg: OK,
+      tgaVal: '$742B', tgaSub: '▼ 주간 18.4B', tgaSubColor: DN,
+      m2Tag: '3% 위 · 회복', m2TagBg: soft(OK, 0.14), m2TagFg: OK,
+      m2Val: '$21.4T', m2Sub: 'YoY 3.42%', m2SubColor: '#ABABB4',
+      somaTag: '긴축 중 (QT)', somaTagBg: soft(WARN, 0.14), somaTagFg: WARN,
+      somaVal: '$6.6T', somaSub: '▼ QT 11.2B/주', somaSubColor: DN,
+      auctions: [
+        ['11-20', '4주 Bill', '$95B'], ['11-20', '8주 Bill', '$90B'], ['11-21', '20년 Bond', '$16B'], ['11-24', '13주 Bill', '$84B'],
+        ['11-24', '26주 Bill', '$72B'], ['11-25', '2년 Note', '$69B'], ['11-26', '5년 Note', '$70B'], ['11-27', '7년 Note', '$44B'],
+      ].map(([date, term, amt]) => ({ date, term, amt, color: parseInt(amt.replace(/[^0-9]/g, ''), 10) > 50 ? WARN : '#F1F1F3' })),
+      results: [
+        ['11-18', '20년 Bond', '2.48'], ['11-14', '30년 Bond', '2.31'], ['11-13', '10년 Note', '2.55'],
+        ['11-12', '3년 Note', '2.68'], ['11-10', '13주 Bill', '2.91'], ['11-10', '26주 Bill', '3.02'],
+      ].map(([date, term, btc]) => ({ date, term, btc })),
+      tabs: [
+        tab('홈', 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z', 'V2HomeMobile.dc.html', false),
+        tab('시장', 'M3 3v18h18M7 15l4-4 3 3 5-6', 'Market.dc.html', true),
+        tab('파생', 'M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5', 'Spf.dc.html', false),
+        tab('학습', 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5', 'Mobile.dc.html', false),
+        tab('더보기', 'M5 12h.01M12 12h.01M19 12h.01', '#', false),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

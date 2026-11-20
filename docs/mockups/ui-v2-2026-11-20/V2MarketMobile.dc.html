@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>시장분석 개선안 모바일</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#09090B}
+a{color:#D9BE86;text-decoration:none}a:hover{color:#EBD9B3}
+</style>
+</helmet>
+<div style="width: 390px; height: 1640px; box-sizing: border-box; background: #09090B; color: #F1F1F3; font-family: 'IBM Plex Sans KR', system-ui, sans-serif; display: flex; flex-direction: column">
+
+  <header style="padding: 18px 16px 12px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: baseline; justify-content: space-between">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em">시장분석</h1>
+      <span style="font-size: 12px; color: #86868F; font-family: 'IBM Plex Mono', monospace">최종 갱신 10:32</span>
+    </div>
+    <div role="group" aria-label="자산" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #0D0D10; border: 1px solid #222227; border-radius: 10px; padding: 3px">
+      <button type="button" aria-pressed="true" style="min-height: 38px; border: 0; border-radius: 8px; background: #2B2B31; color: #F1F1F3; font: inherit; font-size: 14px; font-weight: 600">코인</button>
+      <button type="button" aria-pressed="false" style="min-height: 38px; border: 0; border-radius: 8px; background: transparent; color: #ABABB4; font: inherit; font-size: 14px">미국/환율</button>
+    </div>
+  </header>
+
+  <div style="flex: 1; padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px">
+
+    <div role="status" style="min-height: 56px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: 14px; background: rgba(232,145,58,0.08); border: 1px solid rgba(232,145,58,0.3)">
+      <span style="display: flex; align-items: center; gap: 10px">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8913A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 16H3zM12 10v4M12 17h.01"></path></svg>
+        <span style="font-size: 16px; font-weight: 700">주의 신호 <span style="font-family: 'IBM Plex Mono', monospace">2</span>건</span>
+      </span>
+      <span style="font-size: 13px; color: #ABABB4; white-space: nowrap">봇 레벨 <span style="font-weight: 700; color: #F1F1F3">LOW</span></span>
+    </div>
+
+    <section aria-labelledby="ind-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 6px; display: flex; flex-direction: column">
+      <h2 id="ind-title" style="margin: 0; font-size: 15px; font-weight: 600">핵심 지표</h2>
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+        <div style="min-height: 56px; box-sizing: border-box; border-top: 1px solid #1C1C21; margin-top: 8px; padding: 8px 0 4px; display: flex; align-items: center; justify-content: space-between; gap: 10px">
+          <span style="font-size: 14px; color: #ABABB4; white-space: nowrap">{{r.name}}</span>
+          <span style="display: flex; align-items: center; gap: 8px">
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 600; color: {{r.color}}; white-space: nowrap">{{r.value}}</span>
+            <span style="font-size: 12px; font-weight: 600; border-radius: 6px; padding: 3px 8px; background: {{r.tagBg}}; color: {{r.tagFg}}; white-space: nowrap">{{r.tag}}</span>
+          </span>
+        </div>
+      </sc-for>
+    </section>
+
+    <section aria-labelledby="ins-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 6px; display: flex; flex-direction: column; gap: 4px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between">
+        <h2 id="ins-title" style="margin: 0; font-size: 15px; font-weight: 600">시장 인사이트 <span style="color: #86868F; font-weight: 500; font-size: 13px">3개</span></h2>
+        <span style="font-size: 12px; color: #86868F">레벨순</span>
+      </div>
+      <sc-for list="{{insights}}" as="n" hint-placeholder-count="3">
+        <div style="margin-top: 8px; border-top: 1px solid #1C1C21; padding: 12px 0 8px; display: flex; flex-direction: column; gap: 6px">
+          <span style="display: flex; align-items: center; gap: 8px">
+            <span style="flex: none; font-size: 12px; font-weight: 600; border-radius: 6px; padding: 3px 8px; background: {{n.bg}}; color: {{n.fg}}">{{n.level}}</span>
+            <span style="font-size: 15px; font-weight: 600">{{n.title}}</span>
+          </span>
+          <span style="font-size: 13px; color: #ABABB4; line-height: 1.5">{{n.body}}</span>
+        </div>
+      </sc-for>
+    </section>
+
+    <section aria-labelledby="vix-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h2 id="vix-title" style="margin: 0; font-size: 15px; font-weight: 600">VIX vs BTC 변화율 (30일)</h2>
+        <span style="font-size: 12px; color: #86868F">30일 전 대비 변화율 · 모양만 보여 주는 예시</span>
+      </div>
+      <div style="display: flex; gap: 16px; font-size: 13px; color: #ABABB4">
+        <span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 16px; height: 3px; border-radius: 2px; background: #ABABB4"></span>VIX</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 16px; height: 3px; border-radius: 2px; background: {{accent}}"></span>BTC</span>
+      </div>
+      <svg viewBox="0 0 326 190" style="width: 100%; height: auto; display: block" role="img" aria-label="30일간 VIX는 오르고 BTC는 내리는 반대 방향 흐름을 보여 주는 2선 차트 (예시)">
+        <path d="M40 20H326M40 70H326M40 120H326" stroke="#1C1C21"></path>
+        <path d="M40 95H326" stroke="#313138" stroke-dasharray="4 4"></path>
+        <polyline points="40,118 62,114 84,120 106,108 128,104 150,110 172,96 194,88 216,92 238,74 260,66 282,58 304,44 326,34" fill="none" stroke="#ABABB4" stroke-width="2" stroke-linejoin="round"></polyline>
+        <polyline points="40,70 62,74 84,68 106,80 128,84 150,78 172,92 194,100 216,96 238,112 260,120 282,128 304,140 326,148" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linejoin="round"></polyline>
+        <g fill="#86868F" font-size="12" font-family="IBM Plex Mono, monospace">
+          <text x="0" y="99">0%</text>
+          <text x="0" y="24">[+%]</text>
+          <text x="0" y="124">[-%]</text>
+          <text x="40" y="184">30일 전</text>
+          <text x="154" y="184">15일 전</text>
+          <text x="280" y="184">오늘</text>
+        </g>
+      </svg>
+      <span style="font-size: 13px; color: #ABABB4; line-height: 1.5">[두 선의 방향 해석 문장]</span>
+    </section>
+  </div>
+
+  <nav aria-label="주요 화면" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #222227; background: #0D0D10; padding: 6px 4px 14px">
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+      <a href="{{t.href}}" style="min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; color: {{t.fg}}; font-weight: {{t.weight}}">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.icon}}"></path></svg>
+        {{t.name}}
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C8A86B","options":["#C8A86B","#3FB6A8","#E3B341","#B58CFF"],"section":"테마"},"updown":{"editor":"enum","default":"kr","options":["kr","global"],"section":"테마"},"$preview":{"width":390,"height":1640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#C8A86B';
+    const kr = (this.props.updown ?? 'kr') === 'kr';
+    const UP = kr ? '#F2606A' : '#3FCB8B';
+    const DN = kr ? '#5AA9FF' : '#F2606A';
+    const WARN = '#E8913A';
+    const DANGER = '#FF7A5C';
+    const OK = '#3FCB8B';
+    const soft = (hex, a) => {
+      const n = parseInt(hex.replace('#', ''), 16);
+      return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+    };
+    const tab = (name, icon, href, on) => ({ name, icon, href, fg: on ? accent : '#ABABB4', weight: on ? 600 : 500 });
+    const lv = (name, color) => ({ level: name, bg: soft(color, 0.14), fg: color });
+    const row = (name, value, color, tag, tc) => ({ name, value, color, tag, tagBg: soft(tc, 0.14), tagFg: tc });
+    return {
+      accent,
+      rows: [
+        row('공포탐욕', '12', '#F1F1F3', '극단적 공포', DANGER),
+        row('VIX', '28.44', '#F1F1F3', '주의', WARN),
+        row('DXY', '103.88', '#F1F1F3', '[해석]', '#ABABB4'),
+        row('김치프리미엄', '▲ +2.17%', UP, '국내가 높음', '#ABABB4'),
+        row('펀딩비', '0.0038%', '#F1F1F3', '롱이 숏에 지불', '#ABABB4'),
+        row('미결제약정 3일', '▲ +1.3%', UP, '증가 중', '#ABABB4'),
+      ],
+      insights: [
+        Object.assign(lv('주의', WARN), { title: 'VIX 주의 — 28.4', body: '미국 증시 변동성 상승. 리스크 자산 전반 주의.' }),
+        Object.assign(lv('주의', WARN), { title: '나스닥 급락 — −2.25%', body: '미국 성장주 매도 압력. 크립토 동반 하락 주의.' }),
+        Object.assign(lv('기회', OK), { title: '극도 공포 — 역투자 기회', body: '공포탐욕 12pt. 역사적으로 극도 공포 구간은 중기 매수 기회.' }),
+      ],
+      tabs: [
+        tab('홈', 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z', 'V2HomeMobile.dc.html', false),
+        tab('시장', 'M3 3v18h18M7 15l4-4 3 3 5-6', 'Market.dc.html', true),
+        tab('파생', 'M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5', 'Spf.dc.html', false),
+        tab('학습', 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5', 'Mobile.dc.html', false),
+        tab('더보기', 'M5 12h.01M12 12h.01M19 12h.01', '#', false),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

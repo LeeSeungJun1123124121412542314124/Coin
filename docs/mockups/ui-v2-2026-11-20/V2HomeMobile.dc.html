@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>대시보드 개선안 모바일</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#09090B}
+a{color:#D9BE86;text-decoration:none}a:hover{color:#EBD9B3}
+</style>
+</helmet>
+<div style="width: 390px; height: 1660px; box-sizing: border-box; background: #09090B; color: #F1F1F3; font-family: 'IBM Plex Sans KR', system-ui, sans-serif; display: flex; flex-direction: column">
+
+  <header style="padding: 18px 16px 12px; display: flex; align-items: baseline; justify-content: space-between">
+    <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em">대시보드</h1>
+    <span style="font-size: 12px; color: #86868F; font-family: 'IBM Plex Mono', monospace">최종 갱신 10:32</span>
+  </header>
+
+  <div style="flex: 1; padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px">
+
+    <section aria-labelledby="mm-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+        <span style="font-size: 13px; font-weight: 600; border-radius: 999px; padding: 4px 12px; background: {{warnSoft}}; color: #E8913A">주의</span>
+        <span style="font-size: 12px; color: #ABABB4">하락 2 · 주의 1 · 반등 1</span>
+      </div>
+      <h2 id="mm-title" style="margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.4">조심할 구간 — 하락 추세에 극단적 공포가 겹쳤습니다</h2>
+      <div style="display: flex; flex-direction: column">
+        <sc-for list="{{basis}}" as="b" hint-placeholder-count="4">
+          <a href="{{b.href}}" style="min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid #1C1C21; color: #F1F1F3">
+            <span style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+              <span style="font-size: 12px; color: #ABABB4">{{b.label}}</span>
+              <span style="font-size: 14px; font-weight: 600">{{b.value}}</span>
+            </span>
+            <span style="flex-shrink: 0; font-size: 12px; font-weight: 600; color: {{b.color}}">{{b.tag}}</span>
+          </a>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-labelledby="mp-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 6px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+        <h2 id="mp-title" style="margin: 0; font-size: 15px; font-weight: 600">가격</h2>
+        <div role="group" aria-label="가격 묶음" style="display: grid; grid-template-columns: repeat(2, 72px); background: #0D0D10; border: 1px solid #222227; border-radius: 10px; padding: 3px">
+          <button type="button" aria-pressed="true" style="min-height: 38px; border: 0; border-radius: 8px; background: #2B2B31; color: #F1F1F3; font: inherit; font-size: 14px; font-weight: 600">코인</button>
+          <button type="button" style="min-height: 38px; border: 0; border-radius: 8px; background: transparent; color: #ABABB4; font: inherit; font-size: 14px">지수</button>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column">
+        <sc-for list="{{prices}}" as="p" hint-placeholder-count="7">
+          <a href="#" style="min-height: 46px; display: grid; grid-template-columns: 64px 1fr 84px; align-items: center; gap: 8px; border-top: 1px solid #1C1C21; color: #F1F1F3">
+            <span style="font-size: 14px; font-weight: 600; color: {{accent}}">{{p.name}}</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; text-align: right; white-space: nowrap">{{p.price}}</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; text-align: right; color: {{p.color}}; white-space: nowrap">{{p.arrow}} {{p.chg}}</span>
+          </a>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-labelledby="mb-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between">
+        <h2 id="mb-title" style="margin: 0; font-size: 15px; font-weight: 600">BTC 시장 국면</h2>
+        <a href="Mobile.dc.html" style="font-size: 13px; min-height: 44px; display: inline-flex; align-items: center">차트 보기 →</a>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 30px; font-weight: 600; letter-spacing: -0.02em">61,937</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; color: {{downColor}}">▼ 1.92%</span>
+      </div>
+      <svg viewBox="0 0 720 180" preserveAspectRatio="none" style="width: 100%; height: 110px; display: block" role="img" aria-label="BTC 90일 가격 흐름: 완만히 오르다 최근 급락">
+        <path d="M0 60H720M0 120H720" stroke="#1C1C21" stroke-width="1"></path>
+        <path d="M0 96L40 92L80 86L120 90L160 70L200 74L240 60L280 52L320 58L360 44L400 50L440 62L480 72L520 80L560 76L600 96L640 118L670 150L700 162L720 160V180H0Z" fill="{{accentSoft}}"></path>
+        <path d="M0 96L40 92L80 86L120 90L160 70L200 74L240 60L280 52L320 58L360 44L400 50L440 62L480 72L520 80L560 76L600 96L640 118L670 150L700 162L720 160" fill="none" stroke="{{accent}}" stroke-width="3" stroke-linejoin="round"></path>
+      </svg>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <sc-for list="{{states}}" as="s" hint-placeholder-count="4">
+          <div style="background: #0D0D10; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 12px; color: #86868F">{{s.k}}</span>
+            <span style="font-size: 14px; font-weight: 600; color: {{s.color}}">{{s.arrow}} {{s.v}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-labelledby="mk-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 6px; display: flex; flex-direction: column">
+      <h2 id="mk-title" style="margin: 0 0 8px; font-size: 15px; font-weight: 600">핵심 지표</h2>
+      <sc-for list="{{kpis}}" as="k" hint-placeholder-count="5">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 46px; border-top: 1px solid #1C1C21">
+          <span style="font-size: 14px; color: #ABABB4">{{k.label}}</span>
+          <span style="display: flex; align-items: baseline; gap: 10px">
+            <span style="font-size: 12px; font-weight: 600; color: {{k.color}}">{{k.note}}</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600">{{k.value}}</span>
+          </span>
+        </div>
+      </sc-for>
+    </section>
+
+    <section aria-labelledby="mn-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 6px; display: flex; flex-direction: column">
+      <div style="display: flex; align-items: baseline; justify-content: space-between">
+        <h2 id="mn-title" style="margin: 0; font-size: 15px; font-weight: 600">주요 경제 뉴스</h2>
+        <a href="#" style="font-size: 13px; min-height: 44px; display: inline-flex; align-items: center">전체 보기 →</a>
+      </div>
+      <sc-for list="{{news}}" as="n" hint-placeholder-count="3">
+        <a href="#" style="min-height: 56px; display: flex; flex-direction: column; justify-content: center; gap: 3px; border-top: 1px solid #1C1C21; color: #F1F1F3">
+          <span style="font-size: 14px; line-height: 1.4">{{n.title}}</span>
+          <span style="font-size: 12px; color: #86868F; font-family: 'IBM Plex Mono', monospace">{{n.meta}}</span>
+        </a>
+      </sc-for>
+    </section>
+  </div>
+
+  <nav aria-label="주요 화면" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #222227; background: #0D0D10; padding: 6px 4px 14px">
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+      <a href="{{t.href}}" style="min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; color: {{t.fg}}; font-weight: {{t.weight}}">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.icon}}"></path></svg>
+        {{t.name}}
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C8A86B","options":["#C8A86B","#3FB6A8","#E3B341","#B58CFF"],"section":"테마"},"updown":{"editor":"enum","default":"kr","options":["kr","global"],"section":"테마"},"$preview":{"width":390,"height":1660}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#C8A86B';
+    const kr = (this.props.updown ?? 'kr') === 'kr';
+    const UP = kr ? '#F2606A' : '#3FCB8B';
+    const DN = kr ? '#5AA9FF' : '#F2606A';
+    const WARN = '#E8913A';
+    const OK = '#3FCB8B';
+    const soft = (hex, a) => {
+      const n = parseInt(hex.replace('#', ''), 16);
+      return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+    };
+    const tone = (d) => ({ color: d === 'up' ? UP : d === 'down' ? DN : '#ABABB4', arrow: d === 'up' ? '▲' : d === 'down' ? '▼' : '–' });
+    const price = (name, p, chg, dir) => Object.assign({ name, price: p, chg }, tone(dir));
+    const tab = (name, icon, href, on) => ({ name, icon, href, fg: on ? accent : '#ABABB4', weight: on ? 600 : 500 });
+    return {
+      accent, accentSoft: soft(accent, 0.14), warnSoft: soft(WARN, 0.14), downColor: DN,
+      basis: [
+        { label: 'BTC 국면', value: '구름 아래 · 데드크로스', tag: '▼ 하락', color: DN, href: 'Mobile.dc.html' },
+        { label: 'SPF 중기 전망', value: '하락 · 신뢰도 62%', tag: '▼ 하락', color: DN, href: 'Spf.dc.html' },
+        { label: '주의 신호 2건', value: 'VIX 28.4 · 나스닥 −2.25%', tag: '주의', color: WARN, href: 'Market.dc.html' },
+        { label: '공포탐욕 12', value: '극단적 공포', tag: '반등 신호', color: OK, href: 'Market.dc.html' },
+      ],
+      prices: [
+        price('BTC', '$61,937', '1.92%', 'down'), price('ETH', '$1,750.73', '1.82%', 'down'), price('SOL', '$72.76', '1.23%', 'down'),
+        price('XRP', '$0.958', '0.90%', 'down'), price('INJ', '$6.98', '0.54%', 'down'), price('TIA', '$0.343', '1.28%', 'down'), price('ONDO', '$0.295', '1.21%', 'down'),
+      ],
+      states: [
+        Object.assign({ k: '구름 위치', v: '구름 아래' }, tone('down')),
+        Object.assign({ k: '전환·기준선', v: '데드크로스' }, tone('down')),
+        Object.assign({ k: '후행스팬', v: '가격 아래' }, tone('down')),
+        Object.assign({ k: '미래 구름', v: '음운' }, tone('down')),
+      ],
+      kpis: [
+        { label: '공포탐욕', value: '12', note: '극단적 공포', color: '#FF7A5C' },
+        { label: 'MVRV', value: '1.18', note: '정상', color: OK },
+        { label: '김치프리미엄', value: '+2.17%', note: '보통', color: '#ABABB4' },
+        { label: '펀딩비', value: '0.0038%', note: '중립', color: '#ABABB4' },
+        { label: '암호화폐 시총', value: '$2.14T', note: '▼ 4.06%', color: DN },
+      ],
+      news: [
+        { title: '[뉴스 제목 — 두 줄까지 보이고 넘치면 말줄임]', meta: '[출처] 00:46' },
+        { title: '[뉴스 제목 — 두 줄까지 보이고 넘치면 말줄임]', meta: '[출처] 00:44' },
+        { title: '[뉴스 제목 — 두 줄까지 보이고 넘치면 말줄임]', meta: '[출처] 00:41' },
+      ],
+      tabs: [
+        tab('홈', 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z', 'V2HomeMobile.dc.html', true),
+        tab('시장', 'M3 3v18h18M7 15l4-4 3 3 5-6', 'Market.dc.html', false),
+        tab('파생', 'M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5', 'Spf.dc.html', false),
+        tab('학습', 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5', 'Mobile.dc.html', false),
+        tab('더보기', 'M5 12h.01M12 12h.01M19 12h.01', '#', false),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

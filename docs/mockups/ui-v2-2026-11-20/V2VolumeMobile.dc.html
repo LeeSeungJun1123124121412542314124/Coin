@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>볼륨트래커 개선안 모바일</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#09090B}
+a{color:#D9BE86;text-decoration:none}a:hover{color:#EBD9B3}
+</style>
+</helmet>
+<div style="width: 390px; height: 1960px; box-sizing: border-box; background: #09090B; color: #F1F1F3; font-family: 'IBM Plex Sans KR', system-ui, sans-serif; display: flex; flex-direction: column">
+
+  <header style="padding: 18px 16px 12px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: baseline; justify-content: space-between">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em">볼륨트래커</h1>
+      <span style="font-size: 12px; color: #86868F; font-family: 'IBM Plex Mono', monospace">최종 갱신 10:32</span>
+    </div>
+    <div role="group" aria-label="자산" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: #0D0D10; border: 1px solid #222227; border-radius: 10px; padding: 3px">
+      <button type="button" aria-pressed="true" style="min-height: 38px; border: 0; border-radius: 8px; background: #2B2B31; color: #F1F1F3; font: inherit; font-size: 14px; font-weight: 600">코인</button>
+      <button type="button" aria-pressed="false" style="min-height: 38px; border: 0; border-radius: 8px; background: transparent; color: #ABABB4; font: inherit; font-size: 14px">한국</button>
+      <button type="button" aria-pressed="false" style="min-height: 38px; border: 0; border-radius: 8px; background: transparent; color: #ABABB4; font: inherit; font-size: 14px">미국/환율</button>
+    </div>
+  </header>
+
+  <div style="flex: 1; padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px">
+
+    <div role="status" style="padding: 12px 14px; border-radius: 14px; background: rgba(90,169,255,0.07); border: 1px solid rgba(90,169,255,0.28); display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 16px; font-weight: 700">거래 줄고 BTC 과매도</span>
+      <span style="font-size: 13px; color: #ABABB4; line-height: 1.5">합산 <span style="font-family: 'IBM Plex Mono', monospace; color: #F1F1F3">2.03조</span> · 업비트 30일 평균 대비 <span style="font-family: 'IBM Plex Mono', monospace; color: #5AA9FF">▼ 19.2%</span> · BTC 일봉 RSI <span style="font-family: 'IBM Plex Mono', monospace; color: #F1F1F3">20.3</span></span>
+    </div>
+
+    <section aria-labelledby="sum-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 6px; display: flex; flex-direction: column">
+      <h2 id="sum-title" style="margin: 0; font-size: 15px; font-weight: 600">24시간 요약</h2>
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="3">
+        <div style="min-height: 64px; box-sizing: border-box; margin-top: 8px; border-top: 1px solid #1C1C21; padding: 10px 0 6px; display: flex; flex-direction: column; gap: 4px">
+          <span style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px">
+            <span style="font-size: 14px; color: #ABABB4; white-space: nowrap">{{r.name}}</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 600; white-space: nowrap">{{r.value}}</span>
+          </span>
+          <span style="font-size: 13px; color: {{r.color}}">{{r.note}}</span>
+        </div>
+      </sc-for>
+      <div style="margin-top: 8px; border-top: 1px solid #1C1C21; padding: 10px 0 8px; display: flex; flex-direction: column; gap: 8px">
+        <span style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px">
+          <span style="font-size: 14px; color: #ABABB4">합산 점유율</span>
+          <span style="font-size: 13px; color: #ABABB4"><span style="font-family: 'IBM Plex Mono', monospace; color: #F1F1F3">59.0%</span> : <span style="font-family: 'IBM Plex Mono', monospace; color: #F1F1F3">41.0%</span></span>
+        </span>
+        <div role="img" aria-label="업비트 59.0퍼센트, 빗썸 41.0퍼센트" style="display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 2px">
+          <div style="width: 59%; background: {{accent}}"></div>
+          <div style="width: 41%; background: #8EA2FF"></div>
+        </div>
+        <span style="display: flex; justify-content: space-between; font-size: 12px; color: #ABABB4"><span>업비트</span><span>빗썸</span></span>
+      </div>
+      <div style="margin-top: 8px; border-top: 1px solid #1C1C21; min-height: 64px; box-sizing: border-box; padding: 10px 0; display: flex; flex-direction: column; gap: 4px">
+        <span style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px">
+          <span style="font-size: 14px; color: #ABABB4; white-space: nowrap">BTC 일봉 RSI</span>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 600; color: #5AA9FF; white-space: nowrap">20.3</span>
+        </span>
+        <span style="font-size: 13px; color: #5AA9FF">과매도 <span style="color: #ABABB4">· 주봉 RSI</span> <span style="font-family: 'IBM Plex Mono', monospace; color: #F1F1F3">35.7</span></span>
+      </div>
+    </section>
+
+    <section aria-labelledby="daily-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px">
+        <h2 id="daily-title" style="margin: 0; font-size: 15px; font-weight: 600">일별 거래대금 (30일)</h2>
+        <span style="font-size: 12px; color: #86868F">조원 · 예시 모양</span>
+      </div>
+      <div style="display: flex; gap: 16px; font-size: 13px; color: #ABABB4">
+        <span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 2px; background: {{accent}}"></span>업비트</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 2px; background: #8EA2FF"></span>빗썸</span>
+      </div>
+      <div role="img" aria-label="최근 30일 업비트와 빗썸 일별 거래대금 누적 막대, 마지막 날 합계 2.03조 (예시)" style="display: flex; flex-direction: column; gap: 6px">
+        <div style="position: relative; height: 150px; padding-left: 28px; display: flex; align-items: flex-end; gap: 3px; border-bottom: 1px solid #313138; box-sizing: border-box">
+          <span aria-hidden="true" style="position: absolute; left: 0; bottom: 90px; font-size: 12px; color: #86868F; font-family: 'IBM Plex Mono', monospace">2</span>
+          <span aria-hidden="true" style="position: absolute; left: 0; bottom: 45px; font-size: 12px; color: #86868F; font-family: 'IBM Plex Mono', monospace">1</span>
+          <span aria-hidden="true" style="position: absolute; left: 28px; right: 0; bottom: 90px; border-top: 1px solid #1C1C21"></span>
+          <span aria-hidden="true" style="position: absolute; left: 28px; right: 0; bottom: 45px; border-top: 1px solid #1C1C21"></span>
+          <sc-for list="{{daily}}" as="d" hint-placeholder-count="30">
+            <div style="position: relative; flex: 1; display: flex; flex-direction: column; justify-content: flex-end">
+              <div style="background: #8EA2FF; height: {{d.bh}}px"></div>
+              <div style="background: {{accent}}; height: {{d.uh}}px"></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding-left: 28px; font-size: 12px; color: #86868F; font-family: 'IBM Plex Mono', monospace"><span>30일 전</span><span>15일 전</span><span>오늘</span></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="weekly-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px">
+        <h2 id="weekly-title" style="margin: 0; font-size: 15px; font-weight: 600">주간 거래대금 (12주)</h2>
+        <span style="font-size: 12px; color: #86868F">조원 · 예시 모양</span>
+      </div>
+      <div style="display: flex; gap: 16px; font-size: 13px; color: #ABABB4">
+        <span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 2px; background: {{accent}}"></span>업비트</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 2px; background: #8EA2FF"></span>빗썸</span>
+      </div>
+      <div role="img" aria-label="최근 12주 업비트와 빗썸 주간 거래대금 누적 막대, 최근 3주 증가 (예시)" style="display: flex; flex-direction: column; gap: 6px">
+        <div style="position: relative; height: 150px; padding-left: 28px; display: flex; align-items: flex-end; gap: 6px; border-bottom: 1px solid #313138; box-sizing: border-box">
+          <span aria-hidden="true" style="position: absolute; left: 0; bottom: 108px; font-size: 12px; color: #86868F; font-family: 'IBM Plex Mono', monospace">20</span>
+          <span aria-hidden="true" style="position: absolute; left: 0; bottom: 54px; font-size: 12px; color: #86868F; font-family: 'IBM Plex Mono', monospace">10</span>
+          <span aria-hidden="true" style="position: absolute; left: 28px; right: 0; bottom: 108px; border-top: 1px solid #1C1C21"></span>
+          <span aria-hidden="true" style="position: absolute; left: 28px; right: 0; bottom: 54px; border-top: 1px solid #1C1C21"></span>
+          <sc-for list="{{weekly}}" as="d" hint-placeholder-count="12">
+            <div style="position: relative; flex: 1; display: flex; flex-direction: column; justify-content: flex-end">
+              <div style="background: #8EA2FF; height: {{d.bh}}px"></div>
+              <div style="background: {{accent}}; height: {{d.uh}}px"></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display: flex; gap: 6px; padding-left: 28px">
+          <sc-for list="{{weekly}}" as="d" hint-placeholder-count="12">
+            <span style="flex: 1; text-align: center; font-size: 12px; color: #86868F; font-family: 'IBM Plex Mono', monospace">{{d.label}}</span>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="rsi-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px">
+        <h2 id="rsi-title" style="margin: 0; font-size: 15px; font-weight: 600">BTC 일봉 RSI</h2>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #5AA9FF; white-space: nowrap">20.3 과매도</span>
+      </div>
+      <svg viewBox="0 0 326 174" style="width: 100%; height: auto; display: block" role="img" aria-label="BTC 일봉 RSI가 하락해 30 기준선 아래로 내려온 추이 (예시)">
+        <path d="M0 52H326" stroke="#F2606A" stroke-dasharray="4 4" stroke-opacity="0.7"></path>
+        <path d="M0 108H326" stroke="#5AA9FF" stroke-dasharray="4 4" stroke-opacity="0.7"></path>
+        <polyline points="34,77 54,80 74,73 94,83 114,87 134,80 154,91 174,94 194,88 214,100 234,105 254,101 274,111 294,116 314,122" fill="none" stroke="#B58CFF" stroke-width="2" stroke-linejoin="round"></polyline>
+        <circle cx="314" cy="122" r="4" fill="#B58CFF"></circle>
+        <g fill="#ABABB4" font-size="12" font-family="IBM Plex Sans KR, sans-serif">
+          <text x="0" y="46">70 과매수</text>
+          <text x="0" y="124">30 과매도</text>
+        </g>
+        <g fill="#86868F" font-size="12" font-family="IBM Plex Mono, monospace">
+          <text x="0" y="170">30일 전</text><text x="150" y="170">15일 전</text><text x="290" y="170">오늘</text>
+        </g>
+      </svg>
+    </section>
+
+    <section aria-labelledby="fg-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px">
+        <h2 id="fg-title" style="margin: 0; font-size: 15px; font-weight: 600">공포탐욕 지수 추이 (30일)</h2>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #FF7A5C; white-space: nowrap">12 극단적 공포</span>
+      </div>
+      <svg viewBox="0 0 326 174" style="width: 100%; height: auto; display: block" role="img" aria-label="공포탐욕 지수가 하락해 25 기준선 아래로 내려온 추이 (예시)">
+        <path d="M0 45H326" stroke="#F2606A" stroke-dasharray="4 4" stroke-opacity="0.7"></path>
+        <path d="M0 115H326" stroke="#5AA9FF" stroke-dasharray="4 4" stroke-opacity="0.7"></path>
+        <polyline points="34,88 54,94 74,97 94,94 114,100 134,104 154,108 174,111 194,115 214,116 234,122 254,125 274,128 294,130 314,133" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linejoin="round"></polyline>
+        <circle cx="314" cy="133" r="4" fill="{{accent}}"></circle>
+        <g fill="#ABABB4" font-size="12" font-family="IBM Plex Sans KR, sans-serif">
+          <text x="0" y="39">75 탐욕</text>
+          <text x="0" y="131">25 공포</text>
+        </g>
+        <g fill="#86868F" font-size="12" font-family="IBM Plex Mono, monospace">
+          <text x="0" y="170">30일 전</text><text x="150" y="170">15일 전</text><text x="290" y="170">오늘</text>
+        </g>
+      </svg>
+    </section>
+  </div>
+
+  <nav aria-label="주요 화면" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #222227; background: #0D0D10; padding: 6px 4px 14px">
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+      <a href="{{t.href}}" style="min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; color: {{t.fg}}; font-weight: {{t.weight}}">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.icon}}"></path></svg>
+        {{t.name}}
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C8A86B","options":["#C8A86B","#3FB6A8","#E3B341","#B58CFF"],"section":"테마"},"updown":{"editor":"enum","default":"kr","options":["kr","global"],"section":"테마"},"$preview":{"width":390,"height":1960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#C8A86B';
+    const kr = (this.props.updown ?? 'kr') === 'kr';
+    const UP = kr ? '#F2606A' : '#3FCB8B';
+    const DN = kr ? '#5AA9FF' : '#F2606A';
+    const WARN = '#E8913A';
+    const DANGER = '#FF7A5C';
+    const OK = '#3FCB8B';
+    const soft = (hex, a) => {
+      const n = parseInt(hex.replace('#', ''), 16);
+      return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+    };
+    const tab = (name, icon, href, on) => ({ name, icon, href, fg: on ? accent : '#ABABB4', weight: on ? 600 : 500 });
+    const up = [1.7, 1.5, 1.4, 1.6, 1.8, 1.5, 1.3, 1.5, 1.9, 2.1, 1.7, 1.5, 1.4, 1.6, 1.5, 1.4, 1.7, 1.8, 1.5, 1.3, 1.4, 1.6, 1.9, 1.7, 1.5, 1.4, 1.5, 1.6, 1.4, 1.2];
+    const bt = [0.7, 0.6, 0.6, 0.7, 0.8, 0.7, 0.6, 0.7, 0.9, 1.0, 0.8, 0.7, 0.6, 0.7, 0.7, 0.6, 0.8, 0.8, 0.7, 0.6, 0.6, 0.7, 0.9, 0.8, 0.7, 0.6, 0.7, 0.7, 0.6, 0.83];
+    const wu = [14, 13, 15, 12, 11, 13, 14, 16, 15, 17, 19, 20];
+    const wb = [4.5, 4.2, 4.8, 4.0, 3.8, 4.1, 4.6, 5.1, 4.9, 5.4, 6.0, 6.3];
+    return {
+      accent,
+      rows: [
+        { name: '업비트 24h 거래대금', value: '1.20조', note: '30일 평균 대비 ▼ 19.2% · 거래 감소', color: DN },
+        { name: '빗썸 24h 거래대금', value: '0.83조', note: '30일 평균 0.72조 · 평균보다 많음', color: '#ABABB4' },
+        { name: '합산 24h 거래대금', value: '2.03조', note: '업비트 59.0% · 빗썸 41.0%', color: '#ABABB4' },
+      ],
+      daily: up.map((u, i) => ({ uh: Math.round(u * 45), bh: Math.round(bt[i] * 45) })),
+      weekly: wu.map((u, i) => ({ uh: Math.round(u * 5.4), bh: Math.round(wb[i] * 5.4), label: i % 2 === 0 ? 'W' + (i + 1) : '' })),
+      tabs: [
+        tab('홈', 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z', 'V2HomeMobile.dc.html', false),
+        tab('시장', 'M3 3v18h18M7 15l4-4 3 3 5-6', 'Market.dc.html', true),
+        tab('파생', 'M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5', 'Spf.dc.html', false),
+        tab('학습', 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5', 'Mobile.dc.html', false),
+        tab('더보기', 'M5 12h.01M12 12h.01M19 12h.01', '#', false),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

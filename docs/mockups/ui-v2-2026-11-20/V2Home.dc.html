@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>대시보드 개선안</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#09090B}
+a{color:#D9BE86;text-decoration:none}a:hover{color:#EBD9B3}
+</style>
+</helmet>
+<div style="min-height: 1240px; background: #09090B; color: #F1F1F3; font-family: 'IBM Plex Sans KR', system-ui, sans-serif; display: flex; flex-wrap: wrap; align-items: stretch">
+
+  <aside aria-label="주요 화면" style="flex: 1 1 232px; max-width: 100%; box-sizing: border-box; background: #0D0D10; border-right: 1px solid #222227; padding: 20px 14px; display: flex; flex-direction: column; gap: 22px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px">
+      <div aria-hidden="true" style="width: 30px; height: 30px; border-radius: 8px; background: {{accent}}; display: flex; align-items: center; justify-content: center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#09090B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-5 4 4 8-9"></path></svg>
+      </div>
+      <div style="display: flex; flex-direction: column">
+        <span style="font-weight: 700; font-size: 16px; letter-spacing: -0.01em">투자분석기</span>
+        <span style="font-size: 12px; color: #86868F">시장 · 파생 · 학습</span>
+      </div>
+    </div>
+    <nav style="display: flex; flex-direction: column; gap: 18px">
+      <sc-for list="{{groups}}" as="g" hint-placeholder-count="5">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: #86868F; padding: 0 10px 6px">{{g.label}}</span>
+          <sc-for list="{{g.items}}" as="it" hint-placeholder-count="3">
+            <a href="{{it.href}}" style="display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 10px; border-radius: 8px; font-size: 14px; font-weight: {{it.weight}}; color: {{it.fg}}; background: {{it.bg}}">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{it.icon}}"></path></svg>
+              <span>{{it.name}}</span>
+            </a>
+          </sc-for>
+        </div>
+      </sc-for>
+    </nav>
+  </aside>
+
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 40px 56px; display: flex; flex-direction: column; gap: 16px">
+
+    <header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 13px; color: #86868F">개요 / 대시보드</span>
+        <h1 style="margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -0.03em">대시보드</h1>
+      </div>
+      <span style="font-size: 13px; color: #86868F; font-family: 'IBM Plex Mono', monospace">최종 갱신 10:32</span>
+    </header>
+
+    <section aria-labelledby="mood-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 22px 24px; display: flex; flex-direction: column; gap: 18px">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px">
+        <span style="font-size: 13px; font-weight: 600; border-radius: 999px; padding: 5px 12px; background: {{warnSoft}}; color: #E8913A">주의</span>
+        <h2 id="mood-title" style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.35">조심할 구간 — 하락 추세에 극단적 공포가 겹쳤습니다</h2>
+        <span style="margin-left: auto; font-size: 13px; color: #ABABB4">근거 4개 중 하락 2 · 주의 1 · 반등 1</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px">
+        <sc-for list="{{basis}}" as="b" hint-placeholder-count="4">
+          <a href="{{b.href}}" style="min-height: 76px; box-sizing: border-box; background: #0D0D10; border: 1px solid #222227; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; color: #F1F1F3">
+            <span style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+              <span style="font-size: 13px; color: #ABABB4">{{b.label}}</span>
+              <span style="font-size: 12px; font-weight: 600; color: {{b.color}}">{{b.tag}}</span>
+            </span>
+            <span style="font-size: 15px; font-weight: 600; line-height: 1.4">{{b.value}}</span>
+          </a>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-label="가격" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); display: flex; align-items: stretch; overflow: hidden">
+      <div style="flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr))">
+        <sc-for list="{{prices}}" as="p" hint-placeholder-count="11">
+          <a href="{{p.href}}" style="min-height: 64px; box-sizing: border-box; padding: 10px 12px; border-right: 1px solid #1C1C21; border-bottom: 1px solid #1C1C21; margin-bottom: -1px; display: flex; flex-direction: column; justify-content: center; gap: 3px; color: #F1F1F3">
+            <span style="font-size: 12px; font-weight: 600; color: {{p.nameColor}}">{{p.name}}</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; white-space: nowrap">{{p.price}}</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: {{p.color}}; white-space: nowrap">{{p.arrow}} {{p.chg}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <button type="button" style="min-width: 56px; border: 0; border-left: 1px solid #1C1C21; background: transparent; color: #ABABB4; font: inherit; font-size: 13px; cursor: pointer">편집</button>
+    </section>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: stretch">
+
+      <section aria-labelledby="btc-title" style="grid-column: span 2; min-width: 0; background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 20px 22px; display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px">
+          <h2 id="btc-title" style="margin: 0; font-size: 15px; font-weight: 600">BTC 시장 국면 <span style="font-size: 12px; font-weight: 400; color: #86868F">일봉 · 90일</span></h2>
+          <a href="Learning.dc.html" style="font-size: 13px; min-height: 28px; display: inline-flex; align-items: center">학습 탭에서 차트 보기 →</a>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px">
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 40px; font-weight: 600; letter-spacing: -0.02em">61,937</span>
+          <span style="font-size: 13px; color: #86868F">USDT</span>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; color: {{downColor}}">▼ 1.92%</span>
+          <span style="font-size: 13px; color: #86868F">90일 범위 <span style="font-family: 'IBM Plex Mono', monospace; color: #ABABB4">62,006 – 87,396</span></span>
+        </div>
+        <svg viewBox="0 0 720 180" preserveAspectRatio="none" style="width: 100%; height: 180px; display: block" role="img" aria-label="BTC 90일 가격 흐름: 80,000대에서 완만히 오르다 최근 급락">
+          <path d="M0 45H720M0 90H720M0 135H720" stroke="#1C1C21" stroke-width="1"></path>
+          <path d="M0 96L40 92L80 86L120 90L160 70L200 74L240 60L280 52L320 58L360 44L400 50L440 62L480 72L520 80L560 76L600 96L640 118L670 150L700 162L720 160V180H0Z" fill="{{accentSoft}}"></path>
+          <path d="M0 96L40 92L80 86L120 90L160 70L200 74L240 60L280 52L320 58L360 44L400 50L440 62L480 72L520 80L560 76L600 96L640 118L670 150L700 162L720 160" fill="none" stroke="{{accent}}" stroke-width="1.8" stroke-linejoin="round"></path>
+        </svg>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px">
+          <sc-for list="{{states}}" as="s" hint-placeholder-count="4">
+            <div style="background: #0D0D10; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px">
+              <span style="font-size: 12px; color: #86868F">{{s.k}}</span>
+              <span style="font-size: 14px; font-weight: 600; color: {{s.color}}">{{s.arrow}} {{s.v}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section aria-labelledby="kpi-title" style="min-width: 0; background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 20px 22px 12px; display: flex; flex-direction: column; gap: 6px">
+        <h2 id="kpi-title" style="margin: 0 0 6px; font-size: 15px; font-weight: 600">핵심 지표</h2>
+        <sc-for list="{{kpis}}" as="k" hint-placeholder-count="7">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; border-top: 1px solid #1C1C21">
+            <span style="font-size: 14px; color: #ABABB4">{{k.label}}</span>
+            <span style="display: flex; align-items: baseline; gap: 10px">
+              <span style="font-size: 12px; font-weight: 600; color: {{k.color}}">{{k.note}}</span>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600">{{k.value}}</span>
+            </span>
+          </div>
+        </sc-for>
+      </section>
+    </div>
+
+    <section aria-labelledby="news-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 20px 22px 10px; display: flex; flex-direction: column">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px">
+        <h2 id="news-title" style="margin: 0; font-size: 15px; font-weight: 600">주요 경제 뉴스</h2>
+        <a href="#" style="font-size: 13px; min-height: 28px; display: inline-flex; align-items: center">전체 보기 →</a>
+      </div>
+      <sc-for list="{{news}}" as="n" hint-placeholder-count="4">
+        <a href="#" style="display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 44px; border-top: 1px solid #1C1C21; color: #F1F1F3">
+          <span style="font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{n.title}}</span>
+          <span style="flex-shrink: 0; font-size: 12px; color: #86868F; font-family: 'IBM Plex Mono', monospace">{{n.meta}}</span>
+        </a>
+      </sc-for>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C8A86B","options":["#C8A86B","#3FB6A8","#E8913A","#B58CFF"],"section":"테마"},"updown":{"editor":"enum","default":"kr","options":["kr","global"],"section":"테마"},"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#C8A86B';
+    const kr = (this.props.updown ?? 'kr') === 'kr';
+    const UP = kr ? '#F2606A' : '#3FCB8B';
+    const DN = kr ? '#5AA9FF' : '#F2606A';
+    const WARN = '#E8913A';
+    const OK = '#3FCB8B';
+    const soft = (hex, a) => {
+      const n = parseInt(hex.replace('#', ''), 16);
+      return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+    };
+    const tone = (d) => ({ color: d === 'up' ? UP : d === 'down' ? DN : '#ABABB4', arrow: d === 'up' ? '▲' : d === 'down' ? '▼' : '–' });
+    const I = {
+      home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z',
+      market: 'M3 3v18h18M7 15l4-4 3 3 5-6',
+      liq: 'M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z',
+      vol: 'M5 20V10M10 20V4M15 20v-7M20 20V8',
+      spf: 'M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5',
+      cvd: 'M4 5h16l-6 7v6l-4 2v-8z',
+      whale: 'M4 12a8 8 0 1 0 16 0a8 8 0 1 0-16 0M9 12a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
+      doc: 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6',
+      trophy: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4',
+      bell: 'M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0',
+      cap: 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5',
+    };
+    const item = (name, icon, href, active) => ({
+      name, icon: I[icon], href,
+      fg: active ? accent : '#ABABB4',
+      bg: active ? soft(accent, 0.12) : 'transparent',
+      weight: active ? 600 : 500,
+    });
+    const price = (name, p, chg, dir, isIndex) => Object.assign({ name, price: p, chg, href: '#', nameColor: isIndex ? '#ABABB4' : accent }, tone(dir));
+    return {
+      accent, accentSoft: soft(accent, 0.14), warnSoft: soft(WARN, 0.14), downColor: DN,
+      groups: [
+        { label: '개요', items: [item('대시보드', 'home', 'V2Home.dc.html', true)] },
+        { label: '시장', items: [item('시장분석', 'market', 'Market.dc.html', false), item('유동성', 'liq', 'Liquidity.dc.html', false), item('볼륨트래커', 'vol', 'Volume.dc.html', false)] },
+        { label: '파생 · 온체인', items: [item('SPF', 'spf', 'Spf.dc.html', false), item('CVD 스크리너', 'cvd', 'Cvd.dc.html', false), item('고래추적', 'whale', 'Whale.dc.html', false)] },
+        { label: '기록 · 검증', items: [item('리서치', 'doc', 'Research.dc.html', false), item('리더보드', 'trophy', 'Leaderboard.dc.html', false), item('알림히스토리', 'bell', 'Alerts.dc.html', false)] },
+        { label: '학습', items: [item('학습', 'cap', 'Learning.dc.html', false)] },
+      ],
+      basis: [
+        { label: 'BTC 국면', value: '구름 아래 · 데드크로스', tag: '▼ 하락', color: DN, href: 'Learning.dc.html' },
+        { label: 'SPF 중기 전망', value: '하락 · 신뢰도 62%', tag: '▼ 하락', color: DN, href: 'Spf.dc.html' },
+        { label: '주의 신호 2건', value: 'VIX 28.4 · 나스닥 −2.25%', tag: '주의', color: WARN, href: 'Market.dc.html' },
+        { label: '공포탐욕 12', value: '극단적 공포 — 과거엔 반등 구간', tag: '반등 신호', color: OK, href: 'Market.dc.html' },
+      ],
+      prices: [
+        price('BTC', '$61,937', '1.92%', 'down'), price('ETH', '$1,750.73', '1.82%', 'down'), price('SOL', '$72.76', '1.23%', 'down'),
+        price('XRP', '$0.958', '0.90%', 'down'), price('INJ', '$6.98', '0.54%', 'down'), price('TIA', '$0.343', '1.28%', 'down'), price('ONDO', '$0.295', '1.21%', 'down'),
+        price('NASDAQ', '23,879.20', '2.25%', 'down', true), price('KOSPI', '4,942.22', '2.47%', 'down', true), price('KOSDAQ', '657.50', '0.80%', 'down', true),
+        price('원/달러', '1,330.97', '[변동]', 'flat', true),
+      ],
+      states: [
+        Object.assign({ k: '구름 위치', v: '구름 아래' }, tone('down')),
+        Object.assign({ k: '전환·기준선', v: '데드크로스' }, tone('down')),
+        Object.assign({ k: '후행스팬', v: '가격 아래' }, tone('down')),
+        Object.assign({ k: '미래 구름', v: '음운' }, tone('down')),
+      ],
+      kpis: [
+        { label: '공포탐욕', value: '12', note: '극단적 공포', color: '#FF7A5C' },
+        { label: 'MVRV', value: '1.18', note: '정상', color: OK },
+        { label: '김치프리미엄', value: '+2.17%', note: '보통', color: '#ABABB4' },
+        { label: '펀딩비', value: '0.0038%', note: '중립', color: '#ABABB4' },
+        { label: '미결제약정 3일', value: '+1.3%', note: '소폭 증가', color: '#ABABB4' },
+        { label: 'BTC 도미넌스', value: '57.9%', note: '비트코인 우위', color: '#ABABB4' },
+        { label: '암호화폐 시총', value: '$2.14T', note: '▼ 4.06%', color: DN },
+      ],
+      news: [
+        { title: '[뉴스 제목 한 줄 — 길면 말줄임]', meta: '[출처] 00:46' },
+        { title: '[뉴스 제목 한 줄 — 길면 말줄임]', meta: '[출처] 00:44' },
+        { title: '[뉴스 제목 한 줄 — 길면 말줄임]', meta: '[출처] 00:44' },
+        { title: '[뉴스 제목 한 줄 — 길면 말줄임]', meta: '[출처] 00:41' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>CVD 스크리너 개선안 모바일</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#09090B}
+a{color:#D9BE86;text-decoration:none}a:hover{color:#EBD9B3}
+</style>
+</helmet>
+<div style="width: 390px; height: 1560px; box-sizing: border-box; background: #09090B; color: #F1F1F3; font-family: 'IBM Plex Sans KR', system-ui, sans-serif; display: flex; flex-direction: column">
+
+  <header style="padding: 18px 16px 12px; display: flex; flex-direction: column; gap: 6px">
+    <div style="display: flex; align-items: baseline; justify-content: space-between">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em">CVD 스크리너</h1>
+      <span style="font-size: 12px; color: #86868F; font-family: 'IBM Plex Mono', monospace">최종 갱신 10:32</span>
+    </div>
+    <p style="margin: 0; font-size: 14px; color: #ABABB4; line-height: 1.5">1위는 <span style="color: #F1F1F3; font-weight: 600">LINK 55점</span>입니다. 최고 등급은 B이고, 12개 중 5개가 B입니다.</p>
+  </header>
+
+  <div style="flex: 1; padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px">
+
+    <section aria-labelledby="list-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 10px 12px; display: flex; flex-direction: column">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 6px 10px">
+        <h2 id="list-title" style="margin: 0; font-size: 15px; font-weight: 600">12개 종목 분석</h2>
+        <div role="group" aria-label="주기" style="display: grid; grid-template-columns: repeat(3, 52px); background: #0D0D10; border: 1px solid #222227; border-radius: 10px; padding: 3px">
+          <sc-for list="{{tfs}}" as="t" hint-placeholder-count="3">
+            <button type="button" aria-pressed="{{t.on}}" style="min-height: 38px; border: 0; border-radius: 8px; background: {{t.bg}}; color: {{t.fg}}; font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: {{t.weight}}">{{t.name}}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <p style="margin: 0; padding: 0 6px 10px; font-size: 12px; color: #ABABB4; line-height: 1.6">등급(S·A·B·C·D): [등급 기준] <br>점: <span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #E8913A; vertical-align: -1px"></span> 볼린저밴드 폭이 좁아지는 구간(스퀴즈) 감지, <span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #6E6E78; vertical-align: -1px"></span> 보통</p>
+
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="12">
+        <button type="button" aria-pressed="{{r.on}}" style="width: 100%; box-sizing: border-box; min-height: 56px; display: grid; grid-template-columns: 22px 52px 28px 10px minmax(0, 1fr) 30px; align-items: center; gap: 8px; padding: 0 6px; border: 0; border-top: 1px solid #1C1C21; border-radius: 0; background: {{r.bg}}; color: #F1F1F3; font: inherit; text-align: left">
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #86868F">{{r.rank}}</span>
+          <span style="font-size: 15px; font-weight: 600">{{r.sym}}</span>
+          <span style="width: 28px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; background: {{r.gbg}}; color: {{r.gfg}}">{{r.grade}}</span>
+          <span aria-label="볼린저밴드 보통" style="width: 8px; height: 8px; border-radius: 50%; background: #6E6E78"></span>
+          <span aria-hidden="true" style="height: 8px; border-radius: 999px; background: #2B2B31"><span style="display: block; width: {{r.score}}%; height: 100%; border-radius: 999px; background: {{r.bar}}"></span></span>
+          <span style="text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600">{{r.score}}</span>
+        </button>
+      </sc-for>
+      <span style="padding: 10px 6px 0; font-size: 12px; color: #86868F; line-height: 1.5">종목을 누르면 아래 차트가 바뀝니다. 점 색은 종목별 값이 연결되면 채워집니다.</span>
+    </section>
+
+    <section aria-labelledby="cvd-title" style="background: #131316; border: 1px solid #222227; border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 24px rgba(0,0,0,0.35); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px">
+        <h2 id="cvd-title" style="margin: 0; font-size: 15px; font-weight: 600">LINK CVD vs 가격 <span style="font-size: 12px; font-weight: 400; color: #86868F">4h</span></h2>
+        <span style="font-size: 13px; font-weight: 600; border-radius: 999px; padding: 4px 12px; background: #2B2B31; color: #D9D9DE; white-space: nowrap">등급 B · <span style="font-family: 'IBM Plex Mono', monospace">55</span>점</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: #ABABB4">
+        <span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 14px; height: 3px; background: #8EA2FF"></span>CVD(누적 매수·매도 차이)</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 14px; height: 3px; background: {{accent}}"></span>가격</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 12px; height: 10px; background: {{bullSoft}}"></span>가격은 내리고 CVD는 오름 (강세 신호)</span>
+      </div>
+      <svg viewBox="0 0 640 220" preserveAspectRatio="none" style="width: 100%; height: 200px; display: block" role="img" aria-label="LINK의 가격은 내려가는데 CVD는 올라가는 강세 다이버전스 구간이 표시된 두 선 차트 (도식 예시, 실제 값 아님)">
+        <rect x="380" y="0" width="160" height="220" fill="{{bullSoft}}"></rect>
+        <path d="M0 55H640M0 110H640M0 165H640" stroke="#1C1C21" vector-effect="non-scaling-stroke"></path>
+        <polyline points="0,150 40,146 80,138 120,140 160,128 200,120 240,124 280,112 320,104 360,108 400,96 440,88 480,80 520,74 560,70 600,66 640,60" fill="none" stroke="#8EA2FF" stroke-width="2.5" vector-effect="non-scaling-stroke"></polyline>
+        <polyline points="0,90 40,84 80,80 120,86 160,74 200,70 240,78 280,72 320,80 360,92 400,104 440,112 480,120 520,126 560,110 600,96 640,82" fill="none" stroke="{{accent}}" stroke-width="2.5" vector-effect="non-scaling-stroke"></polyline>
+      </svg>
+      <span style="font-size: 12px; color: #86868F; line-height: 1.5">모양만 보여주는 도식입니다. 선택한 종목의 실제 값으로 교체합니다.</span>
+    </section>
+  </div>
+
+  <nav aria-label="주요 화면" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #222227; background: #0D0D10; padding: 6px 4px 14px">
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+      <a href="{{t.href}}" style="min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; color: {{t.fg}}; font-weight: {{t.weight}}">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.icon}}"></path></svg>
+        {{t.name}}
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C8A86B","options":["#C8A86B","#3FB6A8","#E3B341","#B58CFF"],"section":"테마"},"updown":{"editor":"enum","default":"kr","options":["kr","global"],"section":"테마"},"$preview":{"width":390,"height":1560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#C8A86B';
+    const kr = (this.props.updown ?? 'kr') === 'kr';
+    const UP = kr ? '#F2606A' : '#3FCB8B';
+    const soft = (hex, a) => {
+      const n = parseInt(hex.replace('#', ''), 16);
+      return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+    };
+    const tab = (name, icon, href, on) => ({ name, icon, href, fg: on ? accent : '#ABABB4', weight: on ? 600 : 500 });
+    const G = { B: ['#2B2B31', '#D9D9DE', accent], C: ['#19191D', '#ABABB4', '#86868F'] };
+    const SEL = 'LINK';
+    const list = [['LINK', 'B', 55], ['INJ', 'B', 54], ['SUI', 'B', 54], ['TIA', 'B', 52], ['ONDO', 'B', 51], ['BNB', 'C', 50], ['SOL', 'C', 49], ['AVAX', 'C', 49], ['ETH', 'C', 49], ['BTC', 'C', 49], ['JUP', 'C', 47], ['HYPE', 'C', 44]];
+    const tf = '4h';
+    return {
+      accent, bullSoft: soft(UP, 0.12),
+      tfs: ['1h', '4h', '1d'].map((name) => ({ name, on: tf === name, bg: tf === name ? '#2B2B31' : 'transparent', fg: tf === name ? '#F1F1F3' : '#ABABB4', weight: tf === name ? 600 : 500 })),
+      rows: list.map(([sym, grade, score], i) => ({
+        rank: i + 1, sym, grade, score, on: sym === SEL,
+        bg: sym === SEL ? soft(accent, 0.1) : 'transparent',
+        gbg: G[grade][0], gfg: G[grade][1], bar: G[grade][2],
+      })),
+      tabs: [
+        tab('홈', 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z', 'V2HomeMobile.dc.html', false),
+        tab('시장', 'M3 3v18h18M7 15l4-4 3 3 5-6', 'Market.dc.html', false),
+        tab('파생', 'M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5', 'V2CvdMobile.dc.html', true),
+        tab('학습', 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5', 'Mobile.dc.html', false),
+        tab('더보기', 'M5 12h.01M12 12h.01M19 12h.01', '#', false),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

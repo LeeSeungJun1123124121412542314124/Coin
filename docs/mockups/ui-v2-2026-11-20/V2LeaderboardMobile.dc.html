@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>리더보드 개선안 모바일</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#09090B}
+a{color:#D9BE86;text-decoration:none}a:hover{color:#EBD9B3}
+</style>
+</helmet>
+<div style="width: 390px; height: 1680px; box-sizing: border-box; background: #09090B; color: #F1F1F3; font-family: 'IBM Plex Sans KR', system-ui, sans-serif; display: flex; flex-direction: column">
+
+  <header style="padding: 18px 16px 12px; display: flex; flex-direction: column; gap: 8px">
+    <div style="display: flex; align-items: baseline; justify-content: space-between">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em">리더보드</h1>
+      <span style="font-size: 12px; color: #86868F; font-family: 'IBM Plex Mono', monospace">최종 갱신 10:32</span>
+    </div>
+    <p style="margin: 0; font-size: 13px; color: #ABABB4; line-height: 1.6">지표마다 같은 자금으로 자기 신호대로 자동매매한 실제 성과입니다. 수익률이 높은 순으로 정렬됩니다.</p>
+  </header>
+
+  <div style="flex: 1; padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px">
+    <sc-for list="{{rows}}" as="r" hint-placeholder-count="9">
+      <a href="#" style="background: #131316; border: 1px solid #222227; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; color: #F1F1F3">
+        <span style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px">
+          <span style="display: flex; align-items: baseline; gap: 10px; min-width: 0">
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; color: {{r.rankColor}}">{{r.rank}}</span>
+            <span style="font-size: 16px; font-weight: 600">{{r.name}}</span>
+          </span>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 600; color: {{r.retColor}}; white-space: nowrap">{{r.ret}}</span>
+        </span>
+        <span style="display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px">
+          <span style="color: #ABABB4">지금 방향 <span style="font-weight: 600; color: {{r.dirColor}}">{{r.dir}}</span></span>
+          <span style="color: #ABABB4">매수보유 대비 <span style="font-family: 'IBM Plex Mono', monospace; color: {{r.vsColor}}">{{r.vs}}</span></span>
+        </span>
+        <span style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; border-top: 1px solid #1C1C21; padding-top: 8px">
+          <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #86868F">승률</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px">{{r.win}}</span></span>
+          <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #86868F">최대 낙폭</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: {{downColor}}">{{r.mdd}}</span></span>
+          <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #86868F">샤프</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px">{{r.sharpe}}</span></span>
+          <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #86868F">거래</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px">{{r.trades}}</span></span>
+        </span>
+      </a>
+    </sc-for>
+
+    <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 8px">
+      <button type="button" style="min-height: 48px; border-radius: 12px; border: 1px solid #313138; background: transparent; color: #ABABB4; font: inherit; font-size: 14px; cursor: pointer">처음 자금으로 리셋</button>
+      <span style="font-size: 12px; color: #86868F; text-align: center">모든 지표의 성과 기록이 지워집니다. 누르면 한 번 더 확인합니다.</span>
+    </div>
+  </div>
+
+  <nav aria-label="주요 화면" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #222227; background: #0D0D10; padding: 6px 4px 14px">
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+      <a href="{{t.href}}" style="min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; color: {{t.fg}}; font-weight: {{t.weight}}">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.icon}}"></path></svg>
+        {{t.name}}
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C8A86B","options":["#C8A86B","#3FB6A8","#E3B341","#B58CFF"],"section":"테마"},"updown":{"editor":"enum","default":"kr","options":["kr","global"],"section":"테마"},"$preview":{"width":390,"height":1680}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#C8A86B';
+    const kr = (this.props.updown ?? 'kr') === 'kr';
+    const UP = kr ? '#F2606A' : '#3FCB8B';
+    const DN = kr ? '#5AA9FF' : '#F2606A';
+    const sign = (v) => (v.charAt(0) === '+' ? UP : v.charAt(0) === '−' ? DN : '#ABABB4');
+    const dirColor = (d) => (d.indexOf('롱') >= 0 && d.indexOf('숏') < 0 ? UP : d.indexOf('숏') >= 0 && d.indexOf('롱') < 0 ? DN : '#F1F1F3');
+    const row = (rank, name, ret, vs, dir, win, mdd, sharpe, trades) => ({
+      rank, name, ret, vs, dir, win, mdd, sharpe, trades,
+      rankColor: rank <= 3 ? accent : '#86868F',
+      retColor: sign(ret), vsColor: sign(vs), dirColor: dirColor(dir),
+    });
+    const tab = (name, icon, href, on) => ({ name, icon, href, fg: on ? accent : '#ABABB4', weight: on ? 600 : 500 });
+    return {
+      downColor: DN,
+      rows: [
+        row(1, '긴축환경', '+87.02%', '+82.47%', '전 종목 숏', '47%', '−22.1%', '1.95', '15'),
+        row(2, '복합방향', '+75.58%', '+71.03%', '전 종목 숏', '63%', '−12.0%', '2.17', '78'),
+        row(3, 'MVRV', '+58.76%', '+54.22%', '전 종목 롱', '92%', '−35.4%', '1.33', '12'),
+        row(4, '도미넌스', '+38.09%', '+33.54%', 'BTC 롱 · ETH·SOL 숏', '33%', '−11.2%', '1.54', '12'),
+        row(5, '순유동성', '+27.35%', '+22.81%', '관망', '46%', '−29.9%', '0.97', '24'),
+        row(6, '과열회귀', '+16.99%', '+12.44%', '전 종목 숏', '48%', '−16.5%', '0.94', '25'),
+        row(7, '유동성', '+12.48%', '+7.93%', '전 종목 롱', '38%', '−25.0%', '0.66', '21'),
+        row(8, '볼린저밴드', '−57.14%', '−61.68%', '전 종목 롱', '74%', '−73.6%', '−1.11', '53'),
+        row(9, 'VIX', '−74.66%', '−79.20%', '전 종목 롱', '48%', '−80.3%', '−1.91', '54'),
+      ],
+      tabs: [
+        tab('홈', 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z', 'V2HomeMobile.dc.html', false),
+        tab('시장', 'M3 3v18h18M7 15l4-4 3 3 5-6', 'Market.dc.html', false),
+        tab('파생', 'M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5', 'Spf.dc.html', false),
+        tab('학습', 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5', 'Mobile.dc.html', false),
+        tab('더보기', 'M5 12h.01M12 12h.01M19 12h.01', '#', true),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>
