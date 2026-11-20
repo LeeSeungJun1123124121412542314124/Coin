@@ -6,6 +6,7 @@ from pathlib import Path
 
 
 SPF_TSX = Path("dashboard/frontend/src/components/screens/SPF.tsx")
+INDEX_CSS = Path("dashboard/frontend/src/index.css")
 
 
 def _source() -> str:
@@ -24,6 +25,8 @@ def test_recent_prediction_history_uses_7_14_30_60_badges():
 
     assert "판정: 7/14/30/60일" in section
     assert "HISTORY_HORIZONS.map" in section
+    # 기간마다 기호만이 아니라 글자 라벨("✓ 적중")로 읽힌다
+    assert "{meta.symbol} {meta.text}" in section
     assert "result_7d" in source
     assert "result_14d" in source
     assert "result_30d" in source
@@ -39,15 +42,21 @@ def test_recent_prediction_history_removes_legacy_3d_result_badge():
     assert "판정중" not in section
 
 
-def test_recent_prediction_history_badges_wrap_as_group_on_mobile():
-    section = _recent_history_section(_source())
+def test_recent_prediction_history_states_do_not_wrap_mid_label_on_mobile():
+    source = _source()
+    section = _recent_history_section(source)
+    css = INDEX_CSS.read_text(encoding="utf-8")
 
-    assert "flexWrap: 'wrap'" in section
-    assert "gap: '4px 8px'" in section
-    assert "display: 'inline-flex'" in section
-    assert "minWidth: 26" in section
-    assert "fontSize: 9" in section
-    assert "fontSize: 11" in section
+    # 데스크톱은 기간별 열이 있는 표, 모바일은 예측 하나당 4칸 블록 (둘 중 하나만 그린다)
+    assert "useIsMobile()" in source
+    assert "isMobile ?" in section
+    assert "spf-log-cells" in section
+    assert "spf-log-row" in section
+    assert 'className="v2-nowrap"' in section
+    # 라벨은 12px 이상 — 옛 9/11px 미니 배지는 없다
+    assert "fontSize: 9" not in section
+    assert "fontSize: 11" not in section
+    assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in css
 
 
 def test_recent_prediction_history_status_mapping_is_complete():
@@ -58,6 +67,9 @@ def test_recent_prediction_history_status_mapping_is_complete():
     assert "'miss': { symbol: '✗', color: C.warn" in source
     assert "'neutral': { symbol: '–', color: C.text2" in source
     assert "pending: { symbol: '·', color: C.text3" in source
+    # 화면에 보이는 라벨
+    for text in ("적중", "빗나감", "중립", "대기"):
+        assert f"text: '{text}'" in source
 
 
 def test_recent_prediction_history_unknown_status_falls_back_to_pending():

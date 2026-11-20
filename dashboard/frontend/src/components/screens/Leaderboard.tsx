@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { apiFetch } from '../../lib/api'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import LastUpdated from '../shared/LastUpdated'
 import { C, changeColor, softBg } from '../../lib/theme'
 import { fmtFixed, fmtSignedPct } from '../../lib/format'
@@ -71,18 +72,6 @@ function DirectionText({ directions }: { directions?: Record<string, 'long' | 's
       {text}
     </span>
   )
-}
-
-// 모바일(<768px)이면 카드 목록, 아니면 기존 표
-function useIsMobile(): boolean {
-  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches)
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)')
-    const onChange = () => setMobile(mq.matches)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [])
-  return mobile
 }
 
 export function Leaderboard() {

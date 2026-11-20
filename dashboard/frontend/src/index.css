@@ -1730,3 +1730,47 @@ button.dash-cell:hover { background: var(--bg-inset); }
   .dash-news-item { flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; min-height: 56px; }
   .dash-news-title { white-space: normal; line-height: 1.4; }
 }
+
+/* ===== SPF 화면 (v2) ===== */
+.spf-grid { display: grid; grid-template-columns: var(--spf-cols, 1fr 1fr); gap: 16px; align-items: stretch; }
+.spf-grid > * { min-width: 0; }
+.spf-h { margin: 0; font-size: 15px; font-weight: 600; color: var(--text); }
+.spf-h small { margin-left: 6px; font-size: 12px; font-weight: 400; color: var(--text-3); }
+.spf-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 14px; margin-bottom: 6px; }
+.spf-cap { font-size: 12px; color: var(--text-3); line-height: 1.5; }
+
+/* 예측 근거 행: 요인 · 방향 · 영향 */
+.spf-reason {
+  min-height: 48px; display: grid; grid-template-columns: 1fr 96px 64px; align-items: center; gap: 10px;
+  border-top: 1px solid var(--line);
+}
+.spf-reason-head { min-height: 0; padding: 12px 0 6px; border-top: 0; font-size: 12px; color: var(--text-3); }
+
+/* 기간별 적중률 행: 기간 · 기대 · 실측(+판정) · 표본 */
+.spf-hit {
+  min-height: 56px; display: grid; grid-template-columns: 48px 1fr 1fr 56px; align-items: center; gap: 8px;
+  border-top: 1px solid var(--line); font-family: var(--font-mono); font-size: 14px;
+}
+.spf-hit-head { min-height: 0; padding: 6px 0; border-top: 0; font-family: var(--font-sans); font-size: 12px; color: var(--text-3); }
+
+/* 최근 예측 기록 — 데스크톱 표 */
+.spf-log-scroll { overflow-x: auto; }
+.spf-log-row {
+  min-width: 720px; min-height: 48px; display: grid; align-items: center; gap: 10px;
+  grid-template-columns: 100px 90px 90px repeat(4, minmax(88px, 1fr)); border-top: 1px solid var(--line);
+}
+.spf-log-head { min-height: 0; padding: 6px 0; border-top: 0; font-size: 12px; color: var(--text-3); }
+
+/* 최근 예측 기록 — 모바일 블록(예측 하나당 판정 4칸) */
+.spf-log-block { border-top: 1px solid var(--line); padding: 10px 0 12px; display: flex; flex-direction: column; gap: 8px; }
+.spf-log-cells { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.spf-log-cell {
+  min-height: 44px; box-sizing: border-box; background: var(--bg-inset); border-radius: 8px; padding: 4px 6px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+}
+
+@media (max-width: 767px) {
+  .spf-grid { grid-template-columns: 1fr; gap: 12px; }
+  .spf-reason { min-height: 52px; grid-template-columns: 1fr auto minmax(44px, auto); gap: 10px; }
+  .spf-reason-head { display: none; }
+}

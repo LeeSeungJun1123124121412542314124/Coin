@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useApi } from '../../hooks/useApi'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { Card } from '../shared/Card'
 import ErrorState from '../shared/ErrorState'
 import Skeleton from '../shared/Skeleton'
@@ -56,24 +57,11 @@ const SYMBOLS: { label: string; value: string }[] = [
 ]
 
 const PAGE = 8
-const MOBILE_QUERY = '(max-width: 767px)'
 
 function Dir({ dir, tooltip }: { dir: string | null; tooltip?: string }) {
   const d = dir ? DIR[dir] : null
   if (!d) return <span style={{ color: 'var(--text-3)' }}>–</span>
   return <span title={tooltip} style={{ color: d.color, fontWeight: 600, whiteSpace: 'nowrap' }}>{d.mark} {d.label}</span>
-}
-
-// 화면 폭이 모바일인지 — 표/두 줄 행 중 하나만 그리기 위해 이 파일 안에서만 쓴다
-function useIsMobile() {
-  const [mobile, setMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches)
-  useEffect(() => {
-    const mq = window.matchMedia(MOBILE_QUERY)
-    const onChange = () => setMobile(mq.matches)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [])
-  return mobile
 }
 
 function LevelBadge({ alert }: { alert: Item }) {
