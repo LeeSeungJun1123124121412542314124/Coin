@@ -61,13 +61,13 @@ def _check_fear_greed(insights: list, data: dict) -> None:
             f"공포탐욕 {value}pt ({label}). 역사적으로 극도 공포 구간은 중기 매수 기회.", "▲"))
     elif value <= 40:
         insights.append(_insight(LEVEL_NEUTRAL, "공포 구간",
-            f"공포탐욕 {value}pt ({label}). 시장 심리 위축 상태.", "⚪"))
+            f"공포탐욕 {value}pt ({label}). 시장 심리 위축 상태.", "–"))
     elif value >= 80:
         insights.append(_insight(LEVEL_WARNING, "극도 탐욕 — 과열 경고",
             f"공포탐욕 {value}pt ({label}). 단기 조정 가능성 증가.", "▼"))
     elif value >= 65:
         insights.append(_insight(LEVEL_NEUTRAL, "탐욕 구간",
-            f"공포탐욕 {value}pt ({label}). 추세 지속 여부 모니터링.", "🟡"))
+            f"공포탐욕 {value}pt ({label}). 추세 지속 여부 모니터링.", "▲"))
 
 
 def _check_vix(insights: list, data: dict) -> None:
@@ -78,10 +78,10 @@ def _check_vix(insights: list, data: dict) -> None:
 
     if vix >= 30:
         insights.append(_insight(LEVEL_CRITICAL, f"VIX 급등 — 공포 지수 {vix:.1f}",
-            "미국 증시 극단적 변동성 구간. 크립토 연동 하락 위험.", "🚨"))
+            "미국 증시 극단적 변동성 구간. 크립토 연동 하락 위험.", "!"))
     elif vix >= 20:
         insights.append(_insight(LEVEL_WARNING, f"VIX 주의 — {vix:.1f}",
-            "미국 증시 변동성 상승. 리스크 자산 전반 주의.", "⚠️"))
+            "미국 증시 변동성 상승. 리스크 자산 전반 주의.", "!"))
     elif vix < 13:
         insights.append(_insight(LEVEL_BULLISH, f"VIX 저점 — {vix:.1f} (안정)",
             "미국 증시 변동성 극히 낮음. 위험 선호 환경.", "▲"))
@@ -94,13 +94,13 @@ def _check_kimchi_premium(insights: list, data: dict) -> None:
 
     if kp >= 5.0:
         insights.append(_insight(LEVEL_WARNING, f"김치 프리미엄 과열 — {kp:.2f}%",
-            "국내 거래소 과매수 신호. 해외 차익거래 유입 주의.", "🌶️"))
+            "국내 거래소 과매수 신호. 해외 차익거래 유입 주의.", "▲"))
     elif kp >= 3.0:
         insights.append(_insight(LEVEL_NEUTRAL, f"김치 프리미엄 상승 — {kp:.2f}%",
-            "국내 수요 우위 상태.", "🟡"))
+            "국내 수요 우위 상태.", "▲"))
     elif kp <= -1.0:
         insights.append(_insight(LEVEL_BEARISH, f"역 김치 프리미엄 — {kp:.2f}%",
-            "국내 투자 심리 위축 또는 외국인 매도. 단기 약세 신호.", "🔵"))
+            "국내 투자 심리 위축 또는 외국인 매도. 단기 약세 신호.", "▼"))
 
 
 def _check_btc_dominance(insights: list, data: dict) -> None:
@@ -111,10 +111,10 @@ def _check_btc_dominance(insights: list, data: dict) -> None:
 
     if dom >= 60:
         insights.append(_insight(LEVEL_BEARISH, f"BTC 도미넌스 고점 — {dom:.1f}%",
-            "알트코인 약세 장 지속 가능성. 비트코인 우선 전략.", "📊"))
+            "알트코인 약세 장 지속 가능성. 비트코인 우선 전략.", "▲"))
     elif dom <= 45:
         insights.append(_insight(LEVEL_BULLISH, f"BTC 도미넌스 저점 — {dom:.1f}%",
-            "알트코인 시즌 진입 가능성. 알트 모멘텀 주시.", "🚀"))
+            "알트코인 시즌 진입 가능성. 알트 모멘텀 주시.", "▲"))
 
 
 def _check_funding_rate(insights: list, data: dict) -> None:
@@ -128,7 +128,7 @@ def _check_funding_rate(insights: list, data: dict) -> None:
 
     if fr_pct >= 0.05:
         insights.append(_insight(LEVEL_WARNING, f"펀딩비 과열 — {fr_pct:.4f}%",
-            "선물 롱 포지션 과밀집. 숏 스퀴즈 또는 급락 위험.", "⚠️"))
+            "선물 롱 포지션 과밀집. 숏 스퀴즈 또는 급락 위험.", "!"))
     elif fr_pct <= -0.02:
         insights.append(_insight(LEVEL_BULLISH, f"펀딩비 마이너스 — {fr_pct:.4f}%",
             "숏 포지션 우위. 반등 시 숏 커버 상승 가능.", "▲"))
@@ -144,13 +144,13 @@ def _check_oi_change(insights: list, data: dict) -> None:
 
     if pct >= 20:
         insights.append(_insight(LEVEL_CRITICAL, f"OI 급등 — 3일 +{pct:.1f}%",
-            "미결제약정 급격 증가. 변동성 확대 임박 가능성.", "🚨"))
+            "미결제약정 급격 증가. 변동성 확대 임박 가능성.", "!"))
     elif pct >= 10:
         insights.append(_insight(LEVEL_WARNING, f"OI 상승 — 3일 +{pct:.1f}%",
-            "레버리지 축적 진행 중. 포지션 청산 위험 주의.", "⚠️"))
+            "레버리지 축적 진행 중. 포지션 청산 위험 주의.", "!"))
     elif pct <= -10:
         insights.append(_insight(LEVEL_NEUTRAL, f"OI 감소 — 3일 {pct:.1f}%",
-            "포지션 정리 구간. 변동성 축소 또는 방향 전환 신호.", "⚪"))
+            "포지션 정리 구간. 변동성 축소 또는 방향 전환 신호.", "–"))
 
 
 def _check_us_market(insights: list, data: dict) -> None:
@@ -162,10 +162,10 @@ def _check_us_market(insights: list, data: dict) -> None:
     if nasdaq_chg is not None:
         if nasdaq_chg <= -2.0:
             insights.append(_insight(LEVEL_WARNING, f"나스닥 급락 — {nasdaq_chg:+.2f}%",
-                "미국 성장주 매도 압력. 크립토 동반 하락 주의.", "📉"))
+                "미국 성장주 매도 압력. 크립토 동반 하락 주의.", "▼"))
         elif nasdaq_chg >= 2.0:
             insights.append(_insight(LEVEL_BULLISH, f"나스닥 강세 — {nasdaq_chg:+.2f}%",
-                "위험 선호 심리 회복. 크립토 동반 상승 기대.", "📈"))
+                "위험 선호 심리 회복. 크립토 동반 상승 기대.", "▲"))
 
     # DXY (달러 인덱스)
     dxy = us.get("DX-Y.NYB", {})
@@ -174,7 +174,7 @@ def _check_us_market(insights: list, data: dict) -> None:
     if dxy_price is not None and dxy_chg is not None:
         if dxy_chg >= 0.5 and dxy_price >= 104:
             insights.append(_insight(LEVEL_BEARISH, f"달러 강세 — DXY {dxy_price:.1f} ({dxy_chg:+.2f}%)",
-                "강달러 환경. 크립토/원자재 전반 약세 압력.", "💵"))
+                "강달러 환경. 크립토/원자재 전반 약세 압력.", "▲"))
         elif dxy_chg <= -0.5:
             insights.append(_insight(LEVEL_BULLISH, f"달러 약세 — DXY {dxy_price:.1f} ({dxy_chg:+.2f}%)",
                 "달러 약세. 리스크 자산 상승 우호 환경.", "▲"))
