@@ -16,7 +16,9 @@ import { EconomicNewsSection } from '../shared/EconomicNewsSection'
 import { AltcoinSeasonCard } from '../shared/AltcoinSeasonCard'
 import { MacroHealthCard } from '../shared/MacroHealthCard'
 import { StatRow } from '../shared/StatRow'
-import { SkeletonCard } from '../shared/Skeleton'
+import Skeleton, { SkeletonCard } from '../shared/Skeleton'
+import ErrorState from '../shared/ErrorState'
+import LastUpdated from '../shared/LastUpdated'
 import { useApi } from '../../hooks/useApi'
 import { apiFetch } from '../../lib/api'
 import { fmt } from '../../lib/format'
@@ -306,7 +308,7 @@ function CoinCard({
 }
 
 export function Dashboard() {
-  const { data, refetch } = useApi<DashboardData>('/api/dashboard', 60_000)
+  const { data, error, refetch, lastUpdated } = useApi<DashboardData>('/api/dashboard', 60_000)
   const { data: stockIndices } = useApi<StockIndexItem[]>('/api/stock-indices', 300_000)
   const { data: usStocks, refetch: refetchUs } = useApi<StockItem[]>('/api/stock-prices/us', 300_000)
   const { data: usSlots, refetch: refetchUsSlots } = useApi<StockSlot[]>('/api/stock-slots/us', 0)
@@ -342,7 +344,9 @@ export function Dashboard() {
     }
   }
 
-  if (!data) return null
+  // 첫 로딩은 뼈대, 첫 로딩 실패는 오류와 다시 시도 — 빈 화면으로 두지 않는다
+  if (error && !data) return <ErrorState error={error} onRetry={refetch} />
+  if (!data) return <Skeleton />
 
   const btc = data.coins?.find(c => c.symbol === 'BTC')
   const mvrv = data.onchain?.mvrv ?? null
@@ -355,6 +359,7 @@ export function Dashboard() {
 
   return (
     <div className="mock-spf-dashboard mock-real-dashboard">
+      <LastUpdated timestamp={lastUpdated} failed={!!error} />
       <div className="mock-real-stack">
         <Section
           className="mock-coin-price-section"

@@ -6,6 +6,7 @@ import { getChart, putSettings } from '../../lib/learningApi.ts'
 import type { ChartResponse, Interval, LearningSettings } from '../../lib/learningApi.ts'
 import { C, changeArrow, changeColor, softBg } from '../../lib/theme.ts'
 import { Card } from '../shared/Card'
+import LastUpdated from '../shared/LastUpdated'
 import { toCandleSeries, toCloudBands, toLineSeries, toPivotLine, toSec, toWyckoffMarkers } from './learningChartData.ts'
 import { chartHeight, maColor, paneLayout } from './indicatorPanes.ts'
 import { IchimokuCloud } from './ichimokuCloud.ts'
@@ -320,6 +321,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <LastUpdated timestamp={chart.loadedAt} />
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
         <div style={segGroupStyle} role="group" aria-label="시간봉">
           {INTERVALS.map(i => (

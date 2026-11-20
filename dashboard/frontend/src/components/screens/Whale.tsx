@@ -200,6 +200,36 @@ function FlowChip({ label, value, color }: { label: string; value: number; color
   )
 }
 
+// KOSPI/KOSDAQ 전환 — 데이터 화면과 뼈대·오류 화면이 같이 쓴다
+function KrMarketToggle({ market, onMarketChange }: { market: KrMarket; onMarketChange: (market: KrMarket) => void }) {
+  return (
+    <div style={{ display: 'flex', gap: 8 }}>
+      {(['KOSPI', 'KOSDAQ'] as const).map(item => {
+        const active = market === item
+        return (
+          <button
+            key={item}
+            type="button"
+            onClick={() => onMarketChange(item)}
+            style={{
+              border: `1px solid ${active ? 'var(--accent)' : 'var(--border-strong)'}`,
+              background: active ? softBg(C.accent, 0.12) : 'var(--bg-inset)',
+              color: active ? 'var(--text)' : 'var(--text-2)',
+              borderRadius: 8,
+              padding: '8px 12px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            {item}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 function KrInvestorFlowView({
   data,
   market,
@@ -230,30 +260,7 @@ function KrInvestorFlowView({
           네이버 투자자별 순매수 · 단위 억원
           {data.stale && <span style={{ color: 'var(--warn)', marginLeft: 8 }}>데이터 확인 필요</span>}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {(['KOSPI', 'KOSDAQ'] as const).map(item => {
-            const active = market === item
-            return (
-              <button
-                key={item}
-                type="button"
-                onClick={() => onMarketChange(item)}
-                style={{
-                  border: `1px solid ${active ? 'var(--accent)' : 'var(--border-strong)'}`,
-                  background: active ? softBg(C.accent, 0.12) : 'var(--bg-inset)',
-                  color: active ? 'var(--text)' : 'var(--text-2)',
-                  borderRadius: 8,
-                  padding: '8px 12px',
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                {item}
-              </button>
-            )
-          })}
-        </div>
+        <KrMarketToggle market={market} onMarketChange={onMarketChange} />
       </div>
 
       <div className="grid-4" style={{ gap: 10 }}>
@@ -446,16 +453,18 @@ function CoinWhaleView({
   data,
   consensus,
   lastUpdated,
+  failed,
 }: {
   data: WhaleData
   consensus: Consensus | null
   lastUpdated: Date | null
+  failed: boolean
 }) {
   const { whales } = data
 
   return (
     <>
-      <LastUpdated timestamp={lastUpdated} />
+      <LastUpdated timestamp={lastUpdated} failed={failed} />
       {consensus && consensus.total > 0 && (
         <Card>
           <ConsensusMeter data={consensus} />
@@ -590,7 +599,7 @@ export function Whale() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {tabs}
-        <LastUpdated timestamp={usApi.lastUpdated} />
+        <LastUpdated timestamp={usApi.lastUpdated} failed={!!(usApi.error || us13fApi.error)} />
         <UsInsiderView data={usApi.data} />
         <Us13fView data={us13fApi.data} />
       </div>
@@ -602,6 +611,7 @@ export function Whale() {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {tabs}
+          <KrMarketToggle market={krMarket} onMarketChange={setKrMarket} />
           <ErrorState error={krApi.error} onRetry={krApi.refetch} />
         </div>
       )
@@ -610,6 +620,7 @@ export function Whale() {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {tabs}
+          <KrMarketToggle market={krMarket} onMarketChange={setKrMarket} />
           <Skeleton />
         </div>
       )
@@ -618,7 +629,7 @@ export function Whale() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {tabs}
-        <LastUpdated timestamp={krApi.lastUpdated} />
+        <LastUpdated timestamp={krApi.lastUpdated} failed={!!krApi.error} />
         <KrInvestorFlowView data={krApi.data} market={krMarket} onMarketChange={setKrMarket} />
       </div>
     )
@@ -648,6 +659,7 @@ export function Whale() {
         data={coinApi.data}
         consensus={consensusApi.data}
         lastUpdated={coinApi.lastUpdated}
+        failed={!!coinApi.error}
       />
     </div>
   )

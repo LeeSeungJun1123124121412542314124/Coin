@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { apiFetch } from '../../lib/api'
+import LastUpdated from '../shared/LastUpdated'
 import { C, changeColor, softBg } from '../../lib/theme'
 
 // 지표 리더보드 — 각 지표가 가상 시드로 자동매매한 포워드 성과 순위
@@ -88,6 +89,7 @@ function DirectionBadges({ directions = {} }: { directions?: Record<string, 'lon
 
 export function Leaderboard() {
   const [rows, setRows] = useState<LeaderRow[]>([])
+  const [loadedAt, setLoadedAt] = useState<Date | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
@@ -100,6 +102,7 @@ export function Leaderboard() {
     try {
       const data: { leaderboard: LeaderRow[] } = await apiFetch('/api/sim/leaderboard')
       setRows(data.leaderboard)
+      setLoadedAt(new Date())
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '리더보드 조회 실패')
     } finally {
@@ -138,6 +141,7 @@ export function Leaderboard() {
 
   return (
     <div>
+      <LastUpdated timestamp={loadedAt} />
       <div className="leaderboard-toolbar">
         <p className="leaderboard-toolbar-copy">
           💰 <b>지표 수익 검증</b> — 각 지표가 동일 시드로 자기 신호대로 자동매매, 포워드 성과(수익)로 어느 지표가 실제 돈이 되나 비교.

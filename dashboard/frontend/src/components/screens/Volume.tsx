@@ -276,7 +276,7 @@ export function Volume() {
         {tabs}
         {usSections.stock === 'data' && (
           <>
-            <LastUpdated timestamp={stockFearGreedApi.lastUpdated} />
+            <LastUpdated timestamp={stockFearGreedApi.lastUpdated} failed={!!stockFearGreedApi.error} />
             <StockFearGreedView data={stockFearGreedApi.data as StockFearGreedData} />
           </>
         )}
@@ -309,7 +309,7 @@ export function Volume() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {tabs}
-        <LastUpdated timestamp={krMarketVolumeApi.lastUpdated} />
+        <LastUpdated timestamp={krMarketVolumeApi.lastUpdated} failed={!!krMarketVolumeApi.error} />
         <KrMarketVolumeView data={krMarketVolumeApi.data} />
       </div>
     )
@@ -376,7 +376,7 @@ export function Volume() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {tabs}
-      <LastUpdated timestamp={lastUpdated} />
+      <LastUpdated timestamp={lastUpdated} failed={!!error} />
       {/* 상단 요약 카드 4개 */}
       <div className="grid-4" style={{ gap: 12 }}>
         <Card>

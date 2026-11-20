@@ -202,7 +202,7 @@ export function Market() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {tabs}
-        <LastUpdated timestamp={lastUpdated} />
+        <LastUpdated timestamp={lastUpdated} failed={!!(dxyApi.error || tnxApi.error || krwApi.error)} />
         <MacroMarketView markets={macroMarkets} />
       </div>
     )
@@ -245,7 +245,7 @@ export function Market() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {tabs}
-      <LastUpdated timestamp={lastUpdated} />
+      <LastUpdated timestamp={lastUpdated} failed={!!error} />
       {/* 상태 요약 배너 */}
       {(criticalCount > 0 || warningCount > 0) && (
         <div style={{

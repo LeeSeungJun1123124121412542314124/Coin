@@ -384,7 +384,7 @@ export function Research() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <LastUpdated timestamp={lastUpdated} />
+      <LastUpdated timestamp={lastUpdated} failed={!!error} />
       {/* 갱신 시각 (제목·설명은 앱 머리에 있음) */}
       {data?.generated_at && (
         <div style={{ fontSize: 13, color: 'var(--text-3)' }}>
@@ -422,7 +422,7 @@ export function Research() {
       </div>
 
       {/* 카드 그리드 */}
-      {error ? (
+      {error && !data ? (
         <ErrorState error={error} onRetry={refetch} />
       ) : loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>

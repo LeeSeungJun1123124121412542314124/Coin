@@ -141,7 +141,7 @@ export function SPF() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <LastUpdated timestamp={lastUpdated} />
+      <LastUpdated timestamp={lastUpdated} failed={!!error} />
       {/* 역할 라벨 — 시뮬레이터(수익 검증)와 구분 */}
       <div style={{ color: 'var(--text-3)', fontSize: '0.8rem', lineHeight: 1.5 }}>
         🧭 <b style={{ color: 'var(--text-2)' }}>시장 방향 전망 · 선물 포지션 흐름</b> — 지금 어디로 향하나(복합 모델)와 시장이 어떤 상태인가(OI/FR 쏠림)를 봅니다.

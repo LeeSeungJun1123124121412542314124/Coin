@@ -60,11 +60,41 @@ function DirBadge({ kind, dir, tooltip }: { kind: string; dir: string | null; to
 export function Alerts() {
   const [symbol, setSymbol] = useState<string>('')
   const url = symbol ? `/api/alerts/history?symbol=${symbol}&limit=100` : '/api/alerts/history?limit=100'
-  const { data, loading, error, refetch, lastUpdated } = useApi<AlertsData>(url, 60_000)
+  const { data, error, refetch, lastUpdated } = useApi<AlertsData>(url, 60_000)
 
-  if (loading && !data) return <Skeleton />
-  if (error && !data) return <ErrorState error={error} onRetry={refetch} />
-  if (!data) return null
+  // 요약 + 필터 — 뼈대·오류 화면에서도 보여 실패한 심볼에서 빠져나올 수 있게 한다
+  const controls = (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
+      <span style={{ color: 'var(--text-3)', fontSize: 12 }}>시각은 KST</span>
+      {data && (
+        <span style={{ color: 'var(--text-2)', fontSize: 14 }}>
+          총 <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text)', fontWeight: 600 }}>{data.total}</span>건
+        </span>
+      )}
+      <select
+        value={symbol}
+        onChange={e => setSymbol(e.target.value)}
+        aria-label="심볼 필터"
+        style={{
+          background: 'var(--bg-inset)', border: '1px solid var(--border-strong)', color: 'var(--text)',
+          borderRadius: 8, padding: '6px 12px', fontSize: 14, cursor: 'pointer',
+        }}
+      >
+        <option value="">전체 심볼</option>
+        <option value="BTC/USDT">BTC/USDT</option>
+        <option value="ETH/USDT">ETH/USDT</option>
+      </select>
+    </div>
+  )
+
+  if (!data) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {controls}
+        {error ? <ErrorState error={error} onRetry={refetch} /> : <Skeleton />}
+      </div>
+    )
+  }
 
   const alerts = data.alerts ?? []
   // 심볼 필터가 적용된 목록 기준으로 건수·날짜 묶음 계산
@@ -73,28 +103,9 @@ export function Alerts() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <LastUpdated timestamp={lastUpdated} />
+      <LastUpdated timestamp={lastUpdated} failed={!!error} />
 
-      {/* 요약 + 필터 */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
-        <span style={{ color: 'var(--text-3)', fontSize: 12 }}>시각은 KST</span>
-        <span style={{ color: 'var(--text-2)', fontSize: 14 }}>
-          총 <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text)', fontWeight: 600 }}>{data.total}</span>건
-        </span>
-        <select
-          value={symbol}
-          onChange={e => setSymbol(e.target.value)}
-          aria-label="심볼 필터"
-          style={{
-            background: 'var(--bg-inset)', border: '1px solid var(--border-strong)', color: 'var(--text)',
-            borderRadius: 8, padding: '6px 12px', fontSize: 14, cursor: 'pointer',
-          }}
-        >
-          <option value="">전체 심볼</option>
-          <option value="BTC/USDT">BTC/USDT</option>
-          <option value="ETH/USDT">ETH/USDT</option>
-        </select>
-      </div>
+      {controls}
 
       {/* 레벨별 건수 칩 */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { apiFetch } from '../lib/api'
+import { deriveApiState, type ApiFailure, type ApiResult } from './apiState.ts'
 
 interface UseApiResult<T> {
   data: T | null
@@ -29,40 +30,39 @@ function isAbortError(err: unknown): boolean {
 }
 
 export function useApi<T>(path: string | null, refreshMs?: number): UseApiResult<T> {
-  const [data, setData] = useState<T | null>(null)
-  const [loading, setLoading] = useState(path !== null)
-  const [error, setError] = useState<string | null>(null)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  // 결과·실패는 받은 주소와 함께 보관 — 화면에 내놓는 값은 deriveApiState가 지금 주소 기준으로 계산
+  const [result, setResult] = useState<ApiResult<T> | null>(null)
+  const [failure, setFailure] = useState<ApiFailure | null>(null)
+  const [fetching, setFetching] = useState(false)
 
   // 진행 중인 요청의 AbortController 참조
   const abortRef = useRef<AbortController | null>(null)
+  // 데이터를 받은 주소 — 같은 주소 재조회(주기 갱신·탭 복귀)인지 가른다
+  const loadedPathRef = useRef<string | null>(null)
 
   const fetchData = useCallback(async () => {
-    if (path === null) {
-      setData(null)
-      setLoading(false)
-      return
-    }
-
     // 이전 요청 취소
     abortRef.current?.abort()
+    if (path === null) return
+
     const controller = new AbortController()
     abortRef.current = controller
 
-    setLoading(true)
-    setError(null)
+    // 데이터가 없는 조회는 이전 실패를 지우고 로딩으로. 같은 주소 재조회는 결과가 나올 때까지 그대로 둔다
+    if (loadedPathRef.current !== path) setFailure(null)
+    setFetching(true)
 
     // 최대 3회 시도 (초기 1회 + 재시도 2회)
     for (let attempt = 0; attempt <= 2; attempt++) {
       try {
-        const result = await apiFetch<T>(path, { signal: controller.signal })
+        const data = await apiFetch<T>(path, { signal: controller.signal })
 
         // 언마운트 후 상태 업데이트 방지
         if (controller.signal.aborted) return
 
-        setData(result)
-        setError(null)
-        setLastUpdated(new Date())
+        loadedPathRef.current = path
+        setResult({ path, data, at: new Date() })
+        setFailure(null)
         break
       } catch (err) {
         // 컴포넌트 언마운트 또는 경로 변경으로 인한 취소
@@ -72,7 +72,7 @@ export function useApi<T>(path: string | null, refreshMs?: number): UseApiResult
         // HTTP 오류(4xx/5xx)는 재시도 없이 즉시 실패 처리
         const message = err instanceof Error ? err.message : '알 수 없는 오류'
         if (message.startsWith('HTTP ') || attempt === 2) {
-          setError(message)
+          setFailure({ path, message })
           break
         }
 
@@ -81,9 +81,9 @@ export function useApi<T>(path: string | null, refreshMs?: number): UseApiResult
       }
     }
 
-    // 취소된 경우 loading 상태 변경 건너뜀
+    // 취소된 경우 상태 변경 건너뜀
     if (!controller.signal.aborted) {
-      setLoading(false)
+      setFetching(false)
     }
   }, [path])
 
@@ -130,8 +130,5 @@ export function useApi<T>(path: string | null, refreshMs?: number): UseApiResult
     }
   }, [fetchData, refreshMs])
 
-  // isRefreshing: 기존 데이터가 있는 상태에서 재요청 중
-  const isRefreshing = data !== null && loading
-
-  return { data, loading, error, lastUpdated, isRefreshing, refetch: fetchData }
+  return { ...deriveApiState(path, result, failure, fetching), refetch: fetchData }
 }

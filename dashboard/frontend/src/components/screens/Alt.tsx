@@ -94,7 +94,7 @@ export function Alt() {
   const [timeframe, setTimeframe] = useState<Timeframe>('4h')
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
 
-  const { data: screener, loading, error, refetch, lastUpdated } = useApi<ScreenerData>(
+  const { data: screener, error, refetch, lastUpdated } = useApi<ScreenerData>(
     `/api/cvd-screener?timeframe=${timeframe}`,
     300_000,
     // 타임프레임 변경 시 재조회
@@ -105,8 +105,43 @@ export function Alt() {
     300_000,
   )
 
-  if (error && !screener) return <ErrorState error={error} onRetry={refetch} />
-  if (loading || !screener) return <Skeleton />
+  // 타임프레임 선택 — 뼈대·오류 화면에서도 보여 실패한 주기에서 빠져나올 수 있게 한다
+  const timeframeBar = (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <span style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>주기:</span>
+      <div style={{ display: 'flex', gap: 2, padding: 3, background: 'var(--bg-inset)', border: '1px solid var(--border)', borderRadius: 10 }}>
+      {(['1h', '4h', '1d'] as Timeframe[]).map(tf => (
+        <button
+          key={tf}
+          onClick={() => setTimeframe(tf)}
+          style={{
+            padding: '5px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
+            fontSize: '0.8rem', fontFamily: 'var(--font-mono)',
+            fontWeight: timeframe === tf ? 600 : 400,
+            background: timeframe === tf ? 'var(--seg-active)' : 'transparent',
+            color: timeframe === tf ? 'var(--text)' : 'var(--text-2)',
+          }}
+        >
+          {tf}
+        </button>
+      ))}
+      </div>
+      {screener && (
+        <span style={{ marginLeft: 'auto', color: 'var(--text-3)', fontSize: '0.75rem' }}>
+          {screener.total}개 종목 분석
+        </span>
+      )}
+    </div>
+  )
+
+  if (!screener) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {timeframeBar}
+        {error ? <ErrorState error={error} onRetry={refetch} /> : <Skeleton />}
+      </div>
+    )
+  }
 
   // CVD 차트 (선택 종목) + delta 계산
   const cvdChart: CvdChartPoint[] = buildCvdChart(detail?.chart ?? [])
@@ -150,31 +185,8 @@ export function Alt() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <LastUpdated timestamp={lastUpdated} />
-      {/* 타임프레임 선택 */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <span style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>주기:</span>
-        <div style={{ display: 'flex', gap: 2, padding: 3, background: 'var(--bg-inset)', border: '1px solid var(--border)', borderRadius: 10 }}>
-        {(['1h', '4h', '1d'] as Timeframe[]).map(tf => (
-          <button
-            key={tf}
-            onClick={() => setTimeframe(tf)}
-            style={{
-              padding: '5px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
-              fontSize: '0.8rem', fontFamily: 'var(--font-mono)',
-              fontWeight: timeframe === tf ? 600 : 400,
-              background: timeframe === tf ? 'var(--seg-active)' : 'transparent',
-              color: timeframe === tf ? 'var(--text)' : 'var(--text-2)',
-            }}
-          >
-            {tf}
-          </button>
-        ))}
-        </div>
-        <span style={{ marginLeft: 'auto', color: 'var(--text-3)', fontSize: '0.75rem' }}>
-          {screener.total}개 종목 분석
-        </span>
-      </div>
+      <LastUpdated timestamp={lastUpdated} failed={!!error} />
+      {timeframeBar}
 
       {/* 스크리너 테이블 */}
       <Card>

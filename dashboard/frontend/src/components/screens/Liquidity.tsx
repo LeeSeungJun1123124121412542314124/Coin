@@ -90,7 +90,7 @@ export function Liquidity() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <LastUpdated timestamp={lastUpdated} />
+      <LastUpdated timestamp={lastUpdated} failed={!!error} />
       {/* 유동성 방향 배너 */}
       <div style={{
         background: softBg(dirColor, 0.07),

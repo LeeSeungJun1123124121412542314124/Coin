@@ -12,6 +12,7 @@ import { Research } from './components/screens/Research'
 import { Alerts } from './components/screens/Alerts'
 import { Leaderboard } from './components/screens/Leaderboard'
 import { Learning } from './components/screens/Learning'
+import type { LastUpdatedDetail } from './components/shared/LastUpdated'
 import { BASE } from './lib/api'
 import { NAV_GROUPS, MOBILE_PRIMARY, groupOf } from './lib/navGroups.ts'
 
@@ -141,7 +142,7 @@ export default function App() {
   const [authenticated, setAuthenticated] = useState(() => {
     return !!sessionStorage.getItem('auth_token')
   })
-  const [pageLastUpdated, setPageLastUpdated] = useState('')
+  const [pageLastUpdated, setPageLastUpdated] = useState<LastUpdatedDetail>({ time: '', failed: false })
   const [moreOpen, setMoreOpen] = useState(false)
   const moreBtnRef = useRef<HTMLButtonElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
@@ -152,12 +153,12 @@ export default function App() {
   const moreActive = !primaryPaths.includes(activeTab.path)
 
   useEffect(() => {
-    setPageLastUpdated('')
+    setPageLastUpdated({ time: '', failed: false })
   }, [location.pathname])
 
   useEffect(() => {
     const handleLastUpdated = (event: Event) => {
-      const detail = (event as CustomEvent<string>).detail
+      const detail = (event as CustomEvent<LastUpdatedDetail>).detail
       setPageLastUpdated(detail)
     }
     window.addEventListener('dashboard:last-updated', handleLastUpdated)
@@ -233,7 +234,12 @@ export default function App() {
             <h1 className="shell-title">{activeTab.label}</h1>
             <p className="shell-desc">{activeTab.description}</p>
           </div>
-          <span className="shell-updated">최종 갱신 {pageLastUpdated || '-'}</span>
+          {/* 데이터가 있는 상태에서 갱신이 실패하면 오래된 값임을 알린다 */}
+          {pageLastUpdated.failed && pageLastUpdated.time ? (
+            <span className="shell-updated is-failed">갱신 실패 · 마지막 성공 {pageLastUpdated.time}</span>
+          ) : (
+            <span className="shell-updated">최종 갱신 {pageLastUpdated.time || '-'}</span>
+          )}
         </header>
         <Routes>
           <Route path="/" element={<Dashboard />} />

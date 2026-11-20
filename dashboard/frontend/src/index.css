@@ -584,6 +584,10 @@ body {
   font-size: 12px;
 }
 
+.shell-updated.is-failed {
+  color: var(--warn);
+}
+
 .shell-bottom,
 .shell-sheet-backdrop {
   display: none;

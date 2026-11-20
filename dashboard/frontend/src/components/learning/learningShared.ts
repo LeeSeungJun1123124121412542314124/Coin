@@ -11,6 +11,7 @@ interface LoadState<T> {
   load: () => Promise<T>
   data: T | null
   error: string | null
+  at: Date | null
 }
 
 export function useLoader<T>(load: (() => Promise<T>) | null) {
@@ -21,8 +22,8 @@ export function useLoader<T>(load: (() => Promise<T>) | null) {
     if (!load) return
     let cancelled = false
     load().then(
-      data => { if (!cancelled) setState({ load, data, error: null }) },
-      (e: unknown) => { if (!cancelled) setState({ load, data: null, error: errorText(e) }) },
+      data => { if (!cancelled) setState({ load, data, error: null, at: new Date() }) },
+      (e: unknown) => { if (!cancelled) setState({ load, data: null, error: errorText(e), at: null }) },
     )
     return () => { cancelled = true }
   }, [load, nonce])
@@ -33,6 +34,8 @@ export function useLoader<T>(load: (() => Promise<T>) | null) {
   return {
     data: same ? state.data : null,
     error: same ? state.error : null,
+    // 마지막으로 받은 시각 — 머리말 "최종 갱신" 표시용
+    loadedAt: same ? state.at : null,
     reload,
   }
 }
