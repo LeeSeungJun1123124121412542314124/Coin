@@ -30,7 +30,7 @@ export class ErrorBoundary extends Component<Props, State> {
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         minHeight: '60vh', gap: 16, padding: 24, textAlign: 'center',
       }}>
-        <div style={{ fontSize: '2rem' }}>⚠️</div>
+        <div style={{ fontSize: '2rem', fontWeight: 700 }}>!</div>
         <div style={{ color: 'var(--text)', fontSize: '1rem' }}>화면을 표시하는 중 오류가 발생했습니다.</div>
         <div style={{ color: 'var(--text-3)', fontSize: '0.8rem', maxWidth: 480, wordBreak: 'break-word' }}>
           {this.state.message}

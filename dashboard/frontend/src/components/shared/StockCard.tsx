@@ -42,7 +42,7 @@ export function StockCard({ name, tv_symbol, price, change_pct, high, low, onOpe
       </div>
 
       {(high != null || low != null) && (
-        <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: '0.72rem', fontFamily: 'var(--font-mono)' }}>
+        <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>
           {high != null && (
             <span>
               <span style={{ color: 'var(--up)' }}>H </span>

@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Cell,
 } from 'recharts'
 import { apiFetch } from '../../lib/api'
-import { C, softBg } from '../../lib/theme'
+import { C, changeColor, softBg } from '../../lib/theme'
 
 // ────────────────────────────────────────
 // 타입 정의
@@ -251,7 +251,7 @@ export function AutoBacktest() {
             {['지표', '신호수', '롱', '숏', '적중률', '평균수익', '최대익/손'].map((col) => (
               <div key={col} style={{
                 color: 'var(--text-3)',
-                fontSize: '0.7rem',
+                fontSize: '0.75rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.06em',
               }}>
@@ -295,14 +295,14 @@ export function AutoBacktest() {
                     {ind.hit_rate.toFixed(0)}%
                   </div>
                   <div style={{
-                    color: ind.avg_return_pct >= 0 ? 'var(--up)' : 'var(--down)',
+                    color: changeColor(ind.avg_return_pct),
                     fontSize: '0.78rem',
                     fontWeight: 600,
                   }}>
                     {ind.avg_return_pct >= 0 ? '+' : ''}{ind.avg_return_pct.toFixed(2)}%
                   </div>
-                  <div style={{ fontSize: '0.73rem' }}>
-                    <span style={{ color: 'var(--up)' }}>{ind.max_win_pct >= 0 ? '+' : ''}{ind.max_win_pct.toFixed(1)}%</span>
+                  <div style={{ fontSize: '0.75rem' }}>
+                    <span style={{ color: changeColor(ind.max_win_pct) }}>{ind.max_win_pct >= 0 ? '+' : ''}{ind.max_win_pct.toFixed(1)}%</span>
                     <span style={{ color: 'var(--text-3)' }}>/</span>
                     <span style={{ color: 'var(--down)' }}>{ind.max_loss_pct.toFixed(1)}%</span>
                   </div>
@@ -326,13 +326,13 @@ export function AutoBacktest() {
             <BarChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
               <XAxis
                 dataKey="name"
-                tick={{ fill: C.text3, fontSize: 10 }}
+                tick={{ fill: C.text3, fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis
                 domain={[0, 100]}
-                tick={{ fill: C.text3, fontSize: 10 }}
+                tick={{ fill: C.text3, fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v: number) => `${v}%`}
@@ -343,7 +343,7 @@ export function AutoBacktest() {
                 y={50}
                 stroke={C.text3}
                 strokeDasharray="3 3"
-                label={{ value: '50%', fill: C.text3, fontSize: 10 }}
+                label={{ value: '50%', fill: C.text3, fontSize: 11 }}
               />
               <Bar dataKey="hit_rate" radius={[3, 3, 0, 0]} isAnimationActive={false}>
                 {chartData.map((entry) => (
@@ -356,8 +356,8 @@ export function AutoBacktest() {
       )}
 
       {/* 면책 문구 */}
-      <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginTop: 8 }}>
-        ⚠️ 과거 데이터 기반 통계입니다. 미래 수익을 보장하지 않습니다.
+      <div style={{ color: 'var(--text-3)', fontSize: '0.75rem', marginTop: 8 }}>
+        ! 과거 데이터 기반 통계입니다. 미래 수익을 보장하지 않습니다.
       </div>
     </div>
   )

@@ -37,7 +37,7 @@ export function CoinSlotEditor({
       style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
     >
       {/* 슬롯 번호 라벨 */}
-      <div style={{ color: 'var(--text-2)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+      <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
         슬롯 #{position}
       </div>
 
@@ -68,6 +68,8 @@ export function CoinSlotEditor({
           onClick={handleSave}
           disabled={loading}
           title="저장"
+          aria-label="저장"
+          className="tap-icon"
           style={{
             background: 'transparent',
             border: '1px solid var(--accent)',
@@ -101,6 +103,8 @@ export function CoinSlotEditor({
           onClick={onCancel}
           disabled={loading}
           title="취소"
+          aria-label="취소"
+          className="tap-icon"
           style={{
             background: 'transparent',
             border: '1px solid var(--border-strong)',
@@ -118,7 +122,7 @@ export function CoinSlotEditor({
 
       {/* 에러 텍스트 */}
       {error && (
-        <div style={{ color: 'var(--danger)', fontSize: '0.7rem' }}>{error}</div>
+        <div style={{ color: 'var(--danger)', fontSize: '0.75rem' }}>{error}</div>
       )}
 
       {/* 스피너 keyframe 인젝션 (전역 style 태그) */}

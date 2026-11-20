@@ -323,7 +323,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <LastUpdated timestamp={chart.loadedAt} />
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
-        <div style={segGroupStyle} role="group" aria-label="시간봉">
+        <div className="tap-seg" style={segGroupStyle} role="group" aria-label="시간봉">
           {INTERVALS.map(i => (
             <button key={i} style={segButtonStyle(interval === i)} aria-pressed={interval === i} onClick={() => onIntervalChange(i)}>
               {INTERVAL_LABELS[i]}
@@ -344,7 +344,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
             </button>
           ))}
         </div>
-        <div style={segGroupStyle} role="group" aria-label="가격축">
+        <div className="tap-seg" style={segGroupStyle} role="group" aria-label="가격축">
           {([['선형', false], ['로그', true]] as const).map(([label, log]) => (
             <button key={label} style={segButtonStyle(logScale === log)} aria-pressed={logScale === log} onClick={() => setLogScale(log)}>
               {label}
@@ -381,7 +381,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
             <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8, fontSize: '0.72rem', color: MUTED }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8, fontSize: '0.75rem', color: MUTED }}>
             {[...LEGEND, ...indicatorLegend].map(([label, color]) => (
               <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ width: 12, height: 2, background: color, display: 'inline-block' }} />

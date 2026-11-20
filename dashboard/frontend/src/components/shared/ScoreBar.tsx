@@ -38,7 +38,7 @@ export function ScoreBar({
   return (
     <div style={{ marginBottom: scoreFormat === 'plain' ? 10 : 0, marginTop: scoreFormat === 'plain' ? 0 : 8 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ fontSize: scoreFormat === 'plain' ? '0.8rem' : 11, color: labelColor }}>{label}</span>
+        <span style={{ fontSize: scoreFormat === 'plain' ? '0.8rem' : 12, color: labelColor }}>{label}</span>
         <span style={{ fontSize: valueFontSize, color: resolvedColor, fontWeight: valueFontWeight, fontFamily: 'var(--font-mono)' }}>{scoreLabel}</span>
       </div>
       <div style={{ height, background: trackColor, borderRadius, overflow: 'hidden' }}>

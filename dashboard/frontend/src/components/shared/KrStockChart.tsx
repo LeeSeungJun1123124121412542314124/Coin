@@ -157,7 +157,7 @@ export function KrStockChart({ ticker, name }: KrStockChartProps) {
         flexShrink: 0,
       }}>
         <span style={{ color: 'var(--text-2)', fontSize: '0.85rem', fontWeight: 600 }}>{name}</span>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div className="tap-seg" style={{ display: 'flex', gap: 4 }}>
           {(['1d', '1wk', '1mo'] as Interval[]).map(i => (
             <button key={i} onClick={() => setInterval(i)} style={{
               background: interval === i ? 'var(--seg-active)' : 'transparent',

@@ -172,7 +172,7 @@ function OrderForm({ symbol, interval, context, held, cash, onFilled }: OrderFor
         근거 기준: {INTERVAL_LABELS[interval]} (차트의 봉 전환을 따릅니다). 주문 전에 국면을 직접 판단해 고르세요.
       </div>
 
-      <div style={{ ...segGroupStyle, display: 'flex', marginBottom: 12 }} role="group" aria-label="주문 방향">
+      <div className="tap-seg" style={{ ...segGroupStyle, display: 'flex', marginBottom: 12 }} role="group" aria-label="주문 방향">
         {([['buy', '매수', 'var(--up)'], ['sell', '매도', 'var(--down)']] as const).map(([key, label, tone]) => (
           <button
             key={key}

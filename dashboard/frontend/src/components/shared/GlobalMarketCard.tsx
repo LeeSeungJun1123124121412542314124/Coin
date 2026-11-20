@@ -75,7 +75,7 @@ export function GlobalMarketCard({ data }: GlobalMarketCardProps) {
 
       {/* 도미넌스 범례 */}
       {hasDominance && (
-        <div style={{ marginTop: 6, display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: '0.7rem', color: 'var(--text-2)' }}>
+        <div style={{ marginTop: 6, display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-2)' }}>
           <span><span style={{ color: C.accent }}>●</span> BTC {btcDom.toFixed(1)}%</span>
           {eth_dominance != null && (
             <span><span style={{ color: C.info }}>●</span> ETH {ethDom.toFixed(1)}%</span>
@@ -98,7 +98,7 @@ export function GlobalMarketCard({ data }: GlobalMarketCardProps) {
               <XAxis dataKey="t" hide />
               <YAxis hide domain={['auto', 'auto']} />
               <Tooltip
-                contentStyle={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 6, fontSize: '0.7rem' }}
+                contentStyle={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 6, fontSize: '0.75rem' }}
                 formatter={(v) => [fmt(Number(v)), '시총']}
                 labelFormatter={() => ''}
               />

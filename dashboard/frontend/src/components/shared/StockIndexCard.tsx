@@ -43,7 +43,7 @@ export function StockIndexCard({ name, ticker, price, change_pct, sparkline, hig
 
       {/* 고가/저가 */}
       {(high != null || low != null) && (
-        <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: '0.72rem', fontFamily: 'var(--font-mono)' }}>
+        <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>
           {high != null && (
             <span>
               <span style={{ color: 'var(--up)' }}>H </span>

@@ -112,8 +112,8 @@ function EquityChart({ perf }: { perf: PerformanceResponse }) {
     <ResponsiveContainer width="100%" height={260}>
       <LineChart data={rows}>
         <CartesianGrid stroke={C.line} strokeDasharray="3 3" />
-        <XAxis dataKey="date" tick={{ fill: C.text3, fontSize: 9 }} interval="preserveStartEnd" />
-        <YAxis tick={{ fill: C.text3, fontSize: 10 }} width={60} domain={['auto', 'auto']} />
+        <XAxis dataKey="date" tick={{ fill: C.text3, fontSize: 11 }} interval="preserveStartEnd" />
+        <YAxis tick={{ fill: C.text3, fontSize: 11 }} width={60} domain={['auto', 'auto']} />
         <Tooltip
           contentStyle={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text }}
           formatter={(v) => (typeof v === 'number' ? `${v.toFixed(2)} USDT` : String(v))}

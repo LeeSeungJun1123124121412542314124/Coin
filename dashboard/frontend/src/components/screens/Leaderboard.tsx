@@ -149,8 +149,8 @@ export function Leaderboard() {
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={detail.equity_curve}>
                 <CartesianGrid stroke={C.line} strokeDasharray="3 3" />
-                <XAxis dataKey="date" tick={{ fill: C.text3, fontSize: 9 }} interval="preserveStartEnd" />
-                <YAxis tick={{ fill: C.text3, fontSize: 10 }} width={50} domain={['auto', 'auto']} />
+                <XAxis dataKey="date" tick={{ fill: C.text3, fontSize: 11 }} interval="preserveStartEnd" />
+                <YAxis tick={{ fill: C.text3, fontSize: 11 }} width={50} domain={['auto', 'auto']} />
                 <Tooltip
                   contentStyle={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text }}
                 />

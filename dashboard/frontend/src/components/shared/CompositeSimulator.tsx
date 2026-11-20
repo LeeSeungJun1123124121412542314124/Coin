@@ -9,7 +9,7 @@ import {
   ReferenceLine,
 } from 'recharts'
 import { apiFetch } from '../../lib/api'
-import { C, softBg } from '../../lib/theme'
+import { C, changeColor, softBg } from '../../lib/theme'
 import { TuningResultTable } from './TuningResultTable'
 import type { TuningParamsForReplay } from './TuningResultTable'
 
@@ -138,14 +138,14 @@ function SummaryCard({ label, value, sub, valueColor }: SummaryCardProps) {
       flex: 1,
       minWidth: 0,
     }}>
-      <div style={{ color: 'var(--text-2)', fontSize: '0.72rem', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+      <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
         {label}
       </div>
       <div style={{ color: valueColor ?? 'var(--text)', fontSize: '1.25rem', fontWeight: 700 }}>
         {value}
       </div>
       {sub && (
-        <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginTop: 4 }}>
+        <div style={{ color: 'var(--text-3)', fontSize: '0.75rem', marginTop: 4 }}>
           {sub}
         </div>
       )}
@@ -281,7 +281,7 @@ export function CompositeSimulator() {
   // 요약 값 계산
   const summary = result?.summary
   const totalReturnPct = summary?.total_return_pct ?? 0
-  const returnColor = totalReturnPct >= 0 ? 'var(--up)' : 'var(--down)'
+  const returnColor = changeColor(totalReturnPct)
   const returnStr = `${totalReturnPct >= 0 ? '+' : ''}${totalReturnPct.toFixed(2)}%`
   const winRatePct = summary ? (summary.win_rate * 100).toFixed(1) : '0.0'
   const winLossSub = summary ? `${summary.winning_trades}승 ${summary.losing_trades}패` : ''
@@ -400,7 +400,7 @@ export function CompositeSimulator() {
                 opacity: loading ? 0.45 : 1,
               }}
             >
-              🚀 테스트 실행
+              테스트 실행
             </button>
             {loading && (
               <button
@@ -560,7 +560,7 @@ export function CompositeSimulator() {
               marginBottom: 12,
               fontWeight: 600,
             }}>
-              ⚠️ 청산 발생 — 자본이 0에 도달했습니다
+              ! 청산 발생 — 자본이 0에 도달했습니다
             </div>
           )}
 
@@ -600,14 +600,14 @@ export function CompositeSimulator() {
                 <LineChart data={result.equity_curve} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
                   <XAxis
                     dataKey="timestamp"
-                    tick={{ fill: C.text3, fontSize: 10 }}
+                    tick={{ fill: C.text3, fontSize: 11 }}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(v: string) => v.slice(5, 10)}  // MM-DD 형식
                     interval="preserveStartEnd"
                   />
                   <YAxis
-                    tick={{ fill: C.text3, fontSize: 10 }}
+                    tick={{ fill: C.text3, fontSize: 11 }}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
@@ -651,7 +651,7 @@ export function CompositeSimulator() {
             }}>
               현재 매크로: {result.params.macro_level}
             </span>
-            <span style={{ color: 'var(--text-3)', fontSize: '0.68rem' }}>
+            <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>
               * 매크로 점수는 현재 시점 기준 정적 적용
             </span>
           </div>
@@ -675,7 +675,7 @@ export function CompositeSimulator() {
               {['날짜', '유형', '방향', '가격', '수익률', '사유', '롱점수', '숏점수'].map((col) => (
                 <div key={col} style={{
                   color: 'var(--text-3)',
-                  fontSize: '0.68rem',
+                  fontSize: '0.75rem',
                   textTransform: 'uppercase',
                   letterSpacing: '0.06em',
                 }}>
@@ -700,7 +700,7 @@ export function CompositeSimulator() {
                 const isLong = trade.direction === 'long'
                 const pnlColor = trade.pnl_pct === null
                   ? 'var(--text-2)'
-                  : trade.pnl_pct >= 0 ? 'var(--up)' : 'var(--down)'
+                  : changeColor(trade.pnl_pct)
                 const pnlStr = trade.pnl_pct === null
                   ? '-'
                   : `${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(2)}%`
@@ -749,12 +749,12 @@ export function CompositeSimulator() {
                     </div>
 
                     {/* 롱점수 */}
-                    <div style={{ color: 'var(--up)', fontSize: '0.72rem' }}>
+                    <div style={{ color: 'var(--up)', fontSize: '0.75rem' }}>
                       {trade.long_score?.toFixed(0) ?? '-'}
                     </div>
 
                     {/* 숏점수 */}
-                    <div style={{ color: 'var(--down)', fontSize: '0.72rem' }}>
+                    <div style={{ color: 'var(--down)', fontSize: '0.75rem' }}>
                       {trade.short_score?.toFixed(0) ?? '-'}
                     </div>
                   </div>
@@ -765,7 +765,7 @@ export function CompositeSimulator() {
 
           {/* 최대 50개 제한 안내 */}
           {(result.trades.length > 50) && (
-            <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginBottom: 8 }}>
+            <div style={{ color: 'var(--text-3)', fontSize: '0.75rem', marginBottom: 8 }}>
               * 상위 50개 거래만 표시 (전체 {result.trades.length}개)
             </div>
           )}
@@ -773,8 +773,8 @@ export function CompositeSimulator() {
       )}
 
       {/* 면책 문구 */}
-      <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginTop: 8 }}>
-        ⚠️ 과거 데이터 기반 시뮬레이션입니다. 미래 수익을 보장하지 않습니다.
+      <div style={{ color: 'var(--text-3)', fontSize: '0.75rem', marginTop: 8 }}>
+        ! 과거 데이터 기반 시뮬레이션입니다. 미래 수익을 보장하지 않습니다.
       </div>
     </div>
   )

@@ -180,12 +180,13 @@ function SymbolManager({ list, loading, selected, onSelect, onChanged }: {
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
               >
                 <span style={{ color: 'var(--text)', fontWeight: 600, fontSize: '0.85rem' }}>{s.symbol}</span>
-                <span style={{ color: status.color, fontSize: '0.72rem', marginLeft: 6 }}>{status.text}</span>
-                {s.listed_at && <span style={{ color: DIM, fontSize: '0.7rem', marginLeft: 6 }}>상장 {s.listed_at}</span>}
+                <span style={{ color: status.color, fontSize: '0.75rem', marginLeft: 6 }}>{status.text}</span>
+                {s.listed_at && <span style={{ color: DIM, fontSize: '0.75rem', marginLeft: 6 }}>상장 {s.listed_at}</span>}
               </button>
               <button
                 aria-label={`${s.symbol} 제거`}
                 title="추적 해제"
+                className="tap-icon"
                 disabled={busy}
                 onClick={() => remove(s.symbol)}
                 style={{ background: 'none', border: 'none', color: DIM, cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.9rem', padding: '0 4px' }}

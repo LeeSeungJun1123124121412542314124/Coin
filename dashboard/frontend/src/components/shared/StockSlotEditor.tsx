@@ -80,7 +80,7 @@ export function StockSlotEditor({ market, slots, onUpdate }: StockSlotEditorProp
         const row = rows[i]
         return (
           <div key={slot.position} style={{ display: 'flex', flexDirection: 'column', gap: 4, position: 'relative' }}>
-            <div style={{ color: 'var(--text-2)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               슬롯 #{slot.position}
             </div>
 
@@ -114,6 +114,8 @@ export function StockSlotEditor({ market, slots, onUpdate }: StockSlotEditorProp
                 onClick={() => handleSearch(i)}
                 disabled={row.loading}
                 title="검색"
+                aria-label="검색"
+                className="tap-icon"
                 style={{
                   background: 'transparent',
                   border: '1px solid var(--accent)',
@@ -192,7 +194,7 @@ export function StockSlotEditor({ market, slots, onUpdate }: StockSlotEditorProp
             )}
 
             {row.error && (
-              <div style={{ color: 'var(--danger)', fontSize: '0.7rem' }}>{row.error}</div>
+              <div style={{ color: 'var(--danger)', fontSize: '0.75rem' }}>{row.error}</div>
             )}
           </div>
         )

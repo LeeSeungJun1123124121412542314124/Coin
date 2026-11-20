@@ -569,7 +569,7 @@ export function Dashboard() {
                 <StatRow
                   label="코인베이스 프리미엄"
                   value={`${((data.coinbase_btc / btc.price - 1) * 100).toFixed(3)}%`}
-                  highlight={(data.coinbase_btc / btc.price - 1) > 0 ? 'up' : 'down'}
+                  highlight={data.coinbase_btc === btc.price ? 'neutral' : data.coinbase_btc > btc.price ? 'up' : 'down'}
                 />
               )}
             </Card>

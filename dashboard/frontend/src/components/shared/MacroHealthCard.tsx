@@ -49,7 +49,7 @@ export function MacroHealthCard() {
         <div style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>{data.message ?? '수집 데이터 없음'}</div>
       ) : (
         <>
-          <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginBottom: 8 }}>
+          <div style={{ color: 'var(--text-3)', fontSize: '0.75rem', marginBottom: 8 }}>
             마지막 수집 {data.cache_age_hours != null ? `${data.cache_age_hours}시간 전` : '–'}
             {data.composite && ` · 복합 ${data.composite.ok ? `정상 (${data.composite.n_factors}/9팩터)` : '산출 불가'}`}
           </div>
@@ -62,7 +62,7 @@ export function MacroHealthCard() {
                   key={s.name}
                   title={s.last_date ? `${s.last_date} (${s.days_stale}일 전)` : '데이터 없음'}
                   style={{
-                    fontSize: '0.7rem', padding: '2px 7px', borderRadius: 6, background: 'var(--surface-2)',
+                    fontSize: '0.75rem', padding: '2px 7px', borderRadius: 6, background: 'var(--surface-2)',
                     color: missing ? 'var(--danger)' : stale ? 'var(--warn-text)' : 'var(--text-2)',
                   }}
                 >

@@ -127,7 +127,7 @@ export function AltcoinSeasonCard(props: AltcoinSeasonProps) {
 
           {/* 헤더 + 현재값 */}
           <div>
-            <div style={{ color: 'var(--text-2)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 }}>
+            <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 }}>
               CMC 알트코인 시즌 지수
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
@@ -139,7 +139,7 @@ export function AltcoinSeasonCard(props: AltcoinSeasonProps) {
 
           {/* 슬라이더 게이지 */}
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-3)', marginBottom: 4 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-3)', marginBottom: 4 }}>
               <span>비트코인 시즌</span>
               <span>알트코인 시즌</span>
             </div>
@@ -189,7 +189,7 @@ export function AltcoinSeasonCard(props: AltcoinSeasonProps) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
               <span style={{ color: 'var(--text)', fontSize: '0.88rem', fontWeight: 600 }}>알트코인 시즌 지수 차트</span>
-              <div style={{ display: 'flex', gap: 12, fontSize: '0.72rem', color: 'var(--text-2)' }}>
+              <div style={{ display: 'flex', gap: 12, fontSize: '0.75rem', color: 'var(--text-2)' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span style={{ display: 'inline-block', width: 20, borderTop: `2px dashed ${C.info}`, verticalAlign: 'middle' }} />
                   알트코인 시즌 (75)
@@ -200,7 +200,7 @@ export function AltcoinSeasonCard(props: AltcoinSeasonProps) {
                 </span>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 4 }}>
+            <div className="tap-seg" style={{ display: 'flex', gap: 4 }}>
               {(['7d', '30d', '90d'] as Period[]).map(p => (
                 <button key={p} onClick={() => setPeriod(p)} style={{
                   background: period === p ? 'var(--seg-active)' : 'transparent',
@@ -226,7 +226,7 @@ export function AltcoinSeasonCard(props: AltcoinSeasonProps) {
 
               <XAxis
                 dataKey="date"
-                tick={{ fill: C.text3, fontSize: 9 }}
+                tick={{ fill: C.text3, fontSize: 11 }}
                 tickLine={false} axisLine={false}
                 interval={Math.max(1, Math.floor(chartData.length / 6))}
               />
@@ -237,7 +237,7 @@ export function AltcoinSeasonCard(props: AltcoinSeasonProps) {
                 orientation="left"
                 domain={mcapDomain}
                 tickFormatter={formatMcap}
-                tick={{ fill: C.text3, fontSize: 9 }}
+                tick={{ fill: C.text3, fontSize: 11 }}
                 tickLine={false} axisLine={false}
                 width={52}
               />
@@ -248,7 +248,7 @@ export function AltcoinSeasonCard(props: AltcoinSeasonProps) {
                 orientation="right"
                 domain={[0, 100]}
                 ticks={[0, 25, 50, 75, 100]}
-                tick={{ fill: C.text3, fontSize: 9 }}
+                tick={{ fill: C.text3, fontSize: 11 }}
                 tickLine={false} axisLine={false}
                 width={32}
               />
@@ -267,7 +267,7 @@ export function AltcoinSeasonCard(props: AltcoinSeasonProps) {
               <ReferenceLine yAxisId="asi" y={25} stroke={C.warn} strokeDasharray="3 3" strokeOpacity={0.5} />
 
               <Legend
-                wrapperStyle={{ fontSize: '0.72rem', color: C.text2, paddingTop: 8 }}
+                wrapperStyle={{ fontSize: '0.75rem', color: C.text2, paddingTop: 8 }}
                 formatter={(v) => v === 'value' ? '알트코인 시즌 지수' : '알트코인 시총'}
               />
 
@@ -296,7 +296,7 @@ export function AltcoinSeasonCard(props: AltcoinSeasonProps) {
             </ComposedChart>
           </ResponsiveContainer>
 
-          <div style={{ textAlign: 'right', color: 'var(--text-3)', fontSize: '0.65rem' }}>© CoinMarketCap</div>
+          <div style={{ textAlign: 'right', color: 'var(--text-3)', fontSize: '0.75rem' }}>© CoinMarketCap</div>
         </div>
       </div>
     </div>

@@ -37,6 +37,8 @@ export function StockIndexModal({ ticker, name, onClose }: StockIndexModalProps)
         </div>
         <button
           onClick={onClose}
+          aria-label="닫기"
+          className="tap-icon"
           style={{ background: 'none', border: 'none', color: 'var(--text-3)', fontSize: '1.5rem', cursor: 'pointer', lineHeight: 1 }}
         >
           ×
@@ -61,12 +63,12 @@ export function StockIndexModal({ ticker, name, onClose }: StockIndexModalProps)
               <CartesianGrid strokeDasharray="3 3" stroke={C.line} />
               <XAxis
                 dataKey="date"
-                tick={{ fill: C.text3, fontSize: 10, fontFamily: 'var(--font-mono)' }}
+                tick={{ fill: C.text3, fontSize: 11, fontFamily: 'var(--font-mono)' }}
                 interval="preserveStartEnd"
                 tickFormatter={(v: string) => v.slice(5)}
               />
               <YAxis
-                tick={{ fill: C.text3, fontSize: 10, fontFamily: 'var(--font-mono)' }}
+                tick={{ fill: C.text3, fontSize: 11, fontFamily: 'var(--font-mono)' }}
                 width={60}
                 tickFormatter={(v: number) => v.toLocaleString()}
                 domain={['auto', 'auto']}

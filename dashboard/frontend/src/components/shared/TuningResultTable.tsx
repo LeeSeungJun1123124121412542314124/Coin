@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiFetch } from '../../lib/api'
-import { C, softBg } from '../../lib/theme'
+import { C, changeColor, softBg } from '../../lib/theme'
 
 // ────────────────────────────────────────
 // 타입 정의 (백엔드 backtest_tuner 결과 스키마와 일치)
@@ -200,7 +200,7 @@ export function TuningResultTable({
           gap: 14,
         }}>
           <span style={{ color: 'var(--text-2)', fontSize: '0.85rem', fontWeight: 600 }}>
-            🔬 자동 튜닝 (Walk-Forward)
+            자동 튜닝 (Walk-Forward)
           </span>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ color: 'var(--text-2)', fontSize: '0.78rem' }}>윈도우당 trials:</span>
@@ -243,10 +243,10 @@ export function TuningResultTable({
               marginLeft: 'auto',
             }}
           >
-            {isRunning ? '🔄 실행 중...' : '🚀 자동 튜닝 시작'}
+            {isRunning ? '실행 중...' : '자동 튜닝 시작'}
           </button>
         </div>
-        <div style={{ color: 'var(--text-3)', fontSize: '0.72rem', marginTop: 6 }}>
+        <div style={{ color: 'var(--text-3)', fontSize: '0.75rem', marginTop: 6 }}>
           전체 기간({startDate} ~ {endDate})을 expanding window로 분할해 IS에서 최적
           파라미터를 찾고 OOS로 검증합니다. 12개 파라미터(임계값/SL·TP/포지션/가중치)를
           Optuna TPE로 탐색.
@@ -264,7 +264,7 @@ export function TuningResultTable({
           marginBottom: 12,
           fontSize: '0.8rem',
         }}>
-          ⚠ {error}
+          ! {error}
         </div>
       )}
 
@@ -307,11 +307,11 @@ export function TuningResultTable({
                 fontSize: '0.85rem',
                 fontWeight: 700,
               }}>
-                {aggregate.passes_filter ? '✅ 필터 통과' : '❌ 필터 미통과'}
+                {aggregate.passes_filter ? '✓ 필터 통과' : '✗ 필터 미통과'}
               </div>
               <Metric label="OOS 평균 Expectancy"
                 value={`${aggregate.avg_oos_expectancy >= 0 ? '+' : ''}${aggregate.avg_oos_expectancy.toFixed(3)}`}
-                color={aggregate.avg_oos_expectancy > 0 ? 'var(--up)' : 'var(--down)'} />
+                color={changeColor(aggregate.avg_oos_expectancy)} />
               <Metric label="OOS 평균 PF"
                 value={aggregate.avg_oos_profit_factor.toFixed(2)}
                 color={aggregate.avg_oos_profit_factor >= 1.5 ? 'var(--ok)' : 'var(--text-2)'} />
@@ -382,7 +382,7 @@ export function TuningResultTable({
                       >
                         <td style={td}>{idx + 1}</td>
                         <td style={td}>{c.window_index}</td>
-                        <td style={{ ...td, color: c.metrics.expectancy > 0 ? 'var(--up)' : 'var(--down)' }}>
+                        <td style={{ ...td, color: changeColor(c.metrics.expectancy) }}>
                           {c.metrics.expectancy.toFixed(3)}
                         </td>
                         <td style={td}>{c.metrics.profit_factor.toFixed(2)}</td>
@@ -414,7 +414,7 @@ export function TuningResultTable({
           border: '1px solid var(--danger)',
           color: 'var(--danger)',
         }}>
-          ❌ 튜닝 실패: {job.error ?? '알 수 없는 오류'}
+          ✗ 튜닝 실패: {job.error ?? '알 수 없는 오류'}
         </div>
       )}
     </div>
@@ -428,7 +428,7 @@ export function TuningResultTable({
 function Metric({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div>
-      <div style={{ color: 'var(--text-2)', fontSize: '0.7rem', marginBottom: 2 }}>{label}</div>
+      <div style={{ color: 'var(--text-2)', fontSize: '0.75rem', marginBottom: 2 }}>{label}</div>
       <div style={{ color: color ?? 'var(--text)', fontWeight: 700, fontSize: '0.95rem' }}>{value}</div>
     </div>
   )

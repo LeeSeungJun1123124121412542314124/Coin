@@ -505,7 +505,7 @@ body {
 .shell-group-label {
   padding: 0 10px 6px;
   color: var(--text-3);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
 }
@@ -643,7 +643,7 @@ body {
     background: transparent;
     color: var(--text-3);
     font-family: inherit;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     text-decoration: none;
     cursor: pointer;
@@ -1789,4 +1789,12 @@ button.dash-cell:hover { background: var(--bg-inset); }
   .research-detail-btn { min-height: 44px; }
   /* 고래추적 KOSPI/KOSDAQ 전환 */
   .whale-kr-toggle-btn { min-height: 44px; }
+}
+
+/* ===== 마감: 모바일 누르는 곳 44px (세그먼트 안 버튼 38px) ===== */
+@media (max-width: 767px) {
+  button, select { min-height: 44px; }
+  .tap-seg button { min-height: 38px; }
+  .tap-icon { min-width: 44px; }
+  .mock-card-head button { min-height: 44px; min-width: 56px; }
 }
