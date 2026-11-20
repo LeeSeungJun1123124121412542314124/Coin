@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { parseReason } from '../src/components/screens/spfReasons.ts'
 
 // 팩터 이름 → 한국어 이름, 부호 → 방향
-assert.deepEqual(parseReason('dxy_13w -2.60'), { label: '달러 인덱스 13주 추세', tone: 'down', value: '−2.60' })
+assert.deepEqual(parseReason('dxy_13w -2.60'), { label: '달러지수 13주 변화', tone: 'down', value: '−2.60' })
 assert.deepEqual(parseReason('rsi14 +1.92'), { label: 'RSI(14)', tone: 'up', value: '+1.92' })
 assert.deepEqual(parseReason('sma50_dist -1.63'), { label: '50일 이동평균 이격', tone: 'down', value: '−1.63' })
 assert.deepEqual(parseReason('rsi14 +0.00'), { label: 'RSI(14)', tone: 'flat', value: '0.00' })

@@ -137,7 +137,8 @@ export function SPF() {
   const { current, history, similar_patterns, today_prediction } = data
   let reasons: string[] = []
   try {
-    reasons = today_prediction?.reasons ? JSON.parse(today_prediction.reasons) : []
+    const parsed = today_prediction?.reasons ? JSON.parse(today_prediction.reasons) : []
+    reasons = Array.isArray(parsed) ? parsed : []
   } catch {
     reasons = []
   }
@@ -145,12 +146,6 @@ export function SPF() {
 
   const verdictTone = dirTone(today_prediction?.direction ?? '')
   const verdictText = verdictTone === 'flat' ? '뚜렷한 방향이 없습니다' : `${today_prediction?.direction} 쪽이 우세합니다`
-
-  // 실측이 기대에 가장 못 미치는 기간 하나를 전망 카드 아래에 덧붙인다
-  const worst = ['7', '14', '30', '60']
-    .map(h => ({ h, s: predData?.stats?.[h] }))
-    .filter(({ s }) => s && s.realized != null && s.realized < s.expected)
-    .sort((a, b) => (a.s!.realized! - a.s!.expected) - (b.s!.realized! - b.s!.expected))[0]
 
   // 히스토리 차트 데이터 (오래된 순)
   const chartData = [...(history || [])].reverse().slice(-30).map(r => ({
@@ -165,6 +160,8 @@ export function SPF() {
   const oi3 = changeCell(current?.oi_change_3d)
   const oi7 = changeCell(current?.oi_change_7d)
   const frPct = (v: number | null | undefined) => (v == null ? '—' : `${fmtFixed(v * 100, 4)}%`)
+  // 현재 FR 강조: 과열(> 0.03%)은 주의색, 역발상 구간(< −0.01%)은 정상색
+  const frColor = (current?.fr ?? 0) > 0.0003 ? 'var(--warn)' : (current?.fr ?? 0) < -0.0001 ? 'var(--ok)' : 'var(--text)'
   const flowLabel = FLOW_LABELS[current?.flow ?? 'neutral'] ?? current?.flow
 
   return (
@@ -217,11 +214,6 @@ export function SPF() {
                 <span className="v2-nowrap" style={{ color: 'var(--up)' }}>▲ 상승 <span style={{ ...MONO, fontWeight: 600 }}>{today_prediction.up_prob}%</span></span>
                 <span className="v2-nowrap" style={{ color: 'var(--down)' }}>▼ 하락 <span style={{ ...MONO, fontWeight: 600 }}>{today_prediction.down_prob}%</span></span>
               </div>
-              {worst && (
-                <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
-                  다만 과거 적중률은 기간마다 편차가 큽니다. {worst.h}일 실측은 {fmtFixed(worst.s!.realized, 1)}%로 기대치({fmtFixed(worst.s!.expected, 1)}%)에 못 미칩니다.
-                </p>
-              )}
             </>
           ) : (
             <div style={{ color: 'var(--text-3)', fontSize: 14 }}>예측 데이터 없음</div>
@@ -233,7 +225,7 @@ export function SPF() {
           <Card style={{ padding: '18px 20px 8px' }}>
             <div className="spf-head">
               <h2 className="spf-h">예측 근거</h2>
-              <span className="spf-cap">숫자는 예측에 준 영향의 크기이고, 마이너스(−)는 하락 쪽입니다.</span>
+              <span className="spf-cap">각 요인이 전망을 어느 쪽으로 미는지와 그 세기입니다. 숫자는 요인 자체의 값이 아닙니다.</span>
             </div>
             <div className="spf-reason spf-reason-head" aria-hidden="true">
               <span>요인</span><span>방향</span><span style={{ textAlign: 'right' }}>영향</span>
@@ -319,7 +311,7 @@ export function SPF() {
         <Card style={{ padding: '16px 20px 6px' }}>
           <h2 className="spf-h" style={{ marginBottom: 6 }}>펀딩비(FR) <small>최근 펀딩 쏠림</small></h2>
           <div className="v2-list">
-            <div className="v2-row"><span>현재 펀딩비</span><span style={{ color: 'var(--text)' }}>{frPct(current?.fr)}</span></div>
+            <div className="v2-row"><span>현재 펀딩비</span><span style={{ color: frColor }}>{frPct(current?.fr)}</span></div>
             <div className="v2-row"><span>3일 누적</span><span style={{ color: 'var(--text)' }}>{frPct(current?.cum_fr_3d)}</span></div>
             <div className="v2-row"><span>7일 누적</span><span style={{ color: 'var(--text)' }}>{frPct(current?.cum_fr_7d)}</span></div>
             <div className="v2-row"><span>흐름 유형</span><span style={{ color: 'var(--text)', fontFamily: 'var(--font-sans)' }}>{current ? flowLabel : '—'}</span></div>

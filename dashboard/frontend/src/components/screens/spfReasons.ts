@@ -1,4 +1,5 @@
 // SPF 예측 근거 문자열 해석 — "<팩터 이름> <부호 있는 수>"를 쉬운 한국어로 바꾼다.
+// 값은 요인 자체가 아니라 "상승 쪽 +, 하락 쪽 −"로 부호를 맞춘 점수라서, 이름에는 방향을 암시하는 말을 넣지 않는다.
 // 팩터 이름은 crypto-volatility-bot/app/macro/direction_composite.py의 FACTORS(9개)와
 // build_factors의 tga_13w에서 가져왔다.
 
@@ -10,14 +11,14 @@ export interface ParsedReason {
 
 const FACTOR_LABELS: Record<string, string> = {
   net_liquidity_13w: '순유동성 13주 변화',
-  dxy_13w: '달러 인덱스 13주 추세',
-  ust10y_13w: '미국 10년물 금리 13주 추세',
-  vix_level: 'VIX 공포지수 수준',
-  mvrv_level: 'MVRV 고평가 정도',
+  dxy_13w: '달러지수 13주 변화',
+  ust10y_13w: '미국 10년물 금리 13주 변화',
+  vix_level: 'VIX 수준',
+  mvrv_level: 'MVRV(시장가치 ÷ 실현가치)',
   active_addr_13w: '활성 주소 13주 변화',
   rsi14: 'RSI(14)',
   sma50_dist: '50일 이동평균 이격',
-  momentum_30d: '30일 가격 모멘텀',
+  momentum_30d: '30일 가격 변화',
   tga_13w: '미 재무부 계좌(TGA) 13주 변화',
 }
 
