@@ -218,11 +218,12 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
     }
   }, [data, symbol, interval])
 
-  // 잠금 반영 — 잠그면 휠·끌기·터치로 차트가 움직이지 않아 차트 위에서도 페이지가 스크롤된다
+  // 잠금 반영 — 잠그면 확대·축소와 휠·세로 터치가 꺼져 차트 위에서도 페이지가 스크롤된다. 좌우로 끌어 시간 이동하는 것만 남긴다
   useEffect(() => {
     localStorage.setItem(LOCK_KEY, JSON.stringify(lock))
     partsRef.current?.chart.applyOptions({
-      handleScroll: !lock.locked, handleScale: !lock.locked,
+      handleScroll: lock.locked ? { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false } : true,
+      handleScale: !lock.locked,
       layout: { panes: { enableResize: !lock.locked } },
     })
   }, [lock])
