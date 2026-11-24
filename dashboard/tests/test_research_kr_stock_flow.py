@@ -90,6 +90,67 @@ async def test_kr_stock_flow_min_risk_at_opposite_band_edges(monkeypatch) -> Non
 
 
 @pytest.mark.asyncio
+async def test_kr_stock_flow_exposes_latest_day_and_change_from_previous_day(monkeypatch) -> None:
+    """20일 누적만으로는 날마다 같아 보인다 — 최신 영업일 수급과 전일 대비 변화를 함께 내려준다."""
+    from dashboard.backend.db import connection
+    from dashboard.backend.services import research_analyzer
+
+    conn = _memory_conn()
+    _seed_flow(conn, days=21, foreign_per_day=-1000.0, institution_per_day=500.0)
+    # 최신일(06-21)·전일(06-20)만 값이 다르다
+    conn.execute(
+        "UPDATE kr_investor_flow SET foreign_net = -2380.0, institution_net = 1879.0 WHERE date = '2026-06-21'"
+    )
+    conn.execute(
+        "UPDATE kr_investor_flow SET foreign_net = -10956.0, institution_net = -9330.0 WHERE date = '2026-06-20'"
+    )
+    _seed_volume(conn, first15_total=10.0, last5_total=10.0)
+
+    monkeypatch.setattr(connection, "get_db", lambda: _fake_db(conn))
+
+    result = await research_analyzer._analyze_kr_stock_flow()
+    details = result["details"]
+
+    # 판정 창은 그대로 최근 20영업일(06-02 ~ 06-21)
+    assert details["window_start"] == "2026-06-02"
+    assert details["window_end"] == "2026-06-21"
+    assert details["flow_total_20d"] == -29787.0
+
+    assert details["latest_date"] == "2026-06-21"
+    assert details["latest_foreign"] == -2380.0
+    assert details["latest_institution"] == 1879.0
+    assert details["prev_date"] == "2026-06-20"
+    assert details["prev_foreign"] == -10956.0
+    assert details["prev_institution"] == -9330.0
+    # 전일 기준 20일 합계(06-01 ~ 06-20) = -29786 → 변화 -1
+    assert details["flow_total_20d_change"] == -1.0
+
+    assert "06-21 외국인 -2,380억 · 기관 +1,879억" in result["summary"]
+    assert "20일 누적 -3.0조" in result["summary"]
+
+
+@pytest.mark.asyncio
+async def test_kr_stock_flow_omits_change_when_only_window_rows_exist(monkeypatch) -> None:
+    """21번째 행이 없으면 전일 기준 합계를 만들 수 없다 — 변화만 비우고 나머지는 정상 판정."""
+    from dashboard.backend.db import connection
+    from dashboard.backend.services import research_analyzer
+
+    conn = _memory_conn()
+    _seed_flow(conn, days=20, foreign_per_day=-1000.0, institution_per_day=500.0)
+    _seed_volume(conn, first15_total=10.0, last5_total=10.0)
+
+    monkeypatch.setattr(connection, "get_db", lambda: _fake_db(conn))
+
+    result = await research_analyzer._analyze_kr_stock_flow()
+    details = result["details"]
+
+    assert details["flow_total_20d"] == -10000.0
+    assert details["latest_date"] == "2026-06-20"
+    assert details["prev_date"] == "2026-06-19"
+    assert details["flow_total_20d_change"] is None
+
+
+@pytest.mark.asyncio
 async def test_kr_stock_flow_falls_back_when_samples_insufficient(monkeypatch) -> None:
     """20영업일 미만 적재 시 '데이터 적재 중' 폴백 — 적재가 차면 자동으로 살아난다."""
     from dashboard.backend.db import connection

@@ -98,6 +98,13 @@ export function toStockSentimentDetailRows(details: StockSentimentDetails): Arra
 }
 
 interface KrStockFlowDetails {
+  latest_date?: string | null
+  latest_foreign?: number | null
+  latest_institution?: number | null
+  prev_date?: string | null
+  prev_foreign?: number | null
+  prev_institution?: number | null
+  flow_total_20d_change?: number | null
   foreign_20d?: number | null
   institution_20d?: number | null
   flow_total_20d?: number | null
@@ -115,9 +122,24 @@ function formatEokAsJo(value: number): string {
   return `${jo >= 0 ? '+' : ''}${jo.toFixed(1)}조`
 }
 
+function formatEok(value: number): string {
+  const rounded = Math.round(value)
+  return `${rounded >= 0 ? '+' : '-'}${Math.abs(rounded).toLocaleString('ko-KR')}억`
+}
+
 export function toKrStockFlowDetailRows(details: KrStockFlowDetails): Array<[string, string]> {
   const rows: Array<[string, string]> = []
   const scores = details.component_scores
+
+  // 최신 영업일 → 전일 순으로 하루치 수급(억원). 라벨의 날짜는 MM-DD
+  for (const [date, foreign, institution] of [
+    [details.latest_date, details.latest_foreign, details.latest_institution],
+    [details.prev_date, details.prev_foreign, details.prev_institution],
+  ] as const) {
+    if (date == null) continue
+    if (foreign != null) rows.push([`외국인 ${date.slice(5)}`, formatEok(foreign)])
+    if (institution != null) rows.push([`기관 ${date.slice(5)}`, formatEok(institution)])
+  }
 
   if (details.foreign_20d != null) {
     rows.push(['외국인 20일', formatEokAsJo(details.foreign_20d)])
@@ -127,6 +149,9 @@ export function toKrStockFlowDetailRows(details: KrStockFlowDetails): Array<[str
   }
   if (details.flow_total_20d != null) {
     rows.push(['합계 20일', formatEokAsJo(details.flow_total_20d)])
+  }
+  if (details.flow_total_20d_change != null) {
+    rows.push(['합계 20일 전일 대비', formatEok(details.flow_total_20d_change)])
   }
   if (details.volume_ratio != null) {
     rows.push(['거래대금 5/20일', `${details.volume_ratio.toFixed(2)}x`])

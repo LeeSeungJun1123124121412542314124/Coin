@@ -39,6 +39,34 @@ assert.deepEqual(
 // 값 없는 필드는 생략
 assert.deepEqual(toKrStockFlowDetailRows({}), [])
 
+// 최신 영업일·전일 수급(억원)과 20일 합계의 전일 대비 변화 — 20일 누적만으로는 날마다 같아 보인다
+assert.deepEqual(
+  toKrStockFlowDetailRows({
+    latest_date: '2026-11-23',
+    latest_foreign: -2380,
+    latest_institution: 1879,
+    prev_date: '2026-11-20',
+    prev_foreign: -10956,
+    prev_institution: -9330,
+    flow_total_20d: -91000,
+    flow_total_20d_change: -501,
+  }),
+  [
+    ['외국인 11-23', '-2,380억'],
+    ['기관 11-23', '+1,879억'],
+    ['외국인 11-20', '-10,956억'],
+    ['기관 11-20', '-9,330억'],
+    ['합계 20일', '-9.1조'],
+    ['합계 20일 전일 대비', '-501억'],
+  ],
+)
+
+// 전일 대비 변화를 만들 수 없으면(null) 그 줄만 생략
+assert.deepEqual(
+  toKrStockFlowDetailRows({ flow_total_20d: -10000, flow_total_20d_change: null }),
+  [['합계 20일', '-1.0조']],
+)
+
 // 주식심리 카드 지수 설명 — 지수당 한 줄
 assert.equal(STOCK_SENTIMENT_INDEX_NOTES.length, 2)
 assert.equal(STOCK_SENTIMENT_INDEX_NOTES[0][0], '공포탐욕지수')

@@ -44,6 +44,7 @@
   - score = 0.7×flow + 0.3×volume → 기존 `_score_to_level` 재사용
 - **폴백**: 어느 입력이든 20영업일 미만이면 `_error_category` 패턴에 `summary="데이터 적재 중 (N/20영업일)"` — 적재가 차면 자동으로 살아남
 - `analyze_all`에 `key="kr_stock_flow"`, `name="주식수급"` 10번째로 추가. details: 외국인/기관 각 20일 누적, 거래대금 비율, 기준일 구간
+  - 2026-11-24 추가: 20일 누적만으로는 날마다 같아 보여서 최신 영업일·전일의 외국인/기관 순매수(`latest_*`, `prev_*`)와 20일 합계의 전일 대비 변화(`flow_total_20d_change`, 21번째 행이 없으면 null)를 함께 내려주고, summary 앞에 최신 영업일 값을 붙임. 점수 계산은 그대로
 
 ### 프론트
 - researchView: `RESEARCH_CATEGORIES`·`RESEARCH_CATEGORY_COLORS`에 '주식수급' 추가

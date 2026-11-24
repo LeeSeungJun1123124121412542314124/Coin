@@ -268,7 +268,7 @@ async def _analyze_kr_stock_flow() -> dict:
                WHERE market = 'KOSPI'
                ORDER BY date DESC
                LIMIT ?""",
-            (_KR_FLOW_WINDOW_ROWS,),
+            (_KR_FLOW_WINDOW_ROWS + 1,),  # 전일 기준 20일 합계 비교용으로 한 행 더
         ).fetchall()
         volume_rows = conn.execute(
             """SELECT date, kospi_value, kosdaq_value
@@ -285,9 +285,24 @@ async def _analyze_kr_stock_flow() -> dict:
         category["summary"] = f"데이터 적재 중 ({sample}/{_KR_FLOW_WINDOW_ROWS}영업일) — 표본이 차면 자동 판정됩니다."
         return category
 
+    # 판정 창(20영업일) 밖의 한 행은 전일 기준 합계 계산에만 쓴다
+    extra_row = flow_rows[_KR_FLOW_WINDOW_ROWS] if len(flow_rows) > _KR_FLOW_WINDOW_ROWS else None
+    flow_rows = flow_rows[:_KR_FLOW_WINDOW_ROWS]
+
     foreign_total = sum(row["foreign_net"] or 0.0 for row in flow_rows)
     institution_total = sum(row["institution_net"] or 0.0 for row in flow_rows)
     flow_total = foreign_total + institution_total
+
+    # 20일 누적은 천천히 움직여 날마다 같아 보인다 — 최신 영업일 값과 전일 대비 변화를 같이 내려준다
+    latest, prev = flow_rows[0], flow_rows[1]
+    latest_foreign = latest["foreign_net"] or 0.0
+    latest_institution = latest["institution_net"] or 0.0
+    if extra_row is None:
+        flow_total_change = None
+    else:
+        # 하루 지나면 최신일이 들어오고 가장 오래된 날이 빠진다
+        dropped = (extra_row["foreign_net"] or 0.0) + (extra_row["institution_net"] or 0.0)
+        flow_total_change = latest_foreign + latest_institution - dropped
 
     flow_high, flow_low = KR_FLOW_BAND
     flow_score = _clamp_float((flow_high - flow_total) / (flow_high - flow_low) * 100)
@@ -310,8 +325,18 @@ async def _analyze_kr_stock_flow() -> dict:
         "level": _score_to_level(score),
         "score": score,
         "title": f"주식수급 {score}/100",
-        "summary": f"외국인+기관 20일 {flow_total / 10_000:+.1f}조 | 거래대금 {volume_ratio:.2f}x",
+        "summary": (
+            f"{latest['date'][5:]} 외국인 {latest_foreign:+,.0f}억 · 기관 {latest_institution:+,.0f}억"
+            f" | 20일 누적 {flow_total / 10_000:+.1f}조 | 거래대금 {volume_ratio:.2f}x"
+        ),
         "details": {
+            "latest_date": latest["date"],
+            "latest_foreign": latest_foreign,
+            "latest_institution": latest_institution,
+            "prev_date": prev["date"],
+            "prev_foreign": prev["foreign_net"] or 0.0,
+            "prev_institution": prev["institution_net"] or 0.0,
+            "flow_total_20d_change": flow_total_change,
             "foreign_20d": foreign_total,
             "institution_20d": institution_total,
             "flow_total_20d": flow_total,
