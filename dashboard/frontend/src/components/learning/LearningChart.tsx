@@ -49,16 +49,21 @@ const SETTING_CHIPS: [SettingKey, string][] = [['ma', '이동평균'], ['bb', '�
 const BASE_HEIGHT = 460
 const PANE_HEIGHT = 110
 
-// 차트 잠금 — 잠금 여부와 종목|시간봉별로 잠근 화면(확대 상태)을 브라우저에 저장해 앱을 다시 열어도 유지한다
-// from·to는 마지막 캔들 기준 봉 위치(새 봉이 생겨도 최신 쪽에 붙어 있게), price는 가격축을 손으로 늘렸을 때만 저장
+// 차트 잠금 — 잠금 여부와 잠근 화면(확대 상태)을 브라우저에 저장해 앱을 다시 열어도 유지한다
+// time은 모든 종목·시간봉에 똑같이 쓰는 가로 범위(마지막 캔들 기준 봉 위치 — 새 봉이 생겨도 최신 쪽에 붙어 있게)
+// prices는 가격축을 손으로 늘렸을 때만 종목|시간봉별로 저장하는 세로 범위(가격대가 서로 달라 함께 쓸 수 없다)
 const LOCK_KEY = 'learning-chart-lock'
-interface LockedView { from: number; to: number; price: { from: number; to: number } | null }
-interface LockStore { locked: boolean; views: Record<string, LockedView> }
+interface LockStore {
+  locked: boolean
+  time: { from: number; to: number } | null
+  prices: Record<string, { from: number; to: number }>
+}
 const readLock = (): LockStore => {
   try {
-    return JSON.parse(localStorage.getItem(LOCK_KEY) ?? '')
+    const s = JSON.parse(localStorage.getItem(LOCK_KEY) ?? '')
+    return { locked: !!s.locked, time: s.time ?? null, prices: s.prices ?? {} }
   } catch {
-    return { locked: false, views: {} }
+    return { locked: false, time: null, prices: {} }
   }
 }
 
@@ -198,14 +203,15 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
     const fitKey = `${symbol}|${interval}`
     if (fitKeyRef.current !== fitKey) {
       fitKeyRef.current = fitKey
-      // 잠금 중이고 이 종목|시간봉으로 잠근 화면이 있으면 그대로 복원, 없으면 전체 맞춤
+      // 잠금 중이면 잠근 가로 범위를 어느 종목·시간봉에나 그대로 적용, 봉 수가 모자라 범위가 첫 캔들 앞에서 시작하면 전체 맞춤
       const saved = readLock()
-      const view = saved.locked ? saved.views[fitKey] : undefined
       const lastIndex = data.candles.length - 1
-      if (view) p.chart.timeScale().setVisibleLogicalRange({ from: lastIndex + view.from, to: lastIndex + view.to })
+      const time = saved.locked && saved.time && lastIndex + saved.time.from >= 0 ? saved.time : null
+      if (time) p.chart.timeScale().setVisibleLogicalRange({ from: lastIndex + time.from, to: lastIndex + time.to })
       else p.chart.timeScale().fitContent()
-      // 가격축 — 저장된 범위가 있으면 복원, 없으면 자동 맞춤(앞 종목에서 손으로 늘린 범위가 남지 않게)
-      if (view?.price) p.candle.priceScale().setVisibleRange(view.price)
+      // 가격축 — 이 종목|시간봉으로 저장된 범위가 있으면 복원, 없으면 자동 맞춤(앞 종목에서 손으로 늘린 범위가 남지 않게)
+      const price = saved.locked ? saved.prices[fitKey] : undefined
+      if (price) p.candle.priceScale().setVisibleRange(price)
       else p.candle.priceScale().setAutoScale(true)
     }
   }, [data, symbol, interval])
@@ -328,7 +334,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
     }
   }
 
-  // 잠금 토글 — 잠글 때 지금 보이는 범위를 이 종목|시간봉의 잠근 화면으로 저장한다
+  // 잠금 토글 — 잠글 때 지금 보이는 가로 범위를 저장하고, 가격축을 손으로 늘렸으면 이 종목|시간봉의 세로 범위도 저장한다
   const toggleLock = () => {
     const p = partsRef.current
     if (lock.locked || !p || !data) {
@@ -338,11 +344,15 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
     const range = p.chart.timeScale().getVisibleLogicalRange()
     const lastIndex = data.candles.length - 1
     const scale = p.candle.priceScale()
-    const view = range && {
-      from: range.from - lastIndex, to: range.to - lastIndex,
-      price: scale.options().autoScale ? null : scale.getVisibleRange(),
-    }
-    setLock(l => ({ locked: true, views: view ? { ...l.views, [`${symbol}|${interval}`]: view } : l.views }))
+    const price = scale.options().autoScale ? null : scale.getVisibleRange()
+    const prices = { ...lock.prices }
+    if (price) prices[`${symbol}|${interval}`] = price
+    else delete prices[`${symbol}|${interval}`]
+    setLock({
+      locked: true,
+      time: range ? { from: range.from - lastIndex, to: range.to - lastIndex } : lock.time,
+      prices,
+    })
   }
 
   // 켜진 보조 지표 범례 — 서버 응답(켜진 지표만 존재)과 설정 기간 기준 (거래량은 막대로 명확해 제외)
