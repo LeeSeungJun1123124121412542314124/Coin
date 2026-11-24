@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { CandlestickSeries, CrosshairMode, HistogramSeries, LineSeries, LineStyle, PriceScaleMode, createChart, createSeriesMarkers } from 'lightweight-charts'
 import type { IChartApi, IPriceLine, ISeriesApi, ISeriesMarkersPluginApi, LineWidth, SeriesType, Time } from 'lightweight-charts'
 import { getChart, putSettings } from '../../lib/learningApi.ts'
-import type { ChartResponse, Interval, LearningSettings } from '../../lib/learningApi.ts'
+import type { ChartResponse, Interval, LearningSettings, Structure } from '../../lib/learningApi.ts'
 import { C, changeArrow, changeColor, softBg } from '../../lib/theme.ts'
 import { Card } from '../shared/Card'
 import LastUpdated from '../shared/LastUpdated'
@@ -99,6 +99,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
   const containerRef = useRef<HTMLDivElement>(null)
   const partsRef = useRef<ChartParts | null>(null)
   const fibLinesRef = useRef<IPriceLine[]>([])
+  const rangeLinesRef = useRef<IPriceLine[]>([])
   // 보조 지표 시리즈 — 데이터가 바뀔 때마다 지우고 다시 만든다
   const indSeriesRef = useRef<ISeriesApi<SeriesType>[]>([])
   // 마지막으로 fitContent 한 종목|시간봉 — 같은 대상 재조회(칩·폼 저장)에서는 줌을 유지한다
@@ -116,6 +117,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
     setChipError(null)
   }
   const [shown, setShown] = useState<Record<IndicatorKey, boolean>>({ ichimoku: true, zigzag: true, fib: true })
+  const [showRange, setShowRange] = useState(true)
 
   const load = useMemo(() => (ready ? () => getChart(symbol, interval) : null), [ready, symbol, interval])
   const chart = useLoader(load)
@@ -178,6 +180,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
       c.remove()
       partsRef.current = null
       fibLinesRef.current = []
+      rangeLinesRef.current = []
       indSeriesRef.current = []
     }
   }, [])
@@ -310,6 +313,25 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
       : []
   }, [data, shown])
 
+  // 구조 범위 가로선 — 칩이 켜져 있을 때만, 값이 있는 것만 지우고 다시 만든다
+  useEffect(() => {
+    const p = partsRef.current
+    if (!p) return
+    for (const line of rangeLinesRef.current) p.candle.removePriceLine(line)
+    const st = data?.structure
+    const lines: [string, number | null | undefined, string][] = st ? [
+      ['HTF 고점', st.htf.range.high, C.violet],
+      ['HTF 저점', st.htf.range.low, C.violet],
+      ['LTF 고점', st.ltf.range.high, C.accent],
+      ['LTF 저점', st.ltf.range.low, C.accent],
+    ] : []
+    rangeLinesRef.current = showRange
+      ? lines.flatMap(([title, price, color]) => price == null ? [] : [p.candle.createPriceLine({
+        price, color, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: true, title,
+      })])
+      : []
+  }, [data, showRange])
+
   // 가격축 선형/로그 — 오른쪽 가격축 모드만 바꾼다
   useEffect(() => {
     partsRef.current?.chart.priceScale('right').applyOptions({
@@ -398,6 +420,9 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
               {label}
             </button>
           ))}
+          <button style={toggleStyle(showRange)} aria-pressed={showRange} onClick={() => setShowRange(v => !v)}>
+            구조 범위
+          </button>
           {SETTING_CHIPS.map(([key, label]) => (
             <button key={key} style={toggleStyle(isOn(key))} aria-pressed={isOn(key)} disabled={!data}
               onClick={() => toggleSetting(key)}>
@@ -444,6 +469,14 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
               </div>
             )}
             <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+            {showRange && data?.structure && (
+              <div title={data.structure.reasons.join('\n')} style={{
+                position: 'absolute', top: 6, left: 8, zIndex: 2, padding: '2px 6px', borderRadius: 4,
+                background: softBg(C.surface, 0.85), color: 'var(--text-2)', fontSize: '0.75rem', pointerEvents: 'auto',
+              }}>
+                <StructureLine structure={data.structure} interval={interval} />
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8, fontSize: '0.75rem', color: MUTED }}>
@@ -477,6 +510,22 @@ const BEARISH_VALUES = new Set(['below', 'dead', 'bearish'])
 const tone = (v: string | null) => (v !== null && BULLISH_VALUES.has(v) ? 1 : v !== null && BEARISH_VALUES.has(v) ? -1 : 0)
 
 // 현재 일목 상태·와이코프 박스 요약 (값 null은 판단 불가)
+const STRUCTURE_LABELS = { bullish: '매수 우위', neutral: '중립', bearish: '매도 우위' } as const
+const signed = (n: number) => (n === 0 ? '0' : `${n > 0 ? '+' : '−'}${Math.abs(n)}`)
+
+/** 차트 왼쪽 위 한 줄: HTF·LTF 기여 점수와 합계 */
+function StructureLine({ structure: st, interval }: { structure: Structure; interval: Interval }) {
+  const dir = st.label === 'bullish' ? 1 : st.label === 'bearish' ? -1 : 0
+  const htf = st.htf_interval ? `HTF(${INTERVAL_LABELS[st.htf_interval]}) ${signed(st.htf_pts)}` : 'HTF 없음 0'
+  return (
+    <>
+      {htf} · LTF({INTERVAL_LABELS[interval]}) {signed(st.ltf_pts)} · 합계{' '}
+      <b style={{ color: changeColor(dir) }}>{st.score} {STRUCTURE_LABELS[st.label]}</b>
+      {st.bonus !== 0 && ` · 일치 ${signed(st.bonus)}`}
+    </>
+  )
+}
+
 function StateSummary({ data, withHour }: { data: ChartResponse; withHour: boolean }) {
   const box = data.wyckoff.current_box
   const row = { display: 'flex', justifyContent: 'space-between', gap: 12, padding: '7px 0', borderBottom: '1px solid var(--line)', fontSize: '0.82rem' } as const

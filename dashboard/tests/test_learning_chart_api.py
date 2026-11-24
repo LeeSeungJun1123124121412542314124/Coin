@@ -66,7 +66,7 @@ def test_chart_returns_all_keys(client):
     r = client.get("/api/learning/chart", params={"symbol": "btcusdt", "interval": "1d", "limit": 100})
     assert r.status_code == 200
     body = r.json()
-    assert set(body) == {"candles", "ichimoku", "wyckoff", "pivots", "fib", "state", "settings", "indicators"}
+    assert set(body) == {"candles", "ichimoku", "wyckoff", "pivots", "fib", "state", "settings", "indicators", "structure"}
     assert 0 < len(body["candles"]) <= 100
     assert set(body["state"]) == _STATE_KEYS
 
@@ -98,6 +98,7 @@ def test_chart_empty_candles_returns_empty_structure(client):
     assert b["wyckoff"] == {"volume_spikes": [], "candidates": [], "current_box": None}
     assert b["state"] == {k: None for k in _STATE_KEYS}
     assert b["settings"]["wyckoff"]["n"] == 30
+    assert b["structure"] is None
 
 
 def test_chart_trims_to_first_candle(client):
@@ -231,3 +232,22 @@ def test_chart_indicators_short_history_no_error(client):
     client.put("/api/learning/settings", json={"indicators": {"macd": {"enabled": True}}})
     body = client.get("/api/learning/chart", params={"symbol": "BTCUSDT", "limit": 30}).json()
     assert body["indicators"] == {"macd": []}
+
+
+def test_chart_structure_uses_daily_as_htf_for_1h(client):
+    _track()
+    _insert(_flat_candles(80, "1h"), interval="1h")
+    s = client.get("/api/learning/chart", params={"symbol": "BTCUSDT", "interval": "1h", "limit": 60}).json()["structure"]
+    assert s["htf_interval"] == "1d"
+    assert s["htf"]["insufficient"] is True  # 일봉 캔들이 없다
+    assert set(s) == {"htf_interval", "htf", "ltf", "score", "label", "reasons", "htf_pts", "ltf_pts", "bonus"}
+    assert 0 <= s["score"] <= 100 and s["htf"]["range"] == {"high": None, "low": None}
+
+
+def test_chart_structure_htf_mapping_and_monthly_none(client):
+    _track()
+    _insert(_flat_candles(60, "1d"), interval="1d")
+    _insert(_flat_candles(60, "1M"), interval="1M")
+    get = lambda i: client.get("/api/learning/chart", params={"symbol": "BTCUSDT", "interval": i}).json()["structure"]  # noqa: E731
+    assert get("1d")["htf_interval"] == "1w"
+    assert get("1M")["htf_interval"] is None

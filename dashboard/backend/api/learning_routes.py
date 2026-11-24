@@ -13,7 +13,8 @@ from pydantic import BaseModel, Field
 from dashboard.backend.collectors import binance_spot, exchange_rate
 from dashboard.backend.db.connection import get_db
 from dashboard.backend.services import (
-    learning_account, learning_indicators, learning_metrics, learning_review, learning_symbols,
+    learning_account, learning_indicators, learning_metrics, learning_review, learning_structure,
+    learning_symbols,
 )
 from dashboard.backend.services.learning_snapshot import build_snapshot
 from dashboard.backend.services.learning_settings import LearningError, get_settings, update_settings
@@ -146,13 +147,17 @@ async def get_chart(
     if not candles:
         return {"candles": [], "ichimoku": [], "indicators": {},
                 "wyckoff": {"volume_spikes": [], "candidates": [], "current_box": None},
-                "pivots": [], "fib": [], "state": dict(_STATE_NONE), "settings": settings}
+                "pivots": [], "fib": [], "state": dict(_STATE_NONE), "settings": settings, "structure": None}
     wy, el = settings["wyckoff"], settings["elliott"]
     ich = learning_indicators.ichimoku(candles, interval)
     state = learning_indicators.ichimoku_state(candles, ich)
     wyckoff = learning_indicators.wyckoff_candidates(candles, wy["n"], wy["width_pct"], wy["vol_mult"])
     pivots = learning_indicators.zigzag(candles, el[f"threshold_{interval}"])
     fib = learning_indicators.fib_levels(pivots, el["levels"])
+
+    htf = learning_structure.HTF_OF[interval]
+    htf_candles = _load_candles(symbol, htf, 500) if htf else []
+    structure = learning_structure.build_structure(interval, candles, htf_candles)
 
     shown = candles[-limit:]
     t0 = shown[0]["open_time"]
@@ -169,6 +174,7 @@ async def get_chart(
         "fib": fib,
         "state": state,
         "settings": settings,
+        "structure": structure,
     }
 
 

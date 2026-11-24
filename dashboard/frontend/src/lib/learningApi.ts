@@ -96,6 +96,37 @@ export interface IndicatorsResponse {
   macd?: { time: number; macd: number; signal: number; hist: number }[]
 }
 
+// ── 구조 점수 (HTF-LTF) ──
+
+export interface StructureBreak {
+  time: number
+  level: number
+  direction: 'up' | 'down'
+  kind: 'bos' | 'choch'
+  strength: 'weak' | 'strong'
+  bars_ago: number
+}
+
+export interface StructureTimeframe {
+  trend: 'up' | 'down' | 'neutral'
+  fresh: boolean
+  insufficient: boolean
+  last_break: StructureBreak | null
+  range: { high: number | null; low: number | null }
+}
+
+export interface Structure {
+  htf_interval: '1d' | '1w' | '1M' | null
+  htf: StructureTimeframe
+  ltf: StructureTimeframe
+  score: number
+  label: 'bullish' | 'neutral' | 'bearish'
+  reasons: string[]
+  htf_pts: number
+  ltf_pts: number
+  bonus: number
+}
+
 export interface ChartResponse {
   candles: Candle[]
   ichimoku: IchimokuRow[]
@@ -105,6 +136,7 @@ export interface ChartResponse {
   state: IchimokuState
   settings: LearningSettings
   indicators?: IndicatorsResponse
+  structure: Structure | null
 }
 
 export interface OrderContext {
