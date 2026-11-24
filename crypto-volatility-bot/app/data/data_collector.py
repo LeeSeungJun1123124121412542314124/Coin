@@ -122,6 +122,14 @@ class DataCollector:
                 if not data:
                     return None
                 rows = sorted(data, key=lambda r: r.get("time") or "")  # 응답 순서 비보장
+                # 새 날짜 행은 유출입 값이 빈 채로 먼저 생기고 나중에 채워진다 — 값이 있는 날만 쓴다
+                # (빈 행을 쓰면 유입·유출이 0으로 잡힌다)
+                rows = [
+                    r for r in rows
+                    if r.get("FlowInExNtv") is not None and r.get("FlowOutExNtv") is not None
+                ]
+                if not rows:
+                    return None
                 latest = rows[-1]
                 inflow = float(latest.get("FlowInExNtv") or 0)
                 outflow = float(latest.get("FlowOutExNtv") or 0)

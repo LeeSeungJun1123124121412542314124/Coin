@@ -84,6 +84,55 @@ async def test_fetch_onchain_data_returns_data_date(monkeypatch) -> None:
     assert raw["exchange_inflow"] == 14441.8
 
 
+def _coinmetrics_client(monkeypatch, rows: list[dict]) -> None:
+    import httpx
+
+    from app.data import data_collector
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"data": rows})
+
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        data_collector.httpx, "AsyncClient",
+        lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw),
+    )
+
+
+@pytest.mark.asyncio
+async def test_fetch_onchain_data_skips_newest_row_without_flow_values(monkeypatch) -> None:
+    """Coin Metrics는 새 날짜 행을 먼저 만들고 유출입 값은 나중에 채운다(2026-11-24 운영에서 확인).
+
+    값이 빈 최신 행을 그대로 쓰면 카드에 '유입 0 BTC | 유출 0 BTC'가 나온다 — 값이 있는 가장 최근 날을 써야 한다.
+    """
+    from app.data import data_collector
+
+    _coinmetrics_client(monkeypatch, [
+        {"asset": "btc", "time": "2026-11-22T00:00:00.000000000Z", "FlowInExNtv": "14441.8", "FlowOutExNtv": "13517.4", "AdrActCnt": "565564", "CapMVRVCur": "1.148"},
+        {"asset": "btc", "time": "2026-11-23T00:00:00.000000000Z", "FlowInExNtv": None, "FlowOutExNtv": None, "AdrActCnt": "690952", "CapMVRVCur": None},
+    ])
+
+    raw = await data_collector.DataCollector().fetch_onchain_data("btc")
+
+    assert raw["as_of"] == "2026-11-22"
+    assert raw["exchange_inflow"] == 14441.8
+    assert raw["exchange_outflow"] == 13517.4
+    assert raw["mvrv"] == 1.148
+
+
+@pytest.mark.asyncio
+async def test_fetch_onchain_data_returns_none_when_no_row_has_flow_values(monkeypatch) -> None:
+    """유출입 값이 있는 행이 하나도 없으면 0으로 채우지 않고 '데이터 없음'으로 돌려준다."""
+    from app.data import data_collector
+
+    _coinmetrics_client(monkeypatch, [
+        {"asset": "btc", "time": "2026-11-23T00:00:00.000000000Z", "FlowInExNtv": None, "FlowOutExNtv": None, "AdrActCnt": "690952"},
+    ])
+    monkeypatch.setattr(data_collector, "_retry_async", lambda fn: fn())
+
+    assert await data_collector.DataCollector().fetch_onchain_data("btc") is None
+
+
 @pytest.mark.asyncio
 async def test_stock_sentiment_summary_shows_each_data_date(monkeypatch) -> None:
     """풋콜 비율은 하루 늦게 나온다 — 공포탐욕과 날짜가 다를 수 있어 각각 붙인다."""
