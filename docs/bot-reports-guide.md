@@ -83,17 +83,33 @@ curl -X POST "https://myl6zvvq1egnb4adcundbjbv.129.203.199.110.sslip.io/api/bot-
 - 리서치 점수 계산에는 넣지 않는다.
 - 관련 코드: `dashboard/backend/api/bot_report_routes.py`, 스펙: `docs/plans/bot-reports-spec-2026-11-24.md`
 
-## 리서치 카드에 쓰이는 부분 (형식을 유지해 주세요)
+## 리서치 카드에 쓰이는 숫자 값 (`data`)
 
-보낸 리포트 중 세 가지는 리서치 화면의 "봇 관찰" 카드로도 만들어집니다. 아래 형식이 바뀌면 카드가 빠집니다.
+보낸 리포트 중 세 가지는 리서치 화면의 "봇 관찰" 카드로도 만들어집니다.
+카드는 본문이 아니라 **`data`에 넣은 값**으로 만듭니다. 본문 표는 사람이 읽는 용도로 자유롭게 써도 됩니다.
 
-| 카드 | 읽는 곳 | 유지할 것 |
+| 카드 | 리포트 종류 | `data`에 넣을 것 |
 |---|---|---|
-| ETF 수급 | `daily_check` 본문의 ETF 표 | 머리글 `날짜 \| BTC \| ETH \| SOL \| 비고`, 가장 최근 날짜가 첫 줄, 금액은 `−$73.7M` 형태(백만 달러). 잠정치는 비고에 "잠정", 확정되면 "확정"을 적는다 |
-| 청산 히트맵 | `heatmap`의 `data` | 아래 키 |
-| 고래 소식 | `whale` 본문의 첫 표 | 머리글 첫 칸에 "시각", 순서는 `시각 \| 계정 \| 코인 \| 내용 \| 링크`. 기준을 넘은 건은 시각 칸 앞에 🔴 |
+| ETF 수급 | `daily_check` | `etf` |
+| 청산 히트맵 | `heatmap` | `price`, `main_long_band`, `biggest_short`, `long_pct`, `short_pct`, `liquidated_24h` |
+| 고래 소식 | `whale` | `items` |
 
-`heatmap`의 `data` 키(모두 숫자, 없는 것은 빼도 됩니다):
+### `daily_check` — ETF 순유입
+
+```json
+{
+  "etf": [
+    { "date": "11/23", "btc_m": -73.7, "eth_m": 0.0, "sol_m": -1.9, "provisional": true },
+    { "date": "11/20", "btc_m": -669.2, "eth_m": -97.3, "sol_m": -5.9, "provisional": false }
+  ]
+}
+```
+
+- 최신 날짜를 맨 앞에, 최근 3~5일치.
+- 금액은 백만 달러 단위 숫자(순유출은 음수). `date`와 `btc_m`은 필수, 나머지는 없으면 빼도 됩니다.
+- 일부 운용사 미집계 등 잠정치면 `provisional: true`.
+
+### `heatmap` — 청산 히트맵
 
 ```json
 {
@@ -105,5 +121,26 @@ curl -X POST "https://myl6zvvq1egnb4adcundbjbv.129.203.199.110.sslip.io/api/bot-
   "liquidated_24h": { "total_m": 97.0, "long_m": 34.7, "short_m": 62.3 }
 }
 ```
+
+모두 숫자이고, 읽지 못한 값은 빼면 됩니다(있는 것만 보여 줍니다).
+
+### `whale` — 고래·온체인 소식
+
+```json
+{
+  "items": [
+    { "time": "11-24 00:22", "account": "Whale Alert", "coin": "ETH", "text": "29,624 ETH($53.0M) 미확인 지갑→Coinbase Institutional 입금", "flagged": true },
+    { "time": "11-24 00:57", "account": "Whale Alert", "coin": "BTC", "text": "4,362 BTC($274.2M) Coinbase Institutional→신규 미확인 지갑 이동" }
+  ]
+}
+```
+
+- `time`·`account`·`coin`·`text`는 필수(문자열). 알림 기준을 넘은 건은 `flagged: true`.
+- `text`는 본문 표의 "내용" 칸과 같은 한 문장.
+
+### `data`가 없을 때
+
+`data`를 보내지 않으면 본문 표를 읽어서 카드를 만듭니다(ETF는 머리글 `날짜 | BTC | ETH | SOL | 비고`인 표, 고래는 머리글 첫 칸에 "시각"이 있는 첫 표).
+이 방식은 표 모양이 바뀌면 카드가 빠지므로, `data`를 보내는 쪽을 권합니다.
 
 카드는 종류별로 가장 최근 리포트 한 건으로 만들고, 전날 리포트와 나란히 보여 줍니다. 점수 계산에는 쓰지 않습니다.

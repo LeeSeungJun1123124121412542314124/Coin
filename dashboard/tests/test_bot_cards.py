@@ -160,6 +160,85 @@ def test_whale_card_counts_items_by_coin_and_lists_them(conn) -> None:
     ]
 
 
+ETF_DATA = {
+    "etf": [
+        {"date": "11/24", "btc_m": 120.5, "eth_m": -3.2, "sol_m": 0, "provisional": True},
+        {"date": "11/23", "btc_m": -250.0, "eth_m": -10.0, "sol_m": -1.9, "provisional": False},
+    ],
+}
+
+WHALE_DATA = {
+    "items": [
+        {"time": "11-24 00:22", "account": "Whale Alert", "coin": "ETH", "text": "29,624 ETH 거래소 입금", "flagged": True},
+        {"time": "11-24 00:57", "account": "Whale Alert", "coin": "BTC", "text": "4,362 BTC 거래소 출금"},
+    ],
+}
+
+
+def test_etf_card_prefers_numbers_sent_in_data(conn) -> None:
+    """봇이 숫자 값을 data로 보내면 본문 표를 읽지 않는다 — 표 모양이 바뀌어도 카드가 깨지지 않는다."""
+    from dashboard.backend.services import bot_cards
+
+    # 본문에는 다른 숫자의 표가 있다 — data가 우선한다
+    _add(conn, "daily_check", "2026-11-24T00:06:00+00:00", body=DAILY_BODY, data=ETF_DATA)
+
+    card = _by_key(bot_cards.build_bot_cards(TODAY))["bot_etf"]
+
+    assert card["title"] == "BTC 현물 ETF +$120.5M (11/24 잠정)"
+    assert card["summary"] == "11/24 잠정 · BTC +$120.5M | ETH -$3.2M | SOL $0.0M"
+    assert card["details"]["rows"] == [
+        ["11/24 (잠정)", "BTC +$120.5M · ETH -$3.2M · SOL $0.0M"],
+        ["11/23", "BTC -$250.0M · ETH -$10.0M · SOL -$1.9M"],
+    ]
+
+
+def test_etf_card_works_from_data_alone(conn) -> None:
+    from dashboard.backend.services import bot_cards
+
+    _add(conn, "daily_check", "2026-11-24T00:06:00+00:00", body="표 없는 본문", data=ETF_DATA)
+
+    assert _by_key(bot_cards.build_bot_cards(TODAY))["bot_etf"]["summary"].startswith("11/24 잠정 · BTC +$120.5M")
+
+
+@pytest.mark.parametrize("bad", [
+    {"etf": "없음"},
+    {"etf": []},
+    {"etf": [{"date": "11/24", "btc_m": "많음"}]},
+    {"etf": [{"btc_m": 1.0}]},
+    {"other": 1},
+])
+def test_etf_card_falls_back_to_table_when_data_is_unusable(conn, bad) -> None:
+    from dashboard.backend.services import bot_cards
+
+    _add(conn, "daily_check", "2026-11-24T00:06:00+00:00", body=DAILY_BODY, data=bad)
+
+    assert _by_key(bot_cards.build_bot_cards(TODAY))["bot_etf"]["summary"] == "11/23 잠정 · BTC -$73.7M | ETH $0.0M | SOL -$1.9M"
+
+
+def test_whale_card_prefers_items_sent_in_data(conn) -> None:
+    from dashboard.backend.services import bot_cards
+
+    _add(conn, "whale", "2026-11-24T00:43:00+00:00", body=WHALE_BODY, data=WHALE_DATA)
+
+    card = _by_key(bot_cards.build_bot_cards(TODAY))["bot_whale"]
+
+    assert card["title"] == "고래·온체인 소식 2건"
+    assert card["summary"] == "11-24 09:43 기준 · 소식 2건 | ETH 1건 · BTC 1건 | 🔴 1건"
+    assert card["details"]["rows"] == [
+        ["🔴 11-24 00:22 · Whale Alert · ETH", "29,624 ETH 거래소 입금"],
+        ["11-24 00:57 · Whale Alert · BTC", "4,362 BTC 거래소 출금"],
+    ]
+
+
+@pytest.mark.parametrize("bad", [{"items": "없음"}, {"items": []}, {"items": [{"time": "11-24 00:22"}]}, {"x": 1}])
+def test_whale_card_falls_back_to_table_when_data_is_unusable(conn, bad) -> None:
+    from dashboard.backend.services import bot_cards
+
+    _add(conn, "whale", "2026-11-24T00:43:00+00:00", body=WHALE_BODY, data=bad)
+
+    assert _by_key(bot_cards.build_bot_cards(TODAY))["bot_whale"]["title"] == "고래·온체인 소식 3건"
+
+
 def test_cards_use_latest_report_and_compare_with_previous_kst_day(conn) -> None:
     from dashboard.backend.services import bot_cards
 

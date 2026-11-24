@@ -37,6 +37,10 @@ def _dict(value) -> dict:
     return value if isinstance(value, dict) else {}
 
 
+def _data(report) -> dict:
+    return _dict(json.loads(report["data_json"])) if report["data_json"] else {}
+
+
 _SEPARATOR = re.compile(r"^\|?[\s:|-]+\|?$")
 _LINK = re.compile(r"\[([^\]]+)\]\([^)]*\)")
 
@@ -74,7 +78,7 @@ def _distance(target: float, price: float | None) -> str:
 
 
 def _build_heatmap(report) -> tuple[str, str | None, list[list[str]]]:
-    data = _dict(json.loads(report["data_json"])) if report["data_json"] else {}
+    data = _data(report)
     price = _num(data.get("price"))
     long_band, short_band = _dict(data.get("main_long_band")), _dict(data.get("biggest_short"))
     long_price, short_price = _num(long_band.get("price")), _num(short_band.get("price"))
@@ -140,14 +144,28 @@ def _signed_money(value: float) -> str:
     return f"{sign}${abs(value):,.1f}M"
 
 
-def _build_etf(report) -> tuple[str, str | None, list[list[str]]] | None:
+def _etf_days_from_data(data: dict) -> list[dict]:
+    """봇이 data.etf로 보낸 숫자 값 — [{date, btc_m, eth_m, sol_m, provisional}], 최신 날짜가 먼저."""
+    days = []
+    for item in data.get("etf") if isinstance(data.get("etf"), list) else []:
+        item = _dict(item)
+        btc = _num(item.get("btc_m"))
+        if not isinstance(item.get("date"), str) or btc is None:
+            continue
+        values = {"BTC": btc, "ETH": _num(item.get("eth_m")), "SOL": _num(item.get("sol_m"))}
+        days.append({"date": item["date"], "provisional": item.get("provisional") is True, "values": values})
+    return days
+
+
+def _etf_days_from_table(body: str) -> list[dict]:
+    """data가 없을 때 — 본문의 ETF 표(머리글 날짜·BTC·ETH·SOL·비고)를 읽는다."""
     table = next(
-        (t for t in _tables(report["body"])
+        (t for t in _tables(body)
          if "날짜" in t[0][0] and all(coin in t[0] for coin in ("BTC", "ETH", "SOL"))),
         None,
     )
     if table is None:
-        return None
+        return []
     header = table[0]
     col = {name: header.index(name) for name in ("BTC", "ETH", "SOL")}
     note_col = header.index("비고") if "비고" in header else None
@@ -158,19 +176,26 @@ def _build_etf(report) -> tuple[str, str | None, list[list[str]]] | None:
         if values["BTC"] is None:
             continue
         note = cells[note_col] if note_col is not None and note_col < len(cells) else ""
-        flows = [f"{name} {_signed_money(v)}" for name, v in values.items() if v is not None]
         # "어제 잠정에서 … 반영된 확정치"처럼 확정된 날의 비고에도 '잠정'이 나온다 — '확정'이 있으면 잠정이 아니다
-        provisional = "잠정" in note and "확정" not in note
-        days.append({"date": cells[0], "provisional": provisional, "btc": values["BTC"], "flows": flows})
+        days.append({"date": cells[0], "provisional": "잠정" in note and "확정" not in note, "values": values})
+    return days
+
+
+def _build_etf(report) -> tuple[str, str | None, list[list[str]]] | None:
+    # 봇이 보낸 숫자 값이 있으면 그것을 쓴다 — 본문 표는 모양이 바뀌면 못 읽는다
+    days = _etf_days_from_data(_data(report)) or _etf_days_from_table(report["body"])
     if not days:
         return None
 
+    def flows(day: dict) -> list[str]:
+        return [f"{name} {_signed_money(v)}" for name, v in day["values"].items() if v is not None]
+
     latest = days[0]
     tag = " 잠정" if latest["provisional"] else ""
-    title = f"BTC 현물 ETF {_signed_money(latest['btc'])} ({latest['date']}{tag})"
-    summary = f"{latest['date']}{tag} · {' | '.join(latest['flows'])}"
+    title = f"BTC 현물 ETF {_signed_money(latest['values']['BTC'])} ({latest['date']}{tag})"
+    summary = f"{latest['date']}{tag} · {' | '.join(flows(latest))}"
     rows = [
-        [f"{d['date']} (잠정)" if d["provisional"] else d["date"], " · ".join(d["flows"])]
+        [f"{d['date']} (잠정)" if d["provisional"] else d["date"], " · ".join(flows(d))]
         for d in days[:5]
     ]
     return title, summary, rows
@@ -178,23 +203,49 @@ def _build_etf(report) -> tuple[str, str | None, list[list[str]]] | None:
 
 # ── 고래 소식 ───────────────────────────────────────────────────
 
-def _build_whale(report) -> tuple[str, str | None, list[list[str]]] | None:
-    table = next((t for t in _tables(report["body"]) if "시각" in t[0][0] and len(t[0]) >= 4), None)
+def _whale_items_from_data(data: dict) -> list[dict]:
+    """봇이 data.items로 보낸 소식 — [{time, account, coin, text, flagged}]."""
+    items = []
+    for item in data.get("items") if isinstance(data.get("items"), list) else []:
+        item = _dict(item)
+        fields = [item.get(k) for k in ("time", "account", "coin", "text")]
+        if not all(isinstance(v, str) and v for v in fields):
+            continue
+        items.append({"time": fields[0], "account": fields[1], "coin": fields[2], "text": fields[3],
+                      "flagged": item.get("flagged") is True})
+    return items
+
+
+def _whale_items_from_table(body: str) -> list[dict]:
+    """data가 없을 때 — 본문의 첫 표(시각·계정·코인·내용)를 읽는다. 🔴는 시각 칸에 붙어 온다."""
+    table = next((t for t in _tables(body) if "시각" in t[0][0] and len(t[0]) >= 4), None)
     if table is None:
-        return None
-    items = [cells for cells in table[1:] if len(cells) >= 4 and cells[3]]
+        return []
+    return [
+        {"time": cells[0].replace("🔴", "").strip(), "account": cells[1], "coin": cells[2], "text": cells[3],
+         "flagged": "🔴" in cells[0]}
+        for cells in table[1:]
+        if len(cells) >= 4 and cells[3]
+    ]
+
+
+def _build_whale(report) -> tuple[str, str | None, list[list[str]]] | None:
+    items = _whale_items_from_data(_data(report)) or _whale_items_from_table(report["body"])
     if not items:
         return None
 
     coins: dict[str, int] = {}
-    for cells in items:
-        coins[cells[2]] = coins.get(cells[2], 0) + 1
+    for item in items:
+        coins[item["coin"]] = coins.get(item["coin"], 0) + 1
     by_coin = " · ".join(f"{coin} {n}건" for coin, n in sorted(coins.items(), key=lambda kv: -kv[1]))
-    flagged = sum(1 for cells in items if "🔴" in cells[0])
+    flagged = sum(1 for item in items if item["flagged"])
 
     stamp = _kst(report["reported_at"]).strftime("%m-%d %H:%M")
     summary = f"{stamp} 기준 · 소식 {len(items)}건 | {by_coin}" + (f" | 🔴 {flagged}건" if flagged else "")
-    rows = [[" · ".join(cells[:3]), cells[3]] for cells in items]
+    rows = [
+        [("🔴 " if item["flagged"] else "") + " · ".join((item["time"], item["account"], item["coin"])), item["text"]]
+        for item in items
+    ]
     return f"고래·온체인 소식 {len(items)}건", summary, rows
 
 

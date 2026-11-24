@@ -88,3 +88,10 @@ ETF 순유입, 청산 히트맵, 고래 소식은 투자분석기에 없는 정�
 | 이전 날짜와 비교, 같은 날 리포트는 제외 | pytest |
 | 스냅샷 제외, 실패 시 기존 응답 유지 | pytest |
 | 화면(배지·막대 없음·정렬·칩·요약 나란히) | node 테스트 + 운영에서 받은 실제 리포트 6건을 로컬 서버에 넣고 PC·390px 확인 |
+
+### 숫자 값(`data`) 우선 (같은 날 보완)
+사용자 의견("그록봇 보고 그냥 숫자 값을 보내달라고 하면 되잖아?")에 따라, ETF 수급과 고래 소식도 히트맵처럼 `data`를 먼저 쓴다.
+- `daily_check`의 `data.etf`: `[{date, btc_m, eth_m, sol_m, provisional}]` (최신 먼저, `date`·`btc_m` 필수)
+- `whale`의 `data.items`: `[{time, account, coin, text, flagged}]` (`time`·`account`·`coin`·`text` 필수)
+- `data`가 없거나 쓸 수 있는 항목이 하나도 없으면 본문 표를 읽는다(봇이 `data`를 보내기 전까지의 리포트와 호환).
+  봇이 `data`를 꾸준히 보내는 것이 확인되면 표 읽기는 걷어내도 된다.
