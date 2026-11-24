@@ -186,6 +186,8 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
   useEffect(() => {
     const p = partsRef.current
     if (!p || !data) return
+    // 십자선이 떠 있는 채로 데이터를 바꾸면 라이브러리가 예전 선 데이터를 찾다 "Value is null"로 죽는다 — 먼저 십자선을 지운다
+    p.chart.clearCrosshairPosition()
     p.candle.setData(toCandleSeries(data.candles))
     p.tenkan.setData(toLineSeries(data.ichimoku, 'tenkan'))
     p.kijun.setData(toLineSeries(data.ichimoku, 'kijun'))
