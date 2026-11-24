@@ -24,6 +24,8 @@ import { C, changeArrow, changeColor, softBg } from '../../lib/theme'
 import type { ChartResponse } from '../../lib/learningApi'
 import { summarizeBtcPhase, type BtcPhase, type PhaseTone } from './dashboardPhase'
 import { summarizeMood, type Mood } from './dashboardMood'
+import { BotNews, BtcLadder, DiffList, SignalBoard } from './HomeBrief'
+import { ladderPosition, signalTally, splitMoodSentence, toBotNews, toDiffRows, toSignalCells, type BriefCategory } from './homeBriefView'
 
 interface DashboardData {
   coins: Array<{
@@ -202,17 +204,25 @@ function BtcPhaseCard({ phase, loading }: { phase: BtcPhase | null; loading: boo
   )
 }
 
-// 시장 분위기 한 줄 + 근거 카드 (근거마다 해당 화면으로 이동)
+// 오늘의 판단: 분위기 한 줄을 큰 제목으로 + 근거 줄 (근거마다 해당 화면으로 이동)
 const BASIS_LINK: Record<string, string> = { phase: '/learning', spf: '/spf', warnings: '/market', fearGreed: '/market' }
 
 function MoodCard({ mood, failedBasis }: { mood: Mood; failedBasis: string[] }) {
+  const { headline, tail } = splitMoodSentence(mood.sentence)
+  const today = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' })
   return (
-    <section className="dash-card dash-mood" aria-labelledby="mood-title">
+    <section className="dash-mood" aria-labelledby="mood-title">
       <div className="dash-mood-head">
+        <span className="home-kicker">오늘의 판단 · {today}</span>
         <span className="dash-mood-badge" data-tone={mood.ready ? mood.tone : 'wait'}>{mood.badge}</span>
-        <h2 id="mood-title">{mood.sentence}</h2>
-        {mood.ready && mood.tally && <span className="dash-mood-tally">근거 {mood.basis.length}개 중 {mood.tally}</span>}
       </div>
+      <h1 id="mood-title" className="home-headline">{headline}</h1>
+      {(tail || (mood.ready && mood.tally)) && (
+        <p className="home-lede">
+          {tail}
+          {mood.ready && mood.tally && <span className="dash-mood-tally">근거 {mood.basis.length}개 중 {mood.tally}</span>}
+        </p>
+      )}
       <div className="dash-basis-grid">
         {mood.basis.map(b => (
           <Link key={b.key} to={BASIS_LINK[b.key]} className="dash-basis">
@@ -239,6 +249,8 @@ export function Dashboard() {
   const { data: spf, error: spfError } = useApi<SpfApi>('/api/spf-data', 300_000)
   // 인사이트만 돌려주는 경량 엔드포인트(market-analysis와 같은 generate_insights 결과)
   const { data: market, error: marketError } = useApi<MarketApi>('/api/insights', 300_000)
+  // 신호판·달라진 것·봇 소식은 리서치 분석 결과로 그린다
+  const { data: research, loading: researchLoading } = useApi<{ categories: BriefCategory[] }>('/api/research-analysis', 600_000)
   const [priceTab, setPriceTab] = useState<'coin' | 'index'>('coin')
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
   const [activeIndex, setActiveIndex] = useState<{ ticker: string; name: string } | null>(null)
@@ -323,6 +335,10 @@ export function Dashboard() {
   ]
   const editingCoin = editMode ? data.coins?.find(c => c.position === editingPosition) : undefined
 
+  const briefCategories = research?.categories ?? []
+  const signalCells = toSignalCells(briefCategories)
+  const heatmapLevels = briefCategories.find(c => c.key === 'bot_heatmap')?.details.levels
+
   // 핵심 지표: 해석(note)은 기존 라벨·신호값만 쓰고, 없는 항목은 비워 둔다
   const pct = (v: number | null | undefined, digits: number) => (v == null ? '—' : `${fmtFixed(v, digits)}%`)
   const changeNote = (v: number | null | undefined) => ({
@@ -360,7 +376,20 @@ export function Dashboard() {
     <div className="mock-spf-dashboard mock-real-dashboard">
       <LastUpdated timestamp={lastUpdated} failed={!!error} />
       <div className="mock-real-stack">
-        <MoodCard mood={mood} failedBasis={failedBasis} />
+        <div className="home-hero">
+          <div className="home-hero-main">
+            <MoodCard mood={mood} failedBasis={failedBasis} />
+            <SignalBoard cells={signalCells} tally={signalTally(signalCells)} loading={researchLoading} />
+          </div>
+          <div className="home-side">
+            <BtcLadder price={btc?.price ?? null} change={btc?.change_24h ?? null} ladder={ladderPosition(heatmapLevels, btc?.price)} />
+          </div>
+        </div>
+
+        <div className="home-cols">
+          <DiffList rows={toDiffRows(briefCategories, 4)} loading={researchLoading} />
+          <BotNews items={toBotNews(briefCategories)} />
+        </div>
 
         <section className="dash-card dash-strip mock-coin-price-section" aria-label="가격" data-tab={priceTab}>
           <div className="dash-strip-head">

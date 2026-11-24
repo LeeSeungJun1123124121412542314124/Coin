@@ -53,6 +53,15 @@ interface StockSentimentDetails {
   } | null
 }
 
+// 등급 이름표 (리서치 화면과 홈 신호판이 같이 쓴다)
+export const LEVEL_LABELS: Record<string, string> = {
+  critical: '위험',
+  warning:  '경계',
+  bearish:  '약세',
+  bullish:  '강세',
+  neutral:  '중립',
+}
+
 // 급한 정도 순서: 위험 → 경계 → 약세 → 중립 → 그 외(강세·모르는 값)
 const URGENCY_ORDER = ['critical', 'warning', 'bearish', 'neutral']
 

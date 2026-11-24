@@ -99,6 +99,8 @@ def test_heatmap_card_summarizes_bands_ratio_and_liquidations(conn) -> None:
     assert ["24시간 청산", "$97.0M (롱 $34.7M · 숏 $62.3M)"] in card["details"]["rows"]
     assert ["롱/숏 비중", "24시간 36/64 · 3일 71/29 · 1주 50/50"] in card["details"]["rows"]
     assert card["details"]["report_id"] == report_id
+    # 홈의 청산 구간 막대가 쓰는 숫자 — 글자에서 다시 뽑지 않게 값으로 싣는다
+    assert card["details"]["levels"] == {"price": 61150.0, "long_price": 57352.0, "short_price": 64001.0}
     assert card["compare"] == {"prev": None, "week": None}
 
 
@@ -113,6 +115,8 @@ def test_heatmap_card_shows_only_fields_that_exist(conn) -> None:
 
     assert card["summary"] == "11-24 09:13 기준 · 현재가 $61,150"
     assert card["title"] == "청산 히트맵"
+    # 숫자가 아닌 값은 levels에서 빠진다
+    assert card["details"]["levels"] == {"price": 61150.0}
     # 어제 리포트에는 숫자 값이 없었다 — 요약 대신 그 리포트의 제목을 보여준다
     assert card["compare"]["prev"] == {"date": "2026-11-23", "days_ago": 1, "summary": "CoinGlass 청산 히트맵 · 11/23"}
 

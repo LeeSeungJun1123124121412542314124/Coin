@@ -3,11 +3,10 @@ import { Link } from 'react-router-dom'
 import { useApi } from '../../hooks/useApi'
 import ErrorState from '../shared/ErrorState'
 import LastUpdated from '../shared/LastUpdated'
-import { C, LEVEL_COLORS, LEVEL_BG, LEVEL_BORDER, changeArrow, changeColor, softBg } from '../../lib/theme'
-import { ScoreBar } from '../shared/ScoreBar'
+import { C, LEVEL_COLORS, changeArrow, changeColor } from '../../lib/theme'
 import {
+  LEVEL_LABELS,
   RESEARCH_CATEGORIES,
-  RESEARCH_CATEGORY_COLORS,
   STOCK_SENTIMENT_INDEX_NOTES,
   sortByUrgency,
   toCompareLines,
@@ -15,6 +14,7 @@ import {
   toStockSentimentDetailRows,
 } from './researchView'
 import type { CategoryCompare } from './researchView'
+import { signalTally, toSignalCells } from './homeBriefView'
 
 interface CategoryAnalysis {
   key: string
@@ -35,104 +35,49 @@ interface ResearchData {
   categories: CategoryAnalysis[]
 }
 
-const LEVEL_LABELS: Record<string, string> = {
-  critical: '위험',
-  warning:  '경계',
-  bearish:  '약세',
-  bullish:  '강세',
-  neutral:  '중립',
-}
-
-const LEVEL_ICONS: Record<string, string> = {
-  critical: '!',
-  warning:  '!',
-  bearish:  '▼',
-  bullish:  '▲',
-  neutral:  '●',
-}
-
-
+// 줄 목록의 한 줄: 등급 · 이름 · 제목 · 요약, 오른쪽에 점수 (봇 관찰은 점수 없음)
 function AnalysisCard({ cat, expanded, onToggle }: {
   cat: CategoryAnalysis
   expanded: boolean
   onToggle: () => void
 }) {
-  const catColor = RESEARCH_CATEGORY_COLORS[cat.name] ?? C.text2
-  const levelColor = LEVEL_COLORS[cat.level] ?? C.text2
-  const levelBg = LEVEL_BG[cat.level] ?? softBg(C.text2, 0.08)
-  const levelBorder = LEVEL_BORDER[cat.level] ?? softBg(C.text2, 0.2)
   const levelLabel = LEVEL_LABELS[cat.level] ?? cat.level
-  const icon = LEVEL_ICONS[cat.level] ?? '●'
   const time = cat.updated_at ? new Date(cat.updated_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
 
   const details = cat.details as Record<string, unknown>
   const compareLines = toCompareLines(cat, LEVEL_LABELS)
 
   return (
-    <div
-      style={{
-        background: expanded ? levelBg : 'var(--surface)',
-        border: `1px solid ${expanded ? levelBorder : 'var(--border)'}`,
-        boxShadow: 'var(--shadow-card)',
-        borderRadius: 16,
-        padding: '18px 20px',
-        cursor: 'pointer',
-        transition: 'all 0.15s',
-      }}
-      onClick={onToggle}
-    >
-      {/* 헤더 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{
-            background: softBg(catColor, 0.14),
-            color: catColor,
-            border: `1px solid ${softBg(catColor, 0.28)}`,
-            borderRadius: 6,
-            padding: '2px 8px',
-            fontSize: 12,
-            fontWeight: 600,
-          }}>{cat.name}</span>
-          {cat.observed ? (
-            <span style={{
-              background: 'var(--seg-active)',
-              color: 'var(--text-2)',
-              border: '1px solid var(--border)',
-              borderRadius: 6,
-              padding: '2px 8px',
-              fontSize: 12,
-              fontWeight: 600,
-            }}>봇 관찰</span>
-          ) : (
-            <span style={{
-              background: levelBg,
-              color: levelColor,
-              border: `1px solid ${softBg(levelColor, 0.28)}`,
-              borderRadius: 6,
-              padding: '2px 8px',
-              fontSize: 12,
-              fontWeight: 600,
-            }}>{icon} {levelLabel}</span>
-          )}
+    <div className="research-item" data-level={cat.level} onClick={onToggle}>
+      {/* 머리: 등급 · 이름 · 제목 | 점수 */}
+      <div className="research-item-top">
+        <div className="research-item-main">
+          <div className="research-item-meta">
+            {cat.observed ? <span className="research-item-bot">봇 관찰</span> : <span className="lv">{levelLabel}</span>}
+            <span className="research-item-name">{cat.name}</span>
+            <span className="research-item-time">{time}</span>
+          </div>
+          <h3 className="research-item-title">{cat.title}</h3>
         </div>
-        <span style={{ fontSize: 12, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{time}</span>
-      </div>
-
-      {/* 제목 */}
-      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 8, lineHeight: 1.4 }}>
-        {cat.title}
+        {/* 점수(위험도) — 봇 관찰 카드는 점수가 없다 */}
+        {!cat.observed && (
+          <div className="research-item-score" aria-label={`위험도 ${cat.score}/100`}>
+            <span><strong>{cat.score}</strong><small>/100</small></span>
+            <span className="research-item-bar"><i style={{ width: `${Math.min(100, Math.max(0, cat.score))}%` }} /></span>
+          </div>
+        )}
       </div>
 
       {/* 어제·7일 전 대비 — 이전 저장분이 있을 때만 */}
       {(compareLines.prevLine || compareLines.weekLine) && (
-        <div style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 8 }}>
-          {compareLines.prevLine && <div style={{ color: 'var(--text-2)' }}>{compareLines.prevLine}</div>}
+        <div className="research-item-text">
+          {compareLines.prevLine && <div>{compareLines.prevLine}</div>}
           {compareLines.weekLine && <div style={{ color: 'var(--text-3)' }}>{compareLines.weekLine}</div>}
         </div>
       )}
 
       {/* 요약 — 이전 저장분이 있으면 오늘·이전 요약을 나란히 */}
-      <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.6, marginBottom: 10 }}>
+      <div className="research-item-text">
         {compareLines.prevSummary ? (
           <>
             <div><span style={{ color: 'var(--text-3)' }}>오늘: </span>{cat.summary}</div>
@@ -141,13 +86,10 @@ function AnalysisCard({ cat, expanded, onToggle }: {
         ) : cat.summary}
       </div>
 
-      {/* 점수 바 — 봇 관찰 카드는 점수가 없다 */}
-      {!cat.observed && <ScoreBar score={cat.score} level={cat.level} />}
-
       {/* 상세 정보 (expanded) */}
       {expanded && Object.keys(details).length > 0 && (
         <div style={{
-          marginTop: 14,
+          marginTop: 8,
           paddingTop: 14,
           borderTop: '1px solid var(--line)',
         }}>
@@ -155,7 +97,7 @@ function AnalysisCard({ cat, expanded, onToggle }: {
         </div>
       )}
 
-      {/* 클릭은 카드의 onClick이 받는다 — 키보드·보조기기용 버튼 */}
+      {/* 클릭은 줄의 onClick이 받는다 — 키보드·보조기기용 버튼 */}
       <button type="button" aria-expanded={expanded} className="research-detail-btn">
         {expanded ? '▲ 접기' : '▼ 상세'}
       </button>
@@ -318,7 +260,7 @@ function _renderDetails(key: string, details: Record<string, unknown>) {
 
 function SkeletonCard() {
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', borderRadius: 16, padding: '18px 20px' }}>
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', padding: '18px 20px' }}>
       {[80, 140, 100, 20].map((w, i) => (
         <div key={i} style={{
           height: i === 0 ? 16 : i === 1 ? 14 : i === 2 ? 12 : 6,
@@ -347,6 +289,8 @@ export function Research() {
   // 갱신 줄 요약: 위험·경계 건수 (0인 것은 뺀다)
   // 봇 관찰 카드는 점수가 없어 분석 건수·위험 집계에서 뺀다
   const scored = categories.filter(c => !c.observed)
+  const scoredList = filtered.filter(c => !c.observed)
+  const observedList = filtered.filter(c => c.observed)
   const observedCount = categories.length - scored.length
   const criticalCount = scored.filter(c => c.level === 'critical').length
   const warningCount = scored.filter(c => c.level === 'warning').length
@@ -402,14 +346,28 @@ export function Research() {
           {activeCategory === '전체' ? '분석 결과가 없습니다' : `${activeCategory} 분석 결과가 없습니다`}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-          {filtered.map(cat => (
-            <AnalysisCard
-              key={cat.key}
-              cat={cat}
-              expanded={expandedKey === cat.key}
-              onToggle={() => setExpandedKey(expandedKey === cat.key ? null : cat.key)}
-            />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
+          {/* 점수 분석과 봇 관찰을 두 구역으로 나눈 줄 목록 */}
+          {[
+            { id: 'scored', title: `점수 분석 ${scoredList.length}개`, note: signalTally(toSignalCells(scoredList)), list: scoredList },
+            { id: 'observed', title: `봇 관찰 ${observedList.length}개`, note: '점수 없이 봇이 보낸 숫자만 보여 줍니다', list: observedList },
+          ].filter(section => section.list.length > 0).map(section => (
+            <section key={section.id} aria-labelledby={`research-${section.id}`}>
+              <div className="home-sec-head">
+                <h2 id={`research-${section.id}`}>{section.title}</h2>
+                <span className="research-sec-note">{section.note}</span>
+              </div>
+              <div className="research-list">
+                {section.list.map(cat => (
+                  <AnalysisCard
+                    key={cat.key}
+                    cat={cat}
+                    expanded={expandedKey === cat.key}
+                    onToggle={() => setExpandedKey(expandedKey === cat.key ? null : cat.key)}
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}

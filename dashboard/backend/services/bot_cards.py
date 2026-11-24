@@ -67,6 +67,17 @@ def _tables(body: str) -> list[list[list[str]]]:
 
 # ── 청산 히트맵 ─────────────────────────────────────────────────
 
+def _heatmap_levels(report) -> dict[str, float]:
+    """홈의 청산 구간 막대용 숫자: 현재가, 아래 롱 구간, 위 숏 구간. 숫자가 아닌 값은 뺀다."""
+    data = _data(report)
+    values = {
+        "price": _num(data.get("price")),
+        "long_price": _num(_dict(data.get("main_long_band")).get("price")),
+        "short_price": _num(_dict(data.get("biggest_short")).get("price")),
+    }
+    return {key: value for key, value in values.items() if value is not None}
+
+
 def _usd(value: float) -> str:
     return f"${value:,.0f}"
 
@@ -306,7 +317,10 @@ def build_bot_cards(today: date) -> list[dict]:
                 "observed": True,  # 점수 없음 — 스냅샷·점수 비교에서 제외
                 "title": title,
                 "summary": summary or f"{stamp} 기준 · {latest['title']}",
-                "details": {"rows": rows, "report_id": latest["id"], "reported_at": latest["reported_at"]},
+                "details": {
+                    "rows": rows, "report_id": latest["id"], "reported_at": latest["reported_at"],
+                    **({"levels": _heatmap_levels(latest)} if key == "bot_heatmap" else {}),
+                },
                 "updated_at": latest["reported_at"],
                 "compare": compare,
             })

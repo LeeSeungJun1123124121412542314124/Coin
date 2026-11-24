@@ -27,9 +27,9 @@ def test_manifest_describes_installable_app() -> None:
     assert manifest["start_url"] == "/"
     assert manifest["scope"] == "/"
     assert manifest["display"] == "standalone"
-    # 앱 테마와 같은 어두운 바탕 — 켜질 때 흰 화면이 번쩍이지 않게
-    assert manifest["background_color"] == "#09090B"
-    assert manifest["theme_color"] == "#09090B"
+    # 앱 바탕(아이보리)과 맨 위 시세 띠(먹색)에 맞춘다 — 켜질 때 색이 튀지 않게
+    assert manifest["background_color"] == "#F8F6F1"
+    assert manifest["theme_color"] == "#25231F"
     assert [(i["src"], i["sizes"], i["purpose"]) for i in manifest["icons"]] == [
         ("/icons/icon-192.png", "192x192", "any"),
         ("/icons/icon-512.png", "512x512", "any"),
@@ -58,7 +58,7 @@ def test_index_html_links_manifest_and_icons() -> None:
     html = (FRONTEND / "index.html").read_text(encoding="utf-8")
 
     assert '<link rel="manifest" href="/manifest.webmanifest" />' in html
-    assert '<meta name="theme-color" content="#09090B" />' in html
+    assert '<meta name="theme-color" content="#25231F" />' in html
     assert '<link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />' in html
     assert '<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />' in html
     assert '<meta name="apple-mobile-web-app-title" content="투자분석기" />' in html

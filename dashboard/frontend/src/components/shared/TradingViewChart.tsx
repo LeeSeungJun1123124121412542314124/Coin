@@ -57,7 +57,7 @@ export function TradingViewChart({ symbol }: TradingViewChartProps) {
           symbol,
           interval: '240',
           style: '1',
-          theme: 'dark',
+          theme: 'light',
           locale: 'kr',
           timezone: 'Asia/Seoul',
           autosize: true,

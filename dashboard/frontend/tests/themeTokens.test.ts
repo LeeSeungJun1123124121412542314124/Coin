@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { C, changeColor, changeArrow, softBg } from '../src/lib/theme.ts'
+import { C, LEVEL_COLORS, changeColor, changeArrow, softBg } from '../src/lib/theme.ts'
 
 // index.css의 :root 블록에서 변수 값을 읽는다
 const css = readFileSync(new URL('../src/index.css', import.meta.url), 'utf8')
@@ -13,7 +13,14 @@ for (const [key, hex] of Object.entries(C)) {
   assert.equal(m[1].trim().toLowerCase(), hex.toLowerCase(), `--${kebab(key)} 값 불일치`)
 }
 
-for (const name of ['link', 'link-hover', 'shadow-card', 'radius-card', 'font-sans', 'font-mono']) {
+// 밝은 테마(docs/plans/light-redesign-spec-2026-11-24.md 4절): 아이보리 바탕, 먹색 글자, 강세는 초록
+assert.equal(C.bg, '#F8F6F1')
+assert.equal(C.text, '#25231F')
+assert.match(root, /color-scheme: *light;/)
+assert.equal(LEVEL_COLORS.bullish, C.ok)
+assert.equal(LEVEL_COLORS.critical, C.danger)
+
+for (const name of ['link', 'link-hover', 'shadow-card', 'radius-card', 'font-sans', 'font-mono', 'gold', 'gold-on-ink', 'on-ink-2', 'up-on-ink', 'down-on-ink']) {
   assert.match(root, new RegExp(`--${name}:`), `--${name} 없음`)
 }
 

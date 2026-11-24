@@ -12,7 +12,8 @@ DASHBOARD_TSX = Path("dashboard/frontend/src/components/screens/Dashboard.tsx")
 def test_mock_shell_removes_account_and_top_ticker_data():
     source = APP_TSX.read_text(encoding="utf-8")
 
-    # 상단 티커는 리디자인에서 제거됨 — 셸에 티커 클래스가 남아있지 않아야 한다
+    # 예전 목업의 고정값 티커·계정 표시는 없다 — 시세 띠는 TickerStrip이 실제 코인 등락으로 그린다
+    assert "<TickerStrip>" in source
     assert "mock-top-ticker" not in source
     assert "mock-ticker-strip" not in source
     assert "TICKERS" not in source

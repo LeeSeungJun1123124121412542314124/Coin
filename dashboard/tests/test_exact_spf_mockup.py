@@ -10,13 +10,15 @@ DASHBOARD_TSX = Path("dashboard/frontend/src/components/screens/Dashboard.tsx")
 INDEX_CSS = Path("dashboard/frontend/src/index.css")
 
 
-def test_app_shell_uses_mockup_ticker_and_sidebar():
+def test_app_shell_uses_ticker_strip_and_top_navigation():
     source = APP_TSX.read_text(encoding="utf-8")
 
-    # 상단 티커는 리디자인에서 제거됨 — 사이드바(그룹 내비)와 모바일 하단 메뉴가 셸을 구성한다
+    # 밝은 시안: 시세 띠(실제 데이터) + 위쪽 묶음 메뉴 + 모바일 하단 탭이 셸을 구성한다. 사이드바는 없다
     assert "mock-top-ticker" not in source
     assert "mock-brand-mark" not in source
-    assert "shell-sidebar" in source
+    assert "shell-sidebar" not in source
+    assert "<TickerStrip>" in source
+    assert "shell-masthead" in source
     assert "shell-link" in source
     assert "shell-bottom" in source
     assert "API 연동" not in source
@@ -41,8 +43,8 @@ def test_dashboard_uses_exact_spf_mockup_sections():
 def test_css_contains_mockup_desktop_and_mobile_layout():
     source = INDEX_CSS.read_text(encoding="utf-8")
 
-    assert ".shell-sidebar" in source
-    assert "grid-template-columns: 232px minmax(0, 1fr)" in source
+    assert ".shell-masthead" in source
+    assert ".shell-ticker" in source
     assert ".mock-content-grid" in source
     assert "grid-template-columns: 1fr 1.35fr" in source
     assert ".mock-spf-hero" in source
