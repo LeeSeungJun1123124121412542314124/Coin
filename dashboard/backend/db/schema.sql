@@ -445,3 +445,15 @@ CREATE TABLE IF NOT EXISTS learning_reviews (
     judged_at       TEXT,
     PRIMARY KEY (position_id, horizon_days)
 );
+
+-- 리서치 분석 일별 스냅샷 (카드의 어제·7일 전 대비 표시용, date는 KST 날짜)
+CREATE TABLE IF NOT EXISTS research_snapshot (
+    date       TEXT NOT NULL,
+    key        TEXT NOT NULL,
+    level      TEXT NOT NULL,
+    score      INTEGER NOT NULL,
+    title      TEXT NOT NULL,
+    summary    TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (date, key)
+);

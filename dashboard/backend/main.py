@@ -286,6 +286,7 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     from dashboard.backend.jobs.collect_us_13f import collect_us_13f_holdings
     from dashboard.backend.jobs.collect_stock_fear_greed import collect_stock_fear_greed
     from dashboard.backend.jobs.collect_putcall import collect_putcall
+    from dashboard.backend.jobs.snapshot_research import snapshot_research
     from dashboard.backend.jobs.learning_collect import (
         collect_learning_1h,
         collect_learning_4h,
@@ -389,6 +390,9 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
 
     # 코인 1시간봉 수집 — 매 시간 1분 (1시간 봉 마감 후)
     scheduler.add_job(collect_coin_ohlcv_1h, CronTrigger(minute=1))
+
+    # 리서치 분석 스냅샷 — 매 시간 20분 (같은 날은 덮어써 그날의 마지막 값이 남는다, 어제·7일 전 대비 표시용)
+    scheduler.add_job(snapshot_research, CronTrigger(minute=20), id="snapshot_research")
 
     # 페이퍼 리더보드 리밸런스 — 매일 00:05 UTC (지표별 포트폴리오 1일 갱신)
     scheduler.add_job(run_paper_rebalance, CronTrigger(hour=0, minute=5), id="paper_rebalance")

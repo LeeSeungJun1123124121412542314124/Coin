@@ -164,6 +164,7 @@ def _error_category(key: str, name: str) -> dict:
         "title": "데이터 수집 중",
         "summary": "데이터를 가져오는 중입니다. 잠시 후 새로고침해 주세요.",
         "details": {},
+        "placeholder": True,  # 실제 분석 결과가 아님 — 스냅샷 저장·전일 비교에서 제외
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
 

@@ -9,9 +9,11 @@ import {
   RESEARCH_CATEGORY_COLORS,
   STOCK_SENTIMENT_INDEX_NOTES,
   sortByUrgency,
+  toCompareLines,
   toKrStockFlowDetailRows,
   toStockSentimentDetailRows,
 } from './researchView'
+import type { CategoryCompare } from './researchView'
 
 interface CategoryAnalysis {
   key: string
@@ -22,6 +24,7 @@ interface CategoryAnalysis {
   summary: string
   details: Record<string, unknown>
   updated_at: string
+  compare?: CategoryCompare | null
 }
 
 interface SignalItem {
@@ -80,6 +83,7 @@ function AnalysisCard({ cat, expanded, onToggle }: {
   const time = cat.updated_at ? new Date(cat.updated_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
 
   const details = cat.details as Record<string, unknown>
+  const compareLines = toCompareLines(cat, LEVEL_LABELS)
 
   return (
     <div
@@ -124,9 +128,22 @@ function AnalysisCard({ cat, expanded, onToggle }: {
         {cat.title}
       </div>
 
-      {/* 요약 */}
+      {/* 어제·7일 전 대비 — 이전 저장분이 있을 때만 */}
+      {(compareLines.prevLine || compareLines.weekLine) && (
+        <div style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 8 }}>
+          {compareLines.prevLine && <div style={{ color: 'var(--text-2)' }}>{compareLines.prevLine}</div>}
+          {compareLines.weekLine && <div style={{ color: 'var(--text-3)' }}>{compareLines.weekLine}</div>}
+        </div>
+      )}
+
+      {/* 요약 — 이전 저장분이 있으면 오늘·이전 요약을 나란히 */}
       <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.6, marginBottom: 10 }}>
-        {cat.summary}
+        {compareLines.prevSummary ? (
+          <>
+            <div><span style={{ color: 'var(--text-3)' }}>오늘: </span>{cat.summary}</div>
+            <div style={{ color: 'var(--text-3)' }}>{compareLines.prevSummary.label}: {compareLines.prevSummary.text}</div>
+          </>
+        ) : cat.summary}
       </div>
 
       {/* 점수 바 */}

@@ -7,6 +7,7 @@ import {
   STOCK_SENTIMENT_INDEX_NOTES,
   getResearchCategoryColor,
   sortByUrgency,
+  toCompareLines,
   toKrStockFlowDetailRows,
   toStockSentimentDetailRows,
 } from '../src/components/screens/researchView.ts'
@@ -66,6 +67,61 @@ assert.deepEqual(
   toKrStockFlowDetailRows({ flow_total_20d: -10000, flow_total_20d_change: null }),
   [['합계 20일', '-1.0조']],
 )
+
+// 어제·7일 전 대비 줄 (docs/plans/research-compare-spec-2026-11-24.md)
+{
+  const labels = { neutral: '중립', warning: '경계' }
+  // 등급 유지, 점수 상승
+  assert.deepEqual(
+    toCompareLines({
+      score: 42,
+      level: 'neutral',
+      compare: {
+        prev: { date: '2026-11-23', days_ago: 1, score: 38, level: 'neutral', summary: '유입/유출 비율 0.98' },
+        week: { date: '2026-11-17', days_ago: 7, score: 35, level: 'neutral' },
+      },
+    }, labels),
+    {
+      prevLine: '어제 38 → 오늘 42 (▲4) · 등급 그대로',
+      weekLine: '7일 전 35 (▲7)',
+      prevSummary: { label: '어제', text: '유입/유출 비율 0.98' },
+    },
+  )
+  // 등급 변경, 점수 하락, 어제가 아닌 저장분(주말 등) — 실제 일수로 표시
+  assert.deepEqual(
+    toCompareLines({
+      score: 50,
+      level: 'neutral',
+      compare: {
+        prev: { date: '2026-11-21', days_ago: 3, score: 61, level: 'warning', summary: 'VIX 26.6' },
+        week: { date: '2026-11-15', days_ago: 9, score: 50, level: 'neutral' },
+      },
+    }, labels),
+    {
+      prevLine: '3일 전 61 → 오늘 50 (▼11) · 등급 경계 → 중립',
+      weekLine: '9일 전 50 (–)',
+      prevSummary: { label: '3일 전', text: 'VIX 26.6' },
+    },
+  )
+  // 모르는 등급은 값 그대로, 7일 전 저장분만 없는 경우
+  assert.deepEqual(
+    toCompareLines({
+      score: 10,
+      level: 'bullish',
+      compare: { prev: { date: '2026-11-23', days_ago: 1, score: 10, level: 'neutral', summary: '' }, week: null },
+    }, labels),
+    {
+      prevLine: '어제 10 → 오늘 10 (–) · 등급 중립 → bullish',
+      weekLine: null,
+      prevSummary: null, // 빈 요약은 나란히 보여줄 게 없다
+    },
+  )
+  // 이전 저장분이 없으면(저장 시작 첫날, 비교값 조회 실패) 아무 줄도 만들지 않는다
+  const none = { prevLine: null, weekLine: null, prevSummary: null }
+  assert.deepEqual(toCompareLines({ score: 42, level: 'neutral', compare: { prev: null, week: null } }, labels), none)
+  assert.deepEqual(toCompareLines({ score: 42, level: 'neutral' }, labels), none)
+  assert.deepEqual(toCompareLines({ score: 42, level: 'neutral', compare: null }, labels), none)
+}
 
 // 주식심리 카드 지수 설명 — 지수당 한 줄
 assert.equal(STOCK_SENTIMENT_INDEX_NOTES.length, 2)

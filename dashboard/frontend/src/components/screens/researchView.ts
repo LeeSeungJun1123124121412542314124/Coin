@@ -165,3 +165,56 @@ export function toKrStockFlowDetailRows(details: KrStockFlowDetails): Array<[str
 
   return rows
 }
+
+// ─── 어제·7일 전 대비 (docs/plans/research-compare-spec-2026-11-24.md) ───
+
+export interface CompareSnapshot {
+  date: string
+  days_ago: number
+  score: number
+  level: string
+  summary?: string
+}
+
+export interface CategoryCompare {
+  prev: CompareSnapshot | null
+  week: CompareSnapshot | null
+}
+
+export interface CompareLines {
+  prevLine: string | null
+  weekLine: string | null
+  prevSummary: { label: string; text: string } | null
+}
+
+function agoLabel(daysAgo: number): string {
+  return daysAgo === 1 ? '어제' : `${daysAgo}일 전`
+}
+
+// 점수는 위험도라 항목마다 오르내림의 의미가 다르다 — 방향만 표시하고 좋고 나쁨은 판단하지 않는다
+function scoreDelta(now: number, before: number): string {
+  const diff = now - before
+  if (diff === 0) return '–'
+  return `${diff > 0 ? '▲' : '▼'}${Math.abs(diff)}`
+}
+
+export function toCompareLines(
+  cat: { score: number; level: string; compare?: CategoryCompare | null },
+  levelLabels: Record<string, string>,
+): CompareLines {
+  const prev = cat.compare?.prev ?? null
+  const week = cat.compare?.week ?? null
+  const label = (level: string) => levelLabels[level] ?? level
+
+  let prevLine: string | null = null
+  let prevSummary: CompareLines['prevSummary'] = null
+  if (prev) {
+    const levelPart = prev.level === cat.level ? '등급 그대로' : `등급 ${label(prev.level)} → ${label(cat.level)}`
+    prevLine = `${agoLabel(prev.days_ago)} ${prev.score} → 오늘 ${cat.score} (${scoreDelta(cat.score, prev.score)}) · ${levelPart}`
+    if (prev.summary) prevSummary = { label: agoLabel(prev.days_ago), text: prev.summary }
+  }
+
+  const weekLine = week ? `${agoLabel(week.days_ago)} ${week.score} (${scoreDelta(cat.score, week.score)})` : null
+
+  return { prevLine, weekLine, prevSummary }
+}
