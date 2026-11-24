@@ -143,6 +143,8 @@ class DataCollector:
                     "whale_transaction_volume": whale_proxy / 1000,  # 정규화
                     "dormant_whale_activated": spike,
                     "mvrv": mvrv,
+                    # 이 값이 어느 날짜 것인지 — 무료 API는 하루치 값을 이틀쯤 늦게 준다
+                    "as_of": (latest.get("time") or "")[:10] or None,
                 }
 
         return await _retry_async(_fetch)

@@ -298,7 +298,6 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     from dashboard.backend.jobs.paper_rebalance import run_paper_rebalance
     from dashboard.backend.jobs.direction_watch import (
         prepare_direction_and_health,
-        prepare_semiconductor_stale,
         prepare_tga_event,
         send_watch_actions,
     )
@@ -401,11 +400,10 @@ def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:
     @async_retry(max_retries=2, backoff_base=2.0, on_failure=notify_job_failure)
     async def _direction_health_watch():
         actions = await asyncio.to_thread(prepare_direction_and_health)
-        actions += await asyncio.to_thread(prepare_semiconductor_stale)
         actions += await asyncio.to_thread(prepare_tga_event)
         sent = await send_watch_actions(actions, dispatcher._notifier.send_message)
         if sent:
-            logger.info("방향/헬스/반도체/TGA 알림 %d건 발송", sent)
+            logger.info("방향/헬스/TGA 알림 %d건 발송", sent)
 
     scheduler.add_job(_direction_health_watch, CronTrigger(hour=0, minute=20), id="direction_health_watch")
 

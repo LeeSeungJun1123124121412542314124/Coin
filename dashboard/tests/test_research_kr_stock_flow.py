@@ -173,7 +173,7 @@ async def test_kr_stock_flow_falls_back_when_samples_insufficient(monkeypatch) -
 
 
 @pytest.mark.asyncio
-async def test_analyze_all_appends_kr_stock_flow_as_tenth_category(monkeypatch) -> None:
+async def test_analyze_all_appends_kr_stock_flow_as_last_category(monkeypatch) -> None:
     from dashboard.backend.services import research_analyzer
 
     async def fake_category(key: str) -> dict:
@@ -195,8 +195,6 @@ async def test_analyze_all_appends_kr_stock_flow_as_tenth_category(monkeypatch) 
         ("_analyze_altcoin", "altcoin"),
         ("_analyze_technical", "technical"),
         ("_analyze_market", "market"),
-        ("_analyze_whale", "whale"),
-        ("_analyze_semiconductor_signals", "semiconductor_signals"),
         ("_analyze_stock_sentiment", "stock_sentiment"),
         ("_analyze_kr_stock_flow", "kr_stock_flow"),
     ]:
@@ -208,7 +206,7 @@ async def test_analyze_all_appends_kr_stock_flow_as_tenth_category(monkeypatch) 
     result = await research_analyzer.analyze_all()
 
     keys = [category["key"] for category in result["categories"]]
-    assert keys[8] == "stock_sentiment"
-    assert keys[9] == "kr_stock_flow"
+    assert keys[6] == "stock_sentiment"
+    assert keys[7] == "kr_stock_flow"
     names = [category["name"] for category in result["categories"]]
-    assert len(names) == 10
+    assert len(names) == 8

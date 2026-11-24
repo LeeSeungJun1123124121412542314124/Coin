@@ -9,8 +9,6 @@ export const RESEARCH_CATEGORY_COLORS: Record<string, string> = {
   '알트코인': C.violet,
   '기술적분석': C.warnText,
   '시장분석': C.danger,
-  '기타': C.text2,
-  '반도체 정점': C.accent,
   '주식심리': C.info,
   '주식수급': C.ok,
 }
@@ -23,8 +21,6 @@ export const RESEARCH_CATEGORIES = [
   '알트코인',
   '기술적분석',
   '시장분석',
-  '기타',
-  '반도체 정점',
   '주식심리',
   '주식수급',
 ]

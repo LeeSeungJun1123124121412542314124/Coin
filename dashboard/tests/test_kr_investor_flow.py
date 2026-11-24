@@ -242,13 +242,9 @@ async def test_collect_kr_investor_flow_upserts_both_markets_and_market_volume(m
             "value": 12.3 if market == "KOSPI" else 5.2,
         }]
 
-    async def fake_fetch_stock_investor_trend(code: str, days: int = 30):
-        return [{"date": "2026-07-03", "foreign_net": 100.0, "institution_net": 50.0}]
-
     monkeypatch.setattr(collect_kr_stock, "get_db", fake_get_db)
     monkeypatch.setattr(collect_kr_stock, "fetch_investor_deal_trend", fake_fetch_investor_deal_trend)
     monkeypatch.setattr(collect_kr_stock, "fetch_market_volume", fake_fetch_market_volume, raising=False)
-    monkeypatch.setattr(collect_kr_stock, "fetch_stock_investor_trend", fake_fetch_stock_investor_trend)
 
     await collect_kr_stock.collect_kr_investor_flow()
 
@@ -319,42 +315,15 @@ async def test_collect_kr_investor_flow_passes_gap_window_to_all_fetchers(monkey
         seen.append(("volume", days))
         return [{"date": "2026-11-18", "value": 1.0}]
 
-    async def fake_stock(code: str, days: int = 30):
-        seen.append(("stock", days))
-        return [{"date": "2026-11-18", "foreign_net": 1.0, "institution_net": 1.0}]
-
     monkeypatch.setattr(collect_kr_stock, "get_db", fake_get_db)
     monkeypatch.setattr(collect_kr_stock, "_kst_today", lambda: date(2026, 11, 18))
     monkeypatch.setattr(collect_kr_stock, "fetch_investor_deal_trend", fake_investor)
     monkeypatch.setattr(collect_kr_stock, "fetch_market_volume", fake_volume)
-    monkeypatch.setattr(collect_kr_stock, "fetch_stock_investor_trend", fake_stock)
 
     await collect_kr_stock.collect_kr_investor_flow.__wrapped__()
 
     assert {days for _, days in seen} == {44}
-    assert {kind for kind, _ in seen} == {"investor", "volume", "stock"}
-
-
-@pytest.mark.asyncio
-async def test_fetch_stock_investor_trend_caps_window_at_60(monkeypatch) -> None:
-    # API는 page를 무시하고 pageSize=60까지 반환 — 종목별 수급도 공백 백필 가능해야 함
-    from dashboard.backend.collectors import naver_finance
-
-    requests: list[httpx.Request] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        requests.append(request)
-        return httpx.Response(200, json=[])
-
-    real_client = httpx.AsyncClient
-    monkeypatch.setattr(
-        naver_finance.httpx, "AsyncClient",
-        lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw),
-    )
-
-    await naver_finance.fetch_stock_investor_trend("005930", days=90)
-
-    assert requests[0].url.params["pageSize"] == "60"
+    assert {kind for kind, _ in seen} == {"investor", "volume"}
 
 
 @pytest.mark.asyncio

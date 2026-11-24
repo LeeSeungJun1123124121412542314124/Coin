@@ -40,8 +40,6 @@ _NAVER_AC_URL = "https://ac.stock.naver.com/ac"
 # 지수 투자자 수급 — 모바일 JSON API (PC investorDealTrendDay는 2026-09 이후 410 Gone)
 _NAVER_INDEX_PRICE_URL = "https://m.stock.naver.com/api/index/{market}/price"
 _NAVER_INDEX_TREND_URL = "https://m.stock.naver.com/api/index/{market}/trend"
-# 종목별 투자자 매매동향 — 모바일 JSON API (순매매량 기준, 주 단위)
-_NAVER_STOCK_TREND_URL = "https://m.stock.naver.com/api/stock/{code}/trend"
 _MAX_WINDOW_DAYS = 60
 
 
@@ -88,35 +86,6 @@ async def fetch_investor_deal_trend(market: str, days: int = 30) -> list[dict]:
             })
 
     return records
-
-
-def parse_stock_trend_json(items: list) -> list[dict]:
-    """네이버 모바일 trend JSON → 일별 순매수 금액(억원, 순매매량×종가 환산) 레코드."""
-    records: list[dict] = []
-    for item in items:
-        try:
-            close = _parse_investor_number(item["closePrice"])
-            records.append({
-                "date": _parse_date(item["bizdate"]),
-                "foreign_net": round(_parse_investor_number(item["foreignerPureBuyQuant"]) * close / 1e8, 1),
-                "institution_net": round(_parse_investor_number(item["organPureBuyQuant"]) * close / 1e8, 1),
-            })
-        except (KeyError, ValueError, TypeError):
-            continue
-    return records
-
-
-async def fetch_stock_investor_trend(code: str, days: int = 30) -> list[dict]:
-    """네이버 모바일 API에서 종목별 투자자 순매수 금액(억원)을 조회한다 (최대 60영업일)."""
-    target_days = min(max(1, days), _MAX_WINDOW_DAYS)
-    async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
-        resp = await client.get(
-            _NAVER_STOCK_TREND_URL.format(code=code),
-            params={"pageSize": target_days, "page": 1},
-        )
-        resp.raise_for_status()
-        return parse_stock_trend_json(resp.json())
-
 
 
 async def search_naver_stocks(query: str) -> list[dict]:

@@ -129,8 +129,8 @@ async def test_analyze_stock_sentiment_summary_formats_fear_greed_to_one_decimal
 
     result = await research_analyzer._analyze_stock_sentiment()
 
-    # 요약 문자열에는 원시 float 대신 소수 1자리만 보인다
-    assert result["summary"] == "F&G 25.2 | Put/Call 0.60"
+    # 요약 문자열에는 원시 float 대신 소수 1자리만 보인다 (괄호는 각 값의 기준일)
+    assert result["summary"] == "F&G 25.2 (07-03) | Put/Call 0.60 (07-02)"
 
 
 @pytest.mark.asyncio
@@ -231,8 +231,6 @@ async def test_analyze_all_appends_stock_sentiment_without_reordering_existing_c
         "altcoin",
         "technical",
         "market",
-        "whale",
-        "semiconductor_signals",
     ]
 
     async def fake_category(key: str) -> dict:
@@ -254,8 +252,6 @@ async def test_analyze_all_appends_stock_sentiment_without_reordering_existing_c
         ("_analyze_altcoin", "altcoin"),
         ("_analyze_technical", "technical"),
         ("_analyze_market", "market"),
-        ("_analyze_whale", "whale"),
-        ("_analyze_semiconductor_signals", "semiconductor_signals"),
         ("_analyze_stock_sentiment", "stock_sentiment"),
     ]:
         async def fake(key=key):
@@ -266,5 +262,5 @@ async def test_analyze_all_appends_stock_sentiment_without_reordering_existing_c
     result = await research_analyzer.analyze_all()
 
     keys = [category["key"] for category in result["categories"]]
-    assert keys[:8] == expected_existing_keys
-    assert keys[8] == "stock_sentiment"
+    assert keys[:6] == expected_existing_keys
+    assert keys[6] == "stock_sentiment"

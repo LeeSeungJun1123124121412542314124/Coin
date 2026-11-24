@@ -27,20 +27,6 @@ interface CategoryAnalysis {
   compare?: CategoryCompare | null
 }
 
-interface SignalItem {
-  id: string
-  name: string
-  status: 'green' | 'yellow' | 'red'
-  label: string
-  note?: string
-}
-
-interface SignalSection {
-  key: string
-  name: string
-  signals: SignalItem[]
-}
-
 interface ResearchData {
   generated_at: string
   categories: CategoryAnalysis[]
@@ -60,12 +46,6 @@ const LEVEL_ICONS: Record<string, string> = {
   bearish:  '▼',
   bullish:  '▲',
   neutral:  '●',
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  green: C.ok,
-  yellow: C.warn,
-  red: C.danger,
 }
 
 
@@ -212,24 +192,6 @@ function _renderDetails(key: string, details: Record<string, unknown>) {
     )
   }
 
-  if (key === 'whale') {
-    return (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-        {[
-          ['롱', `${details.long_count}명 (${details.long_pct}%)`],
-          ['숏', `${details.short_count}명 (${details.short_pct}%)`],
-          ['중립', `${details.neutral_count}명`],
-          ['합계', `${details.total}명`],
-        ].map(([label, value]) => (
-          <div key={label as string} style={{ fontSize: 12 }}>
-            <span style={{ color: 'var(--text-3)' }}>{label}: </span>
-            <span style={{ color: 'var(--text-2)', fontWeight: 600 }}>{value}</span>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
   if (key === 'macro') {
     const auctions = (details.upcoming_auctions as Array<{
       auction_date: string
@@ -268,57 +230,6 @@ function _renderDetails(key: string, details: Record<string, unknown>) {
             {' — '}{ins.body}
           </div>
         ))}
-      </div>
-    )
-  }
-
-  if (key === 'semiconductor_signals') {
-    const sections = (details.sections as SignalSection[]) ?? []
-    const peakCount = (details.peak_count as number) ?? 0
-    const total = (details.total as number) ?? 0
-    const asOf = details.as_of as string | undefined
-    const daysSince = details.days_since as number | undefined
-
-    return (
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          {peakCount >= 1 ? (
-            <span style={{ fontSize: 12, color: 'var(--warn-text)', fontWeight: 600 }}>! 정점 임박 {peakCount}/{total}</span>
-          ) : <span />}
-          {asOf && (
-            <span style={{ fontSize: 12, color: typeof daysSince === 'number' && daysSince > 21 ? 'var(--warn-text)' : 'var(--text-3)' }}>
-              최종 확인: {asOf}{typeof daysSince === 'number' ? ` (${daysSince}일 전)` : ''}
-            </span>
-          )}
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {sections.map((section) => (
-            <div key={section.key}>
-              <div style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 700, marginBottom: 6 }}>{section.name}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {section.signals.map((signal) => {
-                  const statusColor = STATUS_COLORS[signal.status] ?? C.text2
-                  return (
-                    <div key={signal.id}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 12, color: statusColor }}>●</span>
-                          <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{signal.name}</span>
-                        </div>
-                        <span style={{ fontSize: 12, color: statusColor, fontWeight: 600 }}>{signal.label}</span>
-                      </div>
-                      {signal.note && (
-                        <div style={{ fontSize: 12, color: 'var(--text-3)', marginLeft: 16, marginTop: 2 }}>
-                          {signal.note}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
     )
   }

@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import copy
 import logging
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
 from dashboard.backend.cache import cached
 
@@ -19,10 +18,6 @@ _FLOW_LABELS = {
     "neutral": "중립",
 }
 
-# 사람이 9개 시그널을 마지막으로 검토한 UTC 날짜 (수동 갱신 기준일)
-SEMICONDUCTOR_SIGNALS_AS_OF = "2026-07-04"
-# as_of가 이 일수를 초과하면 direction_watch가 '갱신 필요' 알림을 발송
-_SEMI_STALE_DAYS = 21
 STOCK_SENTIMENT_WEIGHTS = (0.5, 0.5)
 PUTCALL_BAND = (1.0, 0.5)
 
@@ -32,88 +27,6 @@ KR_VOLUME_BAND = (0.7, 1.5)            # 최근 5영업일/20영업일 거래대
 KR_STOCK_FLOW_WEIGHTS = (0.7, 0.3)     # (수급, 거래대금)
 _KR_FLOW_WINDOW_ROWS = 20              # 판정 창 = 20영업일
 _KR_FLOW_RECENT_ROWS = 5               # 거래대금 최근 구간 = 5영업일
-
-# 외국인 4주 누적 순매수 임계값 (조원) — 운영하며 조정
-FOREIGN_FLOW_RED_KRW = -3.0     # 누적 ≤ -3조원 → red "경보"
-FOREIGN_FLOW_YELLOW_KRW = 0.0   # 누적 < 0원 → yellow "순매도 진행", ≥ 0원 → green "아직 아님"
-FLOW_STALE_CALENDAR_DAYS = 7    # 최신 행이 이보다 오래되면 수집 중단 의심 → 수동 폴백
-_FLOW_WINDOW_ROWS = 20          # 4주 = 20영업일
-# 자동 판정 대상 시그널 id ↔ 종목코드
-_FLOW_SIGNAL_TICKERS = {
-    "samsung_foreign_selling": "005930",
-    "hynix_foreign_selling": "000660",
-}
-
-# 반도체 사이클 정점 시그널 — 업황 공통 3 + 삼성 3 + 하이닉스 3. 수동 갱신 상수.
-SEMICONDUCTOR_SIGNALS = [
-    {
-        "key": "industry",
-        "name": "업황 공통",
-        "signals": [
-            {"id": "dram_price_momentum", "name": "DRAM 고정거래가 모멘텀 둔화", "status": "yellow", "label": "둔화 진행", "note": "Q1 +95% → Q2 +48~63% → Q3 +40~50%, 증가율 3분기째 감소"},
-            {"id": "lta_price_floor",     "name": "LTA 가격 하한선 무력화",       "status": "green",  "label": "아직 아님", "note": "공급사 계약기간 단축·가격결정권 회복, 영업이익률 40~50%"},
-            {"id": "dram_inventory",      "name": "DRAM 재고 증가",               "status": "green",  "label": "아직 아님", "note": "역대 최저 2~3주(하이닉스 2주), 2026년 물량 완판"},
-        ],
-    },
-    {
-        "key": "samsung",
-        "name": "삼성전자 005930",
-        "signals": [
-            {"id": "samsung_foreign_selling", "name": "외국인 4주 누적 순매도",        "status": "red",    "label": "경보",     "note": "6월 -20.6조 순매도, 인버스 ETF 매수 전환"},
-            {"id": "samsung_eps_consensus",   "name": "EPS 컨센서스 상향 정체/하향",   "status": "green",  "label": "아직 아님", "note": "2Q 컨센 폭증(영업이익 전년比 18배), 상향 진행"},
-            {"id": "samsung_capex",           "name": "메모리 capex 폭발적 증가",      "status": "yellow", "label": "진행 중",   "note": "2026 730억달러, 평택 P5 60조 증설"},
-        ],
-    },
-    {
-        "key": "hynix",
-        "name": "SK하이닉스 000660",
-        "signals": [
-            {"id": "hynix_foreign_selling", "name": "외국인 4주 누적 순매도",        "status": "red",    "label": "경보",     "note": "6월 -15.9조 순매도"},
-            {"id": "hynix_eps_consensus",   "name": "EPS 컨센서스 상향 정체/하향",   "status": "green",  "label": "아직 아님", "note": "2Q 컨센 폭증(영업이익 전년比 6.9배), 상향 진행"},
-            {"id": "hynix_capex",           "name": "메모리 capex 폭발적 증가",      "status": "yellow", "label": "진행 중",   "note": "2026 170억달러+, 청주 M15X 20조"},
-        ],
-    },
-]
-
-
-def _flat_signals() -> list[dict]:
-    return [s for sec in SEMICONDUCTOR_SIGNALS for s in sec["signals"]]
-
-
-def _aggregate_signals(signals: list[dict]) -> dict:
-    """시그널 상태를 카드 종합 지표로 집계 (level 임계 로직 유지)."""
-    red = sum(1 for s in signals if s["status"] == "red")
-    yellow = sum(1 for s in signals if s["status"] == "yellow")
-    total = len(signals)
-    peak_count = yellow + red
-    if red >= 1:
-        level = "critical"
-    elif yellow >= 3:
-        level = "warning"
-    elif yellow >= 1:
-        level = "neutral"
-    else:
-        level = "bullish"
-    score = (yellow * 50 + red * 100) // total if total else 0
-    score = max(0, min(100, score))
-    return {"peak_count": peak_count, "total": total, "level": level, "score": score}
-
-
-def semiconductor_stale_status(today: date | None = None) -> dict:
-    """반도체 시그널 데이터의 신선도 판정 (순수). as_of 초과 시 is_stale=True."""
-    if today is None:
-        today = datetime.now(timezone.utc).date()
-    days_since = (today - date.fromisoformat(SEMICONDUCTOR_SIGNALS_AS_OF)).days
-    agg = _aggregate_signals(_flat_signals())
-    return {
-        "as_of": SEMICONDUCTOR_SIGNALS_AS_OF,
-        "days_since": days_since,
-        "threshold_days": _SEMI_STALE_DAYS,
-        "is_stale": days_since > _SEMI_STALE_DAYS,
-        "peak_count": agg["peak_count"],
-        "total": agg["total"],
-        "level": agg["level"],
-    }
 
 
 async def analyze_all() -> dict:
@@ -125,16 +38,14 @@ async def analyze_all() -> dict:
         _analyze_altcoin(),
         _analyze_technical(),
         _analyze_market(),
-        _analyze_whale(),
-        _analyze_semiconductor_signals(),
         _analyze_stock_sentiment(),
         _analyze_kr_stock_flow(),
         return_exceptions=True,
     )
 
     categories = []
-    names = ["매크로", "온체인", "파생상품", "알트코인", "기술적분석", "시장분석", "기타", "반도체 정점"]
-    keys = ["macro", "onchain", "derivatives", "altcoin", "technical", "market", "whale", "semiconductor_signals"]
+    names = ["매크로", "온체인", "파생상품", "알트코인", "기술적분석", "시장분석"]
+    keys = ["macro", "onchain", "derivatives", "altcoin", "technical", "market"]
     names.append("주식심리")
     keys.append("stock_sentiment")
     names.append("주식수급")
@@ -232,7 +143,8 @@ async def _analyze_stock_sentiment() -> dict:
         "level": level,
         "score": score,
         "title": f"주식심리 {score}/100",
-        "summary": f"F&G {fg_score:.1f} | Put/Call {float(used_pc):.2f}",
+        # 풋콜 비율은 하루 늦게 나와 공포탐욕과 날짜가 다를 수 있다 — 각각 기준일을 붙인다
+        "summary": f"F&G {fg_score:.1f} ({fg['date'][5:]}) | Put/Call {float(used_pc):.2f} ({pc['date'][5:]})",
         "details": {
             "stock_fear_greed": {
                 "date": fg["date"],
@@ -579,6 +491,10 @@ async def _analyze_onchain() -> dict:
         ratio = details.get("flow_ratio") or (inflow / outflow if outflow else 1.0)
 
         summary = f"유입/유출 비율 {ratio:.2f} | 유입 {inflow:.0f} BTC | 유출 {outflow:.0f} BTC"
+        # 원본이 하루치 값을 이틀쯤 늦게 준다 — 언제 값인지 앞에 붙인다
+        as_of = raw.get("as_of")
+        if as_of:
+            summary = f"{as_of[5:]} 기준 · {summary}"
         if signal == "HIGH_SELL_PRESSURE":
             summary += " — 매도 우위 주의"
         elif signal == "ACCUMULATION":
@@ -591,7 +507,7 @@ async def _analyze_onchain() -> dict:
             "score": score,
             "title": title,
             "summary": summary,
-            "details": {"signal": signal, "flow_ratio": round(ratio, 3), "inflow": inflow, "outflow": outflow},
+            "details": {"signal": signal, "flow_ratio": round(ratio, 3), "inflow": inflow, "outflow": outflow, "as_of": as_of},
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
@@ -623,34 +539,36 @@ async def _analyze_macro() -> dict:
             latest = yoy_data[-1]
             tga_yoy = latest["yoy_pct"]
             tga_val = latest["value"]
+            tga_day = latest["date"][5:]  # 주간 발표 — 언제 값인지 붙인다
             if tga_yoy < -20:
                 signals.append("bullish")
                 score_components.append(25)
-                parts.append(f"TGA {tga_val:.0f}B$ (YoY {tga_yoy:+.1f}% — 유동성 공급)")
+                parts.append(f"TGA {tga_val:.0f}B$ ({tga_day} 기준 · YoY {tga_yoy:+.1f}% — 유동성 공급)")
             elif tga_yoy > 20:
                 signals.append("bearish")
                 score_components.append(65)
-                parts.append(f"TGA {tga_val:.0f}B$ (YoY {tga_yoy:+.1f}% — 유동성 흡수)")
+                parts.append(f"TGA {tga_val:.0f}B$ ({tga_day} 기준 · YoY {tga_yoy:+.1f}% — 유동성 흡수)")
             else:
                 score_components.append(45)
-                parts.append(f"TGA {tga_val:.0f}B$ (YoY {tga_yoy:+.1f}%)")
+                parts.append(f"TGA {tga_val:.0f}B$ ({tga_day} 기준 · YoY {tga_yoy:+.1f}%)")
 
     # M2 분석
     if isinstance(m2_raw, list) and m2_raw:
         yoy_data = calc_m2_yoy(m2_raw)
         if yoy_data:
             m2_yoy = yoy_data[-1]["yoy_pct"]
+            m2_month = f"{int(yoy_data[-1]['date'][5:7])}월"  # 월간 발표 — 몇 월 값인지 붙인다
             if m2_yoy > 5:
                 signals.append("bullish")
                 score_components.append(25)
-                parts.append(f"M2 YoY {m2_yoy:+.1f}% (통화량 확장)")
+                parts.append(f"M2 YoY {m2_yoy:+.1f}% ({m2_month} 기준 · 통화량 확장)")
             elif m2_yoy < -2:
                 signals.append("bearish")
                 score_components.append(65)
-                parts.append(f"M2 YoY {m2_yoy:+.1f}% (통화량 수축)")
+                parts.append(f"M2 YoY {m2_yoy:+.1f}% ({m2_month} 기준 · 통화량 수축)")
             else:
                 score_components.append(45)
-                parts.append(f"M2 YoY {m2_yoy:+.1f}%")
+                parts.append(f"M2 YoY {m2_yoy:+.1f}% ({m2_month} 기준)")
 
     # 미국 시장 지표
     if isinstance(us_market, list):
@@ -806,206 +724,6 @@ async def _analyze_altcoin() -> dict:
             "down_count": down_count,
             "btc_dominance": btc_dom,
             "coins": [{"symbol": c.get("symbol"), "change_24h": c.get("change_24h")} for c in alts],
-        },
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }
-
-
-# ─── 기타(고래) ──────────────────────────────────────────────────────
-
-@cached(ttl=600, key_prefix="research_whale")
-async def _analyze_whale() -> dict:
-    from dashboard.backend.collectors.hyperliquid import fetch_top_whale_positions
-    from dashboard.backend.db.connection import get_db
-    import json as _json
-
-    whales = await fetch_top_whale_positions(10)
-
-    # DB 스냅샷 기반 합의 (whale_routes와 동일 로직)
-    try:
-        with get_db() as conn:
-            rows = conn.execute(
-                """SELECT address, positions FROM whale_snapshots
-                   WHERE captured_at >= datetime('now', '-2 hours')
-                   ORDER BY captured_at DESC"""
-            ).fetchall()
-    except Exception:
-        rows = []
-
-    long_count = short_count = neutral_count = 0
-    seen = set()
-    top_positions = []
-
-    for row in rows:
-        addr = row["address"]
-        if addr in seen:
-            continue
-        seen.add(addr)
-        try:
-            positions = _json.loads(row["positions"] or "[]")
-        except Exception:
-            positions = []
-        btc_pos = next((p for p in positions if p.get("coin") in ("BTC", "BTCUSDT")), None)
-        if btc_pos is None:
-            neutral_count += 1
-        elif btc_pos.get("side") == "long":
-            long_count += 1
-            top_positions.append(btc_pos)
-        else:
-            short_count += 1
-            top_positions.append(btc_pos)
-
-    total = long_count + short_count + neutral_count
-    if total == 0:
-        # 실시간 데이터로 폴백
-        for w in whales[:10]:
-            btc_pos = next((p for p in w.get("positions", []) if p.get("coin") in ("BTC", "BTCUSDT")), None)
-            if btc_pos is None:
-                neutral_count += 1
-            elif btc_pos.get("side") == "long":
-                long_count += 1
-            else:
-                short_count += 1
-        total = long_count + short_count + neutral_count
-
-    long_pct = round(long_count / total * 100, 1) if total else 0
-    short_pct = round(short_count / total * 100, 1) if total else 0
-
-    if total == 0:
-        consensus = "unknown"
-        level = "neutral"
-        score = 50
-    elif long_count > short_count + neutral_count:
-        consensus = "long"
-        level = "bullish"
-        score = int(long_pct)
-    elif short_count > long_count + neutral_count:
-        consensus = "short"
-        level = "bearish"
-        score = int(100 - short_pct)
-    else:
-        consensus = "neutral"
-        level = "neutral"
-        score = 50
-
-    title = f"고래 합의: {consensus.upper()} ({long_pct}% 롱 / {short_pct}% 숏)"
-    summary = f"추적 고래 {total}명 | 롱 {long_count}명 | 숏 {short_count}명 | 중립 {neutral_count}명"
-
-    return {
-        "key": "whale",
-        "name": "기타",
-        "level": level,
-        "score": score,
-        "title": title,
-        "summary": summary,
-        "details": {
-            "consensus": consensus,
-            "long_count": long_count,
-            "short_count": short_count,
-            "neutral_count": neutral_count,
-            "long_pct": long_pct,
-            "short_pct": short_pct,
-            "total": total,
-        },
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }
-
-
-# ─── 반도체 정점 시그널 ────────────────────────────────────────────
-
-def _stock_flow_overlay(ticker: str, today: date | None = None) -> dict | None:
-    """최근 20영업일 누적 외국인 순매수(조원)로 시그널을 자동 판정.
-
-    행 부족·수집 정체 시 None을 반환해 수동 상수값 폴백 (경보 아님, warning 로그만).
-    """
-    from dashboard.backend.db import connection
-
-    with connection.get_db() as conn:
-        rows = conn.execute(
-            """SELECT date, foreign_net FROM kr_stock_investor_flow
-               WHERE ticker = ? ORDER BY date DESC LIMIT ?""",
-            (ticker, _FLOW_WINDOW_ROWS),
-        ).fetchall()
-    if len(rows) < _FLOW_WINDOW_ROWS:
-        logger.warning("종목 수급 오버레이 생략(%s): 행 %d개 < %d", ticker, len(rows), _FLOW_WINDOW_ROWS)
-        return None
-    if today is None:
-        today = datetime.now(timezone.utc).date()
-    latest = date.fromisoformat(rows[0]["date"])
-    if (today - latest).days > FLOW_STALE_CALENDAR_DAYS:
-        logger.warning("종목 수급 오버레이 생략(%s): 최신 행 %s → 수집 정체 의심", ticker, rows[0]["date"])
-        return None
-
-    cum = sum(row["foreign_net"] for row in rows) / 10_000  # 억원 → 조원
-    if cum <= FOREIGN_FLOW_RED_KRW:
-        status, label = "red", "경보"
-    elif cum < FOREIGN_FLOW_YELLOW_KRW:
-        status, label = "yellow", "순매도 진행"
-    else:
-        status, label = "green", "아직 아님"
-    direction = "순매수" if cum >= 0 else "순매도"
-    return {
-        "status": status,
-        "label": label,
-        "note": f"최근 4주 누적 {abs(cum):.1f}조원 {direction} (자동)",
-    }
-
-
-@cached(ttl=86400, key_prefix="research_semiconductor")
-async def _analyze_semiconductor_signals() -> dict:
-    """삼성·SK하이닉스 반도체 정점 임박 시그널 9개(3섹션) 분석.
-
-    SEMICONDUCTOR_SIGNALS 상수 기반 정적 분석 (수동 갱신).
-    외국인 순매도 시그널 2개는 DB 실측(kr_stock_investor_flow)으로 자동 덮어쓴다.
-    as_of가 오래되면 direction_watch가 갱신 알림을 발송한다 (수동 7개 기준).
-    """
-    sections = copy.deepcopy(SEMICONDUCTOR_SIGNALS)
-    # 자동화 대상 시그널은 DB 실측으로 오버레이 — 데이터 부족 시 수동값 유지
-    for sec in sections:
-        for sig in sec["signals"]:
-            ticker = _FLOW_SIGNAL_TICKERS.get(sig["id"])
-            if not ticker:
-                continue
-            overlay = _stock_flow_overlay(ticker)
-            if overlay:
-                sig.update(overlay)
-    flat = [s for sec in sections for s in sec["signals"]]
-    agg = _aggregate_signals(flat)
-    peak_count = agg["peak_count"]
-    total = agg["total"]
-
-    # title 생성
-    if peak_count > 0:
-        title = f"정점 임박 시그널 {peak_count}/{total} 감지"
-    else:
-        title = f"정점 시그널 없음 — {total}개 정상"
-
-    # summary 생성
-    alerted = [s["name"] for s in flat if s["status"] in ("yellow", "red")]
-    if alerted:
-        if len(alerted) <= 3:
-            summary = " · ".join(alerted) + " 모니터링 중"
-        else:
-            summary = " · ".join(alerted[:3]) + f" 외 {len(alerted)-3}개 모니터링 중"
-    else:
-        summary = f"모든 {total}개 시그널 정상"
-
-    today = datetime.now(timezone.utc).date()
-    days_since = (today - date.fromisoformat(SEMICONDUCTOR_SIGNALS_AS_OF)).days
-
-    return {
-        "key": "semiconductor_signals",
-        "name": "반도체 정점",
-        "level": agg["level"],
-        "score": agg["score"],
-        "title": title,
-        "summary": summary,
-        "details": {
-            "sections": sections,
-            "as_of": SEMICONDUCTOR_SIGNALS_AS_OF,
-            "days_since": days_since,
-            "peak_count": peak_count,
-            "total": total,
         },
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
