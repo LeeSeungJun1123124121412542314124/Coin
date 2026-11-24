@@ -49,6 +49,19 @@ const SETTING_CHIPS: [SettingKey, string][] = [['ma', '이동평균'], ['bb', '�
 const BASE_HEIGHT = 460
 const PANE_HEIGHT = 110
 
+// 차트 잠금 — 잠금 여부와 종목|시간봉별로 잠근 화면(확대 상태)을 브라우저에 저장해 앱을 다시 열어도 유지한다
+// from·to는 마지막 캔들 기준 봉 위치(새 봉이 생겨도 최신 쪽에 붙어 있게), price는 가격축을 손으로 늘렸을 때만 저장
+const LOCK_KEY = 'learning-chart-lock'
+interface LockedView { from: number; to: number; price: { from: number; to: number } | null }
+interface LockStore { locked: boolean; views: Record<string, LockedView> }
+const readLock = (): LockStore => {
+  try {
+    return JSON.parse(localStorage.getItem(LOCK_KEY) ?? '')
+  } catch {
+    return { locked: false, views: {} }
+  }
+}
+
 const lineOptions = (color: string, lineWidth: LineWidth, lineStyle: LineStyle = LineStyle.Solid) => ({
   color, lineWidth, lineStyle,
   priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
@@ -87,6 +100,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
   const fitKeyRef = useRef('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [logScale, setLogScale] = useState(false)
+  const [lock, setLock] = useState(readLock)
   // 칩 낙관적 상태 — 만들 때의 차트 데이터(base)에만 유효하다. 새 데이터가 오면 서버 값이 우선
   const [pending, setPending] = useState<{ base: ChartResponse | null; map: Partial<Record<SettingKey, boolean>> }>({ base: null, map: {} })
   const [chipError, setChipError] = useState<string | null>(null)
@@ -184,9 +198,26 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
     const fitKey = `${symbol}|${interval}`
     if (fitKeyRef.current !== fitKey) {
       fitKeyRef.current = fitKey
-      p.chart.timeScale().fitContent()
+      // 잠금 중이고 이 종목|시간봉으로 잠근 화면이 있으면 그대로 복원, 없으면 전체 맞춤
+      const saved = readLock()
+      const view = saved.locked ? saved.views[fitKey] : undefined
+      const lastIndex = data.candles.length - 1
+      if (view) p.chart.timeScale().setVisibleLogicalRange({ from: lastIndex + view.from, to: lastIndex + view.to })
+      else p.chart.timeScale().fitContent()
+      // 가격축 — 저장된 범위가 있으면 복원, 없으면 자동 맞춤(앞 종목에서 손으로 늘린 범위가 남지 않게)
+      if (view?.price) p.candle.priceScale().setVisibleRange(view.price)
+      else p.candle.priceScale().setAutoScale(true)
     }
   }, [data, symbol, interval])
+
+  // 잠금 반영 — 잠그면 휠·끌기·터치로 차트가 움직이지 않아 차트 위에서도 페이지가 스크롤된다
+  useEffect(() => {
+    localStorage.setItem(LOCK_KEY, JSON.stringify(lock))
+    partsRef.current?.chart.applyOptions({
+      handleScroll: !lock.locked, handleScale: !lock.locked,
+      layout: { panes: { enableResize: !lock.locked } },
+    })
+  }, [lock])
 
   // 보조 지표 반영 — 기존 시리즈를 지우고(빈 칸은 라이브러리가 정리), 응답에 있는 지표만 다시 그린다
   useEffect(() => {
@@ -297,6 +328,23 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
     }
   }
 
+  // 잠금 토글 — 잠글 때 지금 보이는 범위를 이 종목|시간봉의 잠근 화면으로 저장한다
+  const toggleLock = () => {
+    const p = partsRef.current
+    if (lock.locked || !p || !data) {
+      setLock(l => ({ ...l, locked: false }))
+      return
+    }
+    const range = p.chart.timeScale().getVisibleLogicalRange()
+    const lastIndex = data.candles.length - 1
+    const scale = p.candle.priceScale()
+    const view = range && {
+      from: range.from - lastIndex, to: range.to - lastIndex,
+      price: scale.options().autoScale ? null : scale.getVisibleRange(),
+    }
+    setLock(l => ({ locked: true, views: view ? { ...l.views, [`${symbol}|${interval}`]: view } : l.views }))
+  }
+
   // 켜진 보조 지표 범례 — 서버 응답(켜진 지표만 존재)과 설정 기간 기준 (거래량은 막대로 명확해 제외)
   const indicatorLegend: [string, string][] = []
   if (data?.indicators) {
@@ -351,6 +399,10 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
             </button>
           ))}
         </div>
+        <button style={toggleStyle(lock.locked)} aria-pressed={lock.locked} disabled={!data} onClick={toggleLock}
+          title="잠그면 차트 위에서도 페이지가 스크롤되고, 지금 확대 상태가 저장됩니다">
+          차트 잠금
+        </button>
         <button style={toggleStyle(settingsOpen)} disabled={!data} onClick={() => setSettingsOpen(o => !o)}>
           지표 설정
         </button>
