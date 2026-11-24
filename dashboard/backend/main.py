@@ -235,6 +235,8 @@ def _mount_dashboard_routers(app: FastAPI) -> None:
     """
     from dashboard.backend.api.alert_routes import router as alert_router
     from dashboard.backend.api.auth_routes import router as auth_router
+    from dashboard.backend.api.bot_report_routes import ingest_router as bot_report_ingest_router
+    from dashboard.backend.api.bot_report_routes import router as bot_report_router
     from dashboard.backend.api.dashboard_routes import router as dashboard_router
     from dashboard.backend.api.spf_routes import router as spf_router
     from dashboard.backend.api.volume_routes import router as volume_router
@@ -254,6 +256,8 @@ def _mount_dashboard_routers(app: FastAPI) -> None:
 
     # 인증 불필요 — PIN 검증 엔드포인트
     app.include_router(auth_router, prefix="/api")
+    # 인증은 봇 키(X-Bot-Key)로 — 그록봇 리포트 수신
+    app.include_router(bot_report_ingest_router, prefix="/api")
 
     # 인증 필요 — Bearer 토큰 검증
     _auth_dep = [Depends(require_auth)]
@@ -273,6 +277,7 @@ def _mount_dashboard_routers(app: FastAPI) -> None:
     app.include_router(sim_router, prefix="/api", dependencies=_auth_dep)
     app.include_router(health_router, prefix="/api", dependencies=_auth_dep)
     app.include_router(learning_router, prefix="/api", dependencies=_auth_dep)
+    app.include_router(bot_report_router, prefix="/api", dependencies=_auth_dep)
 
 
 def _register_jobs(scheduler: AsyncIOScheduler, config, dispatcher) -> None:

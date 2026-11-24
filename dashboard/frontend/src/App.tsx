@@ -10,6 +10,7 @@ import { Alt } from './components/screens/Alt'
 import { Whale } from './components/screens/Whale'
 import { Research } from './components/screens/Research'
 import { Alerts } from './components/screens/Alerts'
+import { BotReports } from './components/screens/BotReports'
 import { Leaderboard } from './components/screens/Leaderboard'
 import { Learning } from './components/screens/Learning'
 import type { LastUpdatedDetail } from './components/shared/LastUpdated'
@@ -27,6 +28,7 @@ const TABS = [
   { path: '/whale', label: '고래추적', description: 'Hyperliquid 상위 지갑 포지션과 BTC 방향 합의를 추적합니다.' },
   { path: '/leaderboard', label: '리더보드', description: '지표별 포워드 자동매매 성과와 에쿼티 곡선을 비교합니다.' },
   { path: '/alerts', label: '알림히스토리', description: '전송된 경보와 방향 판정 기록을 심볼별로 확인합니다.' },
+  { path: '/bot-reports', label: '봇 리포트', description: '봇이 보낸 일봉 점검, 청산 히트맵, 고래 소식을 종류별로 모아 봅니다.' },
   { path: '/learning', label: '학습', description: '차트로 국면을 판단하고 근거와 함께 모의매매한 뒤 복기합니다.' },
 ] as const
 
@@ -42,6 +44,7 @@ const ICONS: Record<string, string> = {
   '/research': 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6',
   '/leaderboard': 'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4',
   '/alerts': 'M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0',
+  '/bot-reports': 'M4 5h16v11H9l-5 4zM8 9h8M8 12h5',
   '/learning': 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5',
   more: 'M5 12h.01M12 12h.01M19 12h.01',
 }
@@ -251,6 +254,7 @@ export default function App() {
           <Route path="/cvd" element={<Alt />} />
           <Route path="/whale" element={<Whale />} />
           <Route path="/alerts" element={<Alerts />} />
+          <Route path="/bot-reports" element={<BotReports />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/learning" element={<Learning />} />
           <Route path="*" element={<Navigate to="/" replace />} />

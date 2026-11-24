@@ -1711,3 +1711,13 @@ button.dash-cell:hover { background: var(--bg-inset); }
   .v2-chip { min-height: 44px; }
   .mock-card-head button { min-height: 44px; min-width: 56px; }
 }
+
+/* 봇 리포트 — 본문 표는 카드 안에서만 가로로 넘겨 본다 */
+.bot-report-table-wrap { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
+.bot-report-table { border-collapse: collapse; font-size: 12px; min-width: 100%; }
+.bot-report-table th, .bot-report-table td {
+  padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top;
+  min-width: 72px; max-width: 320px;
+}
+.bot-report-table th { color: var(--text-3); font-weight: 600; white-space: nowrap; }
+.bot-report-table td { color: var(--text-2); }

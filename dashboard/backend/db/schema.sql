@@ -437,6 +437,19 @@ CREATE TABLE IF NOT EXISTS learning_reviews (
     PRIMARY KEY (position_id, horizon_days)
 );
 
+-- 그록봇이 보내는 리포트 원문 (일봉 점검·청산 히트맵·고래 소식 등). content_hash로 같은 내용 재전송을 걸러낸다
+CREATE TABLE IF NOT EXISTS bot_reports (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind         TEXT NOT NULL,
+    title        TEXT NOT NULL,
+    body         TEXT NOT NULL,
+    data_json    TEXT,
+    reported_at  TEXT NOT NULL,   -- 봇이 알려준 기준 시각 (UTC ISO)
+    received_at  TEXT NOT NULL,   -- 우리가 받은 시각 (UTC ISO)
+    content_hash TEXT NOT NULL UNIQUE
+);
+CREATE INDEX IF NOT EXISTS idx_bot_reports_kind_time ON bot_reports(kind, reported_at);
+
 -- 리서치 분석 일별 스냅샷 (카드의 어제·7일 전 대비 표시용, date는 KST 날짜)
 CREATE TABLE IF NOT EXISTS research_snapshot (
     date       TEXT NOT NULL,

@@ -3,7 +3,7 @@ export const NAV_GROUPS: { label: string; paths: string[] }[] = [
   { label: '개요', paths: ['/'] },
   { label: '시장', paths: ['/market', '/liquidity', '/volume'] },
   { label: '파생 · 온체인', paths: ['/spf', '/cvd', '/whale'] },
-  { label: '기록 · 검증', paths: ['/research', '/leaderboard', '/alerts'] },
+  { label: '기록 · 검증', paths: ['/research', '/leaderboard', '/alerts', '/bot-reports'] },
   { label: '학습', paths: ['/learning'] },
 ]
 
