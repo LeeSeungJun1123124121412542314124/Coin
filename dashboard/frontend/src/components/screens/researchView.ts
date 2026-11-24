@@ -11,6 +11,10 @@ export const RESEARCH_CATEGORY_COLORS: Record<string, string> = {
   '시장분석': C.danger,
   '주식심리': C.info,
   '주식수급': C.ok,
+  // 봇 관찰 카드 — 봇이 보낸 리포트로 만든 것이라 한 색으로 묶는다
+  'ETF 수급': C.accent,
+  '청산 히트맵': C.accent,
+  '고래 소식': C.accent,
 }
 
 export const RESEARCH_CATEGORIES = [
@@ -23,6 +27,9 @@ export const RESEARCH_CATEGORIES = [
   '시장분석',
   '주식심리',
   '주식수급',
+  'ETF 수급',
+  '청산 히트맵',
+  '고래 소식',
 ]
 
 // 주식심리 카드 펼침 영역에 표시하는 지수별 한 줄 설명
@@ -55,8 +62,11 @@ function urgencyRank(level: string): number {
 }
 
 // 급한 순 정렬 — 같은 등급은 점수 내림차순, 원본 배열은 바꾸지 않는다
-export function sortByUrgency<T extends { level: string; score: number }>(cards: T[]): T[] {
-  return [...cards].sort((a, b) => urgencyRank(a.level) - urgencyRank(b.level) || b.score - a.score)
+// 점수가 없는 봇 관찰 카드는 받은 순서 그대로 맨 뒤에 둔다
+export function sortByUrgency<T extends { level: string; score: number; observed?: boolean }>(cards: T[]): T[] {
+  const scored = cards.filter((c) => !c.observed)
+  const observed = cards.filter((c) => c.observed)
+  return [...scored.sort((a, b) => urgencyRank(a.level) - urgencyRank(b.level) || b.score - a.score), ...observed]
 }
 
 export function getResearchCategoryColor(category: string) {
@@ -167,8 +177,9 @@ export function toKrStockFlowDetailRows(details: KrStockFlowDetails): Array<[str
 export interface CompareSnapshot {
   date: string
   days_ago: number
-  score: number
-  level: string
+  // 봇 관찰 카드의 이전 리포트에는 점수·등급이 없다
+  score?: number
+  level?: string
   summary?: string
 }
 
@@ -195,7 +206,7 @@ function scoreDelta(now: number, before: number): string {
 }
 
 export function toCompareLines(
-  cat: { score: number; level: string; compare?: CategoryCompare | null },
+  cat: { score: number; level: string; observed?: boolean; compare?: CategoryCompare | null },
   levelLabels: Record<string, string>,
 ): CompareLines {
   const prev = cat.compare?.prev ?? null
@@ -205,12 +216,17 @@ export function toCompareLines(
   let prevLine: string | null = null
   let prevSummary: CompareLines['prevSummary'] = null
   if (prev) {
-    const levelPart = prev.level === cat.level ? '등급 그대로' : `등급 ${label(prev.level)} → ${label(cat.level)}`
-    prevLine = `${agoLabel(prev.days_ago)} ${prev.score} → 오늘 ${cat.score} (${scoreDelta(cat.score, prev.score)}) · ${levelPart}`
+    // 점수 줄은 점수가 있는 카드에만 — 봇 관찰 카드는 이전 요약만 나란히 보여준다
+    if (!cat.observed && prev.score != null && prev.level != null) {
+      const levelPart = prev.level === cat.level ? '등급 그대로' : `등급 ${label(prev.level)} → ${label(cat.level)}`
+      prevLine = `${agoLabel(prev.days_ago)} ${prev.score} → 오늘 ${cat.score} (${scoreDelta(cat.score, prev.score)}) · ${levelPart}`
+    }
     if (prev.summary) prevSummary = { label: agoLabel(prev.days_ago), text: prev.summary }
   }
 
-  const weekLine = week ? `${agoLabel(week.days_ago)} ${week.score} (${scoreDelta(cat.score, week.score)})` : null
+  const weekLine = !cat.observed && week && week.score != null
+    ? `${agoLabel(week.days_ago)} ${week.score} (${scoreDelta(cat.score, week.score)})`
+    : null
 
   return { prevLine, weekLine, prevSummary }
 }

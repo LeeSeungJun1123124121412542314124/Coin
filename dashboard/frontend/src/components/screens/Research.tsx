@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useApi } from '../../hooks/useApi'
 import ErrorState from '../shared/ErrorState'
 import LastUpdated from '../shared/LastUpdated'
@@ -25,6 +26,8 @@ interface CategoryAnalysis {
   details: Record<string, unknown>
   updated_at: string
   compare?: CategoryCompare | null
+  // 봇이 보낸 리포트로 만든 카드 — 점수·등급이 없다
+  observed?: boolean
 }
 
 interface ResearchData {
@@ -90,15 +93,27 @@ function AnalysisCard({ cat, expanded, onToggle }: {
             fontSize: 12,
             fontWeight: 600,
           }}>{cat.name}</span>
-          <span style={{
-            background: levelBg,
-            color: levelColor,
-            border: `1px solid ${softBg(levelColor, 0.28)}`,
-            borderRadius: 6,
-            padding: '2px 8px',
-            fontSize: 12,
-            fontWeight: 600,
-          }}>{icon} {levelLabel}</span>
+          {cat.observed ? (
+            <span style={{
+              background: 'var(--seg-active)',
+              color: 'var(--text-2)',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              padding: '2px 8px',
+              fontSize: 12,
+              fontWeight: 600,
+            }}>봇 관찰</span>
+          ) : (
+            <span style={{
+              background: levelBg,
+              color: levelColor,
+              border: `1px solid ${softBg(levelColor, 0.28)}`,
+              borderRadius: 6,
+              padding: '2px 8px',
+              fontSize: 12,
+              fontWeight: 600,
+            }}>{icon} {levelLabel}</span>
+          )}
         </div>
         <span style={{ fontSize: 12, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{time}</span>
       </div>
@@ -126,8 +141,8 @@ function AnalysisCard({ cat, expanded, onToggle }: {
         ) : cat.summary}
       </div>
 
-      {/* 점수 바 */}
-      <ScoreBar score={cat.score} level={cat.level} />
+      {/* 점수 바 — 봇 관찰 카드는 점수가 없다 */}
+      {!cat.observed && <ScoreBar score={cat.score} level={cat.level} />}
 
       {/* 상세 정보 (expanded) */}
       {expanded && Object.keys(details).length > 0 && (
@@ -149,6 +164,23 @@ function AnalysisCard({ cat, expanded, onToggle }: {
 }
 
 function _renderDetails(key: string, details: Record<string, unknown>) {
+  // 봇 관찰 카드 — 백엔드가 만들어 준 [이름, 값] 줄을 그대로 그린다
+  if (Array.isArray(details.rows)) {
+    const rows = details.rows as Array<[string, string]>
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {rows.map(([label, value], i) => (
+          <div key={i} style={{ fontSize: 12, lineHeight: 1.6, overflowWrap: 'anywhere' }}>
+            <div style={{ color: 'var(--text-3)' }}>{label}</div>
+            <div style={{ color: 'var(--text-2)', fontWeight: 600 }}>{value}</div>
+          </div>
+        ))}
+        <Link to="/bot-reports" onClick={e => e.stopPropagation()} style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'underline' }}>
+          원문 보기 (봇 리포트)
+        </Link>
+      </div>
+    )
+  }
   if (key === 'derivatives') {
     return (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
@@ -313,15 +345,19 @@ export function Research() {
   )
 
   // 갱신 줄 요약: 위험·경계 건수 (0인 것은 뺀다)
-  const criticalCount = categories.filter(c => c.level === 'critical').length
-  const warningCount = categories.filter(c => c.level === 'warning').length
+  // 봇 관찰 카드는 점수가 없어 분석 건수·위험 집계에서 뺀다
+  const scored = categories.filter(c => !c.observed)
+  const observedCount = categories.length - scored.length
+  const criticalCount = scored.filter(c => c.level === 'critical').length
+  const warningCount = scored.filter(c => c.level === 'warning').length
   const alertParts = [
     ...(criticalCount > 0 ? [`위험 ${criticalCount}`] : []),
     ...(warningCount > 0 ? [`경계 ${warningCount}`] : []),
   ]
+  const observedText = observedCount > 0 ? ` · 봇 관찰 ${observedCount}` : ''
   const summaryText = categories.length === 0 ? '' : alertParts.length > 0
-    ? ` · ${categories.length}개 분석 중 ${alertParts.join(' · ')}`
-    : ` · ${categories.length}개 분석 · 특이 신호 없음`
+    ? ` · ${scored.length}개 분석 중 ${alertParts.join(' · ')}${observedText}`
+    : ` · ${scored.length}개 분석 · 특이 신호 없음${observedText}`
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

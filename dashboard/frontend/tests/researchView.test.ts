@@ -123,6 +123,33 @@ assert.deepEqual(
   assert.deepEqual(toCompareLines({ score: 42, level: 'neutral', compare: null }, labels), none)
 }
 
+// 봇 관찰 카드 (docs/plans/bot-reports-spec-2026-11-24.md 7절)
+{
+  // 분류 칩과 색
+  for (const name of ['ETF 수급', '청산 히트맵', '고래 소식']) {
+    assert.ok(RESEARCH_CATEGORIES.includes(name), name)
+    assert.notEqual(getResearchCategoryColor(name), C.text2)
+  }
+  // 점수가 없으므로 점수 줄은 만들지 않고, 이전 요약만 나란히 보여준다
+  assert.deepEqual(
+    toCompareLines({
+      score: 0,
+      level: 'neutral',
+      observed: true,
+      compare: { prev: { date: '2026-11-23', days_ago: 1, summary: '11-23 09:17 기준 · 현재가 $58,970' }, week: null },
+    }, { neutral: '중립' }),
+    { prevLine: null, weekLine: null, prevSummary: { label: '어제', text: '11-23 09:17 기준 · 현재가 $58,970' } },
+  )
+  // 정렬 — 점수 있는 카드가 모두 먼저, 봇 관찰 카드는 받은 순서 그대로 맨 뒤
+  const cards = [
+    { id: 'etf', level: 'neutral', score: 0, observed: true },
+    { id: 'a', level: 'bullish', score: 10 },
+    { id: 'heat', level: 'neutral', score: 0, observed: true },
+    { id: 'b', level: 'critical', score: 80 },
+  ]
+  assert.deepEqual(sortByUrgency(cards).map(c => c.id), ['b', 'a', 'etf', 'heat'])
+}
+
 // 주식심리 카드 지수 설명 — 지수당 한 줄
 assert.equal(STOCK_SENTIMENT_INDEX_NOTES.length, 2)
 assert.equal(STOCK_SENTIMENT_INDEX_NOTES[0][0], '공포탐욕지수')

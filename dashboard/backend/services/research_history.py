@@ -27,7 +27,8 @@ def save_snapshot(categories: list[dict], day: date) -> int:
     rows = [
         (day.isoformat(), c["key"], c["level"], int(c["score"]), c["title"], c["summary"], now)
         for c in categories
-        if not c.get("placeholder")  # 오류·적재 중 상태는 실제 분석 결과가 아니다
+        # 오류·적재 중 상태는 실제 분석 결과가 아니고, 봇 관찰 카드는 점수가 없다
+        if not c.get("placeholder") and not c.get("observed")
     ]
     with connection.get_db() as conn:
         conn.executemany(
