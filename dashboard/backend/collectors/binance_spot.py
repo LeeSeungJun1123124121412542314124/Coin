@@ -7,6 +7,7 @@ import time
 
 import httpx
 
+from dashboard.backend import cache
 from dashboard.backend.db.connection import get_db
 
 logger = logging.getLogger(__name__)
@@ -78,6 +79,29 @@ async def fetch_klines(
             break
         cursor = int(rows[-1][6]) + 1  # 마지막 행 closeTime 다음 ms부터
     return bars
+
+
+@cache.cached(ttl=10, key_prefix="learning_recent_klines")
+async def fetch_recent_klines(symbol: str, interval: str) -> list[dict]:
+    """최근 5봉 (미마감 봉 포함, open_time 오름차순). 실패 시 빈 리스트 — 차트는 계속 떠야 한다."""
+    try:
+        resp = await _get_client().get(
+            f"{BASE}/api/v3/klines", params={"symbol": symbol, "interval": interval, "limit": 5})
+        resp.raise_for_status()
+        return [
+            {
+                "open_time": int(row[0]),
+                "open": float(row[1]),
+                "high": float(row[2]),
+                "low": float(row[3]),
+                "close": float(row[4]),
+                "volume": float(row[5]),
+            }
+            for row in resp.json()
+        ]
+    except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as e:
+        logger.error("바이낸스 최근 봉 조회 실패 (%s %s): %s", symbol, interval, e)
+        return []
 
 
 async def fetch_spot_price(symbol: str) -> float | None:

@@ -21,6 +21,14 @@ export function toCandleSeries(candles: Candle[]) {
   return candles.map(c => ({ time: toSec(c.open_time), open: c.open, high: c.high, low: c.low, close: c.close }))
 }
 
+// 실시간 봉 조회 결과가 지금 차트의 실시간 봉과 같은 구성인지(첫 봉 open_time·개수 동일) — 같으면 마지막 봉만 갱신, 아니면 전체 재조회
+export function sameLiveShape(prev: Candle[], next: Candle[]): boolean {
+  return prev.length === next.length && prev[0]?.open_time === next[0]?.open_time
+}
+
+// 캔들 시리즈 입력 — DB 마감 봉 뒤에 실시간 봉을 붙인다
+export const withLive = (candles: Candle[], live: Candle[]): Candle[] => [...candles, ...live]
+
 export function toLineSeries(ich: IchimokuRow[], key: IchimokuLineKey) {
   const out: { time: UTCTimestamp; value: number }[] = []
   for (const r of ich) {

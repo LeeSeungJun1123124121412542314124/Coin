@@ -130,6 +130,23 @@ def _chart_indicators(candles: list[dict], cfg: dict, t0: int) -> dict:
     return out
 
 
+async def _live_candles(symbol: str, interval: str) -> list[dict]:
+    """DB 마지막 봉보다 뒤의 봉(마감 후 수집 전 + 진행 중). DB에 캔들이 없으면 []."""
+    last = binance_spot.last_open_time(symbol, interval)
+    if last is None:
+        return []
+    return [b for b in await binance_spot.fetch_recent_klines(symbol, interval) if b["open_time"] > last]
+
+
+@router.get("/learning/live")
+async def get_live(symbol: str, interval: Interval = "1d"):
+    """실시간 봉만 가볍게 조회 — 차트 화면이 주기적으로 부른다."""
+    symbol = symbol.strip().upper()
+    if not _is_tracked(symbol):
+        return _not_tracked(symbol)
+    return {"live_candles": await _live_candles(symbol, interval)}
+
+
 @router.get("/learning/chart")
 async def get_chart(
     symbol: str,
@@ -147,7 +164,8 @@ async def get_chart(
     if not candles:
         return {"candles": [], "ichimoku": [], "indicators": {},
                 "wyckoff": {"volume_spikes": [], "candidates": [], "current_box": None},
-                "pivots": [], "fib": [], "state": dict(_STATE_NONE), "settings": settings, "structure": None}
+                "pivots": [], "fib": [], "state": dict(_STATE_NONE), "settings": settings, "structure": None,
+                "live_candles": []}
     wy, el = settings["wyckoff"], settings["elliott"]
     ich = learning_indicators.ichimoku(candles, interval)
     state = learning_indicators.ichimoku_state(candles, ich)
@@ -175,6 +193,7 @@ async def get_chart(
         "state": state,
         "settings": settings,
         "structure": structure,
+        "live_candles": await _live_candles(symbol, interval),
     }
 
 

@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { CandlestickSeries, CrosshairMode, HistogramSeries, LineSeries, LineStyle, PriceScaleMode, createChart, createSeriesMarkers } from 'lightweight-charts'
 import type { IChartApi, IPriceLine, ISeriesApi, ISeriesMarkersPluginApi, LineWidth, SeriesType, Time } from 'lightweight-charts'
-import { getChart, putSettings } from '../../lib/learningApi.ts'
+import { getChart, getLive, putSettings } from '../../lib/learningApi.ts'
 import type { ChartResponse, Interval, LearningSettings, Structure } from '../../lib/learningApi.ts'
 import { C, changeArrow, changeColor, softBg } from '../../lib/theme.ts'
 import { Card } from '../shared/Card'
 import LastUpdated from '../shared/LastUpdated'
-import { toCandleSeries, toCloudBands, toLineSeries, toPivotLine, toSec, toWyckoffMarkers } from './learningChartData.ts'
+import { sameLiveShape, toCandleSeries, toCloudBands, toLineSeries, toPivotLine, toSec, toWyckoffMarkers, withLive } from './learningChartData.ts'
 import { chartHeight, maColor, paneLayout } from './indicatorPanes.ts'
 import { IchimokuCloud } from './ichimokuCloud.ts'
 import {
@@ -45,6 +45,9 @@ const INDICATORS: [IndicatorKey, string][] = [['ichimoku', '일목균형표'], [
 // 보조 지표 칩 — 서버 설정의 enabled를 바꾼다 (겹침: 이동평균·볼린저 / 아래 칸: 거래량·RSI·MACD)
 type SettingKey = 'ma' | 'bb' | 'volume' | 'rsi' | 'macd'
 const SETTING_CHIPS: [SettingKey, string][] = [['ma', '이동평균'], ['bb', '볼린저'], ['volume', '거래량'], ['rsi', 'RSI'], ['macd', 'MACD']]
+
+// 실시간 봉 조회 주기
+const LIVE_POLL_MS = 15_000
 
 const BASE_HEIGHT = 460
 const PANE_HEIGHT = 110
@@ -122,6 +125,11 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
   const load = useMemo(() => (ready ? () => getChart(symbol, interval) : null), [ready, symbol, interval])
   const chart = useLoader(load)
   const data = chart.data
+  const reload = chart.reload
+  // 실시간 조회 성공 시각 — 만들 때의 차트 데이터(base)에만 유효하다 (새로 불러오면 불러온 시각이 더 늦다)
+  const [liveOk, setLiveOk] = useState<{ base: ChartResponse; at: Date } | null>(null)
+  const lastLiveAt = liveOk && liveOk.base === data ? liveOk.at : null
+  const updatedAt = lastLiveAt && chart.loadedAt && lastLiveAt > chart.loadedAt ? lastLiveAt : chart.loadedAt
   // 칸 수 — 로딩 중(data=null)에는 직전 값을 유지해 아래 칸 높이가 접혔다 펴지지 않게 한다
   const [paneCount, setPaneCount] = useState(0)
   if (data) {
@@ -191,7 +199,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
     if (!p || !data) return
     // 십자선이 떠 있는 채로 데이터를 바꾸면 라이브러리가 예전 선 데이터를 찾다 "Value is null"로 죽는다 — 먼저 십자선을 지운다
     p.chart.clearCrosshairPosition()
-    p.candle.setData(toCandleSeries(data.candles))
+    p.candle.setData(toCandleSeries(withLive(data.candles, data.live_candles)))
     p.tenkan.setData(toLineSeries(data.ichimoku, 'tenkan'))
     p.kijun.setData(toLineSeries(data.ichimoku, 'kijun'))
     p.chikou.setData(toLineSeries(data.ichimoku, 'chikou'))
@@ -201,7 +209,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
     p.markers.setMarkers(toWyckoffMarkers(data.wyckoff))
 
     // 저가 종목도 가격이 뭉개지지 않게 소수 자릿수 조정 (0.001 미만은 8자리·minMove 1e-8)
-    const last = data.candles.at(-1)?.close ?? 1
+    const last = data.live_candles.at(-1)?.close ?? data.candles.at(-1)?.close ?? 1
     const precision = last < 0.001 ? 8 : last < 1 ? 6 : last < 100 ? 4 : 2
     p.candle.applyOptions({ priceFormat: { type: 'price', precision, minMove: 10 ** -precision } })
     p.chart.applyOptions({ timeScale: { timeVisible: isIntraday(interval) } })
@@ -220,6 +228,35 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
       else p.candle.priceScale().setAutoScale(true)
     }
   }, [data, symbol, interval])
+
+  // 실시간 봉 조회 — 15초마다, 화면이 보일 때만. 구성이 같으면 마지막 봉만 갱신(데이터 상태를 바꾸지 않아 십자선 유지), 새 봉이면 전체 재조회
+  useEffect(() => {
+    if (!data) return
+    let cancelled = false
+    const poll = () => {
+      if (document.visibilityState !== 'visible') return
+      getLive(symbol, interval).then(res => {
+        const p = partsRef.current
+        if (cancelled || !p) return
+        setLiveOk({ base: data, at: new Date() })
+        if (sameLiveShape(data.live_candles, res.live_candles)) {
+          // 같은 구성이면 마감된 봉은 그대로이고 마지막 봉만 변한다 (update 는 마지막 봉 이후 시각만 받는다)
+          const last = res.live_candles.at(-1)
+          if (last) p.candle.update(toCandleSeries([last])[0])
+        } else {
+          reload()
+        }
+      }, () => { /* 조용히 넘기고 다음 주기에 다시 시도 */ })
+    }
+    const timer = setInterval(poll, LIVE_POLL_MS)
+    const onVisible = () => poll()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [data, symbol, interval, reload])
 
   // 잠금 반영 — 잠그면 확대·축소와 휠·세로 터치가 꺼져 차트 위에서도 페이지가 스크롤된다. 좌우로 끌어 시간 이동하는 것만 남긴다
   useEffect(() => {
@@ -404,7 +441,7 @@ export function LearningChart({ symbol, interval, onIntervalChange, ready, aside
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <LastUpdated timestamp={chart.loadedAt} />
+      <LastUpdated timestamp={updatedAt} />
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
         <div className="tap-seg" style={segGroupStyle} role="group" aria-label="시간봉">
           {INTERVALS.map(i => (

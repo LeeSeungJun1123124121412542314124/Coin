@@ -3,11 +3,13 @@ import assert from 'node:assert/strict'
 import {
   PHASE_LABELS,
   formatUsdtKrw,
+  sameLiveShape,
   toCandleSeries,
   toCloudBands,
   toLineSeries,
   toPivotLine,
   toWyckoffMarkers,
+  withLive,
 } from '../src/components/learning/learningChartData.ts'
 import { INTERVALS, INTERVAL_LABELS, isIntraday } from '../src/components/learning/learningShared.ts'
 import { C } from '../src/lib/theme.ts'
@@ -74,5 +76,16 @@ assert.equal(PHASE_LABELS.unclear, '불명확')
 assert.deepEqual(INTERVALS, ['1h', '4h', '1d', '1w', '1M'])
 assert.deepEqual(INTERVALS.map(i => INTERVAL_LABELS[i]), ['1시간봉', '4시간봉', '일봉', '주봉', '월봉'])
 assert.deepEqual(INTERVALS.map(isIntraday), [true, true, false, false, false])
+
+// 실시간 봉: 합치기와 구성 판정
+const bar = (t: number, close = 1) => ({ open_time: t, open: 1, high: 2, low: 0.5, close, volume: 1 })
+assert.deepEqual(withLive([bar(1000), bar(2000)], [bar(3000)]).map(c => c.open_time), [1000, 2000, 3000])
+assert.equal(withLive([bar(1000)], []).length, 1)
+assert.equal(sameLiveShape([bar(3000)], [bar(3000, 9)]), true)
+assert.equal(sameLiveShape([], []), true)
+assert.equal(sameLiveShape([bar(3000)], [bar(3000), bar(4000)]), false) // 새 봉이 생김
+assert.equal(sameLiveShape([bar(3000), bar(4000)], [bar(4000)]), false) // 앞 봉이 수집돼 사라짐
+assert.equal(sameLiveShape([bar(3000)], [bar(4000)]), false) // 첫 봉이 바뀜
+assert.equal(sameLiveShape([], [bar(3000)]), false)
 
 console.log('learningChartData tests passed')

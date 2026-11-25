@@ -10,6 +10,7 @@ import pytest
 from dashboard.backend.collectors import binance_spot
 from dashboard.backend.collectors.binance_spot import (
     fetch_klines,
+    fetch_recent_klines,
     fetch_spot_price,
     fetch_symbol_info,
     last_open_time,
@@ -125,3 +126,33 @@ def test_save_candles_idempotent(state_db):
     save_candles("BTCUSDT", "1d", BARS)
     assert _count(state_db) == len(BARS)
     assert last_open_time("BTCUSDT", "1d") == BARS[-1]["open_time"]
+
+
+@pytest.mark.asyncio
+async def test_recent_klines_includes_open_bar_and_sends_limit(monkeypatch):
+    from dashboard.backend import cache
+    cache._store.clear()
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(dict(request.url.params))
+        # 마지막 행은 closeTime 이 미래 — 진행 중 봉도 그대로 포함돼야 한다
+        return httpx.Response(200, json=[
+            [0, "1", "2", "0.5", "1.5", "10", 3_599_999],
+            [3_600_000, "1.5", "2", "1", "1.8", "4", 9_999_999_999_999],
+        ])
+
+    _use_transport(monkeypatch, handler)
+    bars = await fetch_recent_klines("BTCUSDT", "1h")
+    assert [b["open_time"] for b in bars] == [0, 3_600_000] and bars[1]["close"] == 1.8
+    assert seen[0]["limit"] == "5" and seen[0]["interval"] == "1h"
+    await fetch_recent_klines("BTCUSDT", "1h")  # 10초 캐시
+    assert len(seen) == 1
+
+
+@pytest.mark.asyncio
+async def test_recent_klines_failure_returns_empty(monkeypatch):
+    from dashboard.backend import cache
+    cache._store.clear()
+    _use_transport(monkeypatch, lambda request: httpx.Response(451))
+    assert await fetch_recent_klines("BTCUSDT", "1h") == []

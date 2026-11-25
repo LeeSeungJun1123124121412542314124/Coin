@@ -137,6 +137,12 @@ export interface ChartResponse {
   settings: LearningSettings
   indicators?: IndicatorsResponse
   structure: Structure | null
+  // DB 마지막 봉 이후의 봉(마감 후 수집 전 + 진행 중) — 지표 계산에는 쓰이지 않는다
+  live_candles: Candle[]
+}
+
+export interface LiveResponse {
+  live_candles: Candle[]
 }
 
 export interface OrderContext {
@@ -289,6 +295,9 @@ export const getChart = (symbol: string, interval: Interval, limit?: number) => 
   if (limit !== undefined) q.set('limit', String(limit))
   return apiFetch<ChartResponse>(`/api/learning/chart?${q}`)
 }
+
+export const getLive = (symbol: string, interval: Interval) =>
+  apiFetch<LiveResponse>(`/api/learning/live?${new URLSearchParams({ symbol, interval })}`)
 
 export const getOrderContext = (symbol: string, interval: Interval) =>
   apiFetch<OrderContext>(`/api/learning/order-context?${new URLSearchParams({ symbol, interval })}`)

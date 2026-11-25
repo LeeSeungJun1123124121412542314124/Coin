@@ -24,7 +24,22 @@ def state_db(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def client(state_db):
+def recent(monkeypatch):
+    """바이낸스 최근 봉 조회 가짜 — 테스트가 .bars 를 채운다 (기본은 빈 리스트)."""
+    from dashboard.backend.collectors import binance_spot
+
+    class Recent:
+        bars: list = []
+
+    async def fake(symbol, interval):
+        return list(Recent.bars)
+
+    monkeypatch.setattr(binance_spot, "fetch_recent_klines", fake)
+    return Recent
+
+
+@pytest.fixture
+def client(state_db, recent):
     from dashboard.backend.api.learning_routes import router
     app = FastAPI()
     app.include_router(router, prefix="/api")
@@ -66,7 +81,7 @@ def test_chart_returns_all_keys(client):
     r = client.get("/api/learning/chart", params={"symbol": "btcusdt", "interval": "1d", "limit": 100})
     assert r.status_code == 200
     body = r.json()
-    assert set(body) == {"candles", "ichimoku", "wyckoff", "pivots", "fib", "state", "settings", "indicators", "structure"}
+    assert set(body) == {"candles", "ichimoku", "wyckoff", "pivots", "fib", "state", "settings", "indicators", "structure", "live_candles"}
     assert 0 < len(body["candles"]) <= 100
     assert set(body["state"]) == _STATE_KEYS
 
@@ -251,3 +266,36 @@ def test_chart_structure_htf_mapping_and_monthly_none(client):
     get = lambda i: client.get("/api/learning/chart", params={"symbol": "BTCUSDT", "interval": i}).json()["structure"]  # noqa: E731
     assert get("1d")["htf_interval"] == "1w"
     assert get("1M")["htf_interval"] is None
+
+
+def _bar(i, close=100.0):
+    return {"open_time": _T0 + i * _DAY, "open": 100.0, "high": 110.0, "low": 90.0, "close": close, "volume": 5.0}
+
+
+def test_chart_live_candles_only_after_last_db_bar(client, recent):
+    _track()
+    _insert(_box_with_spring(n=120))  # 마지막 봉 인덱스 119
+    recent.bars = [_bar(118), _bar(119), _bar(120, 111.0), _bar(121, 112.0)]
+    body = client.get("/api/learning/chart", params={"symbol": "BTCUSDT", "interval": "1d"}).json()
+    assert [b["open_time"] for b in body["live_candles"]] == [_T0 + 120 * _DAY, _T0 + 121 * _DAY]
+    assert body["live_candles"][-1]["close"] == 112.0
+    assert body["candles"][-1]["open_time"] == _T0 + 119 * _DAY  # 기존 필드는 DB 봉 그대로
+
+
+def test_chart_live_candles_empty_when_no_db_candles(client, recent):
+    _track()
+    recent.bars = [_bar(1)]
+    body = client.get("/api/learning/chart", params={"symbol": "BTCUSDT", "interval": "1d"}).json()
+    assert body["candles"] == [] and body["live_candles"] == []
+
+
+def test_live_endpoint_returns_only_live_candles_and_404(client, recent):
+    assert client.get("/api/learning/live", params={"symbol": "ETHUSDT", "interval": "1d"}).status_code == 404
+    _track()
+    _insert(_box_with_spring(n=120))
+    recent.bars = [_bar(119), _bar(120, 111.0)]
+    r = client.get("/api/learning/live", params={"symbol": "btcusdt", "interval": "1d"})
+    assert r.status_code == 200
+    assert r.json() == {"live_candles": [_bar(120, 111.0)]}
+    recent.bars = []
+    assert client.get("/api/learning/live", params={"symbol": "BTCUSDT", "interval": "1d"}).json() == {"live_candles": []}
